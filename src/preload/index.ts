@@ -5,7 +5,10 @@ import type { AppSettings, SettingsPatch } from '@shared/settings'
 
 const desktopApi: DesktopApi = {
   overlay: {
-    startDragging: () => ipcRenderer.invoke(IPC.overlayStartDragging),
+    startDragging: () => {
+      ipcRenderer.sendSync(IPC.overlayStartDragging)
+      return Promise.resolve()
+    },
     endDragging: (regions: Rectangle[]) => ipcRenderer.invoke(IPC.overlayEndDragging, regions),
     setInteractionRegions: (regions: Rectangle[]) => ipcRenderer.invoke(IPC.overlaySetRegions, regions)
   },

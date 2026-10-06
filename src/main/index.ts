@@ -10,13 +10,34 @@ import { SettingsRepository } from './settings/SettingsRepository'
 import { createOverlayWindow, resolveTargetDisplay } from './window/createOverlayWindow'
 import { createSettingsWindow } from './window/createSettingsWindow'
 import { watchTargetDisplay } from './window/displays'
-import { updateInteractionWindowBounds, updateWaylandCursor } from './window/interactionRegions'
+import { updateInteractionCursor, updateInteractionWindowBounds } from './window/interactionRegions'
 import { startKWinCursorBridge, type KWinCursorBridge } from './window/kwinCursorBridge'
 import { isNativeWayland } from './window/platform'
 import { AnalyticsService } from './analytics/AnalyticsService'
 
 if (process.platform === 'linux' && process.env.XDG_SESSION_TYPE === 'wayland') {
   app.commandLine.appendSwitch('ozone-platform', process.env.WIDOKEN_OZONE_PLATFORM ?? 'wayland')
+}
+
+const WINDOWS_CURSOR_INTERVAL_MS = 16
+
+function startWindowsCursorTracking(window: BrowserWindow): () => void {
+  if (process.platform !== 'win32') return () => undefined
+
+  let lastX = Number.NaN
+  let lastY = Number.NaN
+  const track = (): void => {
+    if (window.isDestroyed()) return
+    const point = screen.getCursorScreenPoint()
+    if (point.x === lastX && point.y === lastY) return
+    lastX = point.x
+    lastY = point.y
+    updateInteractionCursor(window, point)
+  }
+
+  track()
+  const timer = setInterval(track, WINDOWS_CURSOR_INTERVAL_MS)
+  return () => clearInterval(timer)
 }
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock()
@@ -28,6 +49,7 @@ if (!gotSingleInstanceLock) {
   let settingsWindow: BrowserWindow | undefined
   let stopWatchingDisplays: (() => void) | undefined
   let cursorBridge: KWinCursorBridge | undefined
+  let stopWindowsCursorTracking: (() => void) | undefined
   let providerManager: ProviderManager | undefined
   let analyticsService: AnalyticsService | undefined
   let isFinishingQuit = false
@@ -84,7 +106,7 @@ if (!gotSingleInstanceLock) {
       try {
         cursorBridge = await startKWinCursorBridge(
           (point) => {
-            if (overlayWindow && !overlayWindow.isDestroyed()) updateWaylandCursor(overlayWindow, point)
+            if (overlayWindow && !overlayWindow.isDestroyed()) updateInteractionCursor(overlayWindow, point)
           },
           (bounds) => {
             if (overlayWindow && !overlayWindow.isDestroyed()) updateInteractionWindowBounds(overlayWindow, bounds)
@@ -95,6 +117,7 @@ if (!gotSingleInstanceLock) {
         console.warn('KWin cursor bridge unavailable; transparent areas will remain interactive:', error)
       }
     }
+    stopWindowsCursorTracking = startWindowsCursorTracking(overlayWindow)
     providerManager.start(settings.providers, settings.refreshIntervalSeconds, settings.analytics.localInsights)
     stopWatchingDisplays = watchTargetDisplay(
       overlayWindow,
@@ -107,6 +130,7 @@ if (!gotSingleInstanceLock) {
   app.on('window-all-closed', () => app.quit())
   app.on('before-quit', (event) => {
     stopWatchingDisplays?.()
+    stopWindowsCursorTracking?.()
     providerManager?.stop()
     analyticsService?.close()
     if (!cursorBridge || isFinishingQuit) return

@@ -30,6 +30,7 @@ export function ProviderItem({ provider, animateEntry, onEnter, onLeave }: Provi
     <button
       className={`provider-item provider-item--${provider.snapshot.status}${shouldAnimateEntry ? ' provider-item--entering' : ''}`}
       type="button"
+      data-provider-id={provider.id}
       aria-label={`${provider.name}: ${provider.snapshot.status}${provider.snapshot.status === 'connected' ? `, ${percent}% used` : ''}`}
       onPointerEnter={onEnter}
       onPointerLeave={onLeave}

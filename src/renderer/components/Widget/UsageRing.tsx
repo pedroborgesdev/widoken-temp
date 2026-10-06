@@ -17,15 +17,17 @@ export function UsageRing({ percent, status }: UsageRingProps): React.JSX.Elemen
 
   return (
     <svg className="usage-ring" viewBox="0 0 28 28" aria-hidden="true">
-      <circle className="usage-ring__track" cx="14" cy="14" r={RADIUS} />
-      <circle
-        className={className}
-        cx="14"
-        cy="14"
-        r={RADIUS}
-        strokeDasharray={CIRCUMFERENCE}
-        strokeDashoffset={dashOffset}
-      />
+      <g transform="rotate(-90 14 14)">
+        <circle className="usage-ring__track" cx="14" cy="14" r={RADIUS} />
+        <circle
+          className={className}
+          cx="14"
+          cy="14"
+          r={RADIUS}
+          strokeDasharray={CIRCUMFERENCE}
+          strokeDashoffset={dashOffset}
+        />
+      </g>
     </svg>
   )
 }

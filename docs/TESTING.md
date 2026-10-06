@@ -18,6 +18,7 @@ Before a release, manually verify:
 - one through four enabled providers;
 - healthy, high-usage, disconnected, unavailable, and network-error states;
 - click-through into another native app outside every visible interaction region;
+- click-through and hover on the settings window, and on another Chromium window, after dragging the widget;
 - drag from the grab only, both full-height docking columns, magnetic capture on both sides, and persistence after restart;
 - display metric changes and sleep/wake recovery;
 - Windows, X11, and XWayland installer builds.

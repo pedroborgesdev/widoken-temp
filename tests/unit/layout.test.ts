@@ -1,15 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import { calculateVerticalPosition, switchSide } from '../../src/shared/settings'
 import {
+  appIconTurn,
+  boardItemCount,
+  boardLongAxis,
   getWidgetHeight,
   getWidgetLeft,
   getWidgetTop,
   getWidgetWidth,
+  collapsedWidgetRectangle,
+  tuckInteractionRectangle,
+  edgeCollapseOffset,
+  keepHorizontalPopoverOutsideTurnedThumb,
+  keepVerticalPopoverOutsideTurnedThumb,
   normalizeWidgetCoordinate,
   resolveCornerControlLayout,
+  resolveEdgeCollapse,
   resolveDraggedWidgetPosition,
   resolveDropSide,
   resolveHorizontalPopoverPosition,
+  resolveVerticalPopoverTop,
   WIDGET_MARGIN
 } from '../../src/renderer/utils/layout'
 import { globalPointIsInsideRegions, pointIsInsideRegions } from '../../src/main/window/interactionRegions'
@@ -22,6 +32,13 @@ describe('widget layout', () => {
     [4, 234]
   ])('uses the Figma height for %i providers', (providers, expected) => {
     expect(getWidgetHeight(providers)).toBe(expected)
+  })
+
+  it('reserves a leading slot for the app mark', () => {
+    expect(boardItemCount(4)).toBe(5)
+    expect(boardLongAxis(4)).toBe(282)
+    expect(getWidgetHeight(boardItemCount(4))).toBe(282)
+    expect(getWidgetWidth(boardItemCount(4), 'horizontal')).toBe(282)
   })
 
   it('rotates the widget dimensions for horizontal layout', () => {
@@ -121,21 +138,126 @@ describe('widget layout', () => {
 
   it('aligns horizontal popovers to the provider and chooses above or below', () => {
     expect(resolveHorizontalPopoverPosition(500, 100, 54, 2, 108, 1200, 1000)).toEqual({
-      left: 521,
+      left: 491,
       placement: 'bottom',
       top: 154
     })
     expect(resolveHorizontalPopoverPosition(500, 900, 54, 2, 108, 1200, 1000)).toEqual({
-      left: 521,
+      left: 491,
       placement: 'top',
       top: 786
     })
     expect(resolveHorizontalPopoverPosition(500, 550, 54, 2, 108, 1200, 1000)).toEqual({
-      left: 521,
+      left: 491,
       placement: 'top',
       top: 436
     })
     expect(resolveHorizontalPopoverPosition(8, 100, 54, 0, 108, 1200, 1000).left).toBe(8)
+  })
+
+  it('uses a turned horizontal thumb as the popover boundary', () => {
+    const topRight = keepHorizontalPopoverOutsideTurnedThumb(
+      { left: 884, placement: 'top', top: 786 },
+      958,
+      234,
+      undefined,
+      'top',
+      1200
+    )
+    expect(topRight.left).toBe(844)
+    expect(topRight.left + 300).toBe(958 + 234 - 42 - 6)
+
+    const bottomLeft = keepHorizontalPopoverOutsideTurnedThumb(
+      { left: 8, placement: 'bottom', top: 62 },
+      8,
+      234,
+      'bottom',
+      undefined,
+      1200
+    )
+    expect(bottomLeft.left).toBe(56)
+  })
+
+  it('tucks the widget into the edge that matches its orientation', () => {
+    expect(resolveEdgeCollapse('vertical', 8, 8, 54, 234, 1200, 1000)).toBe('left')
+    expect(resolveEdgeCollapse('vertical', 1138, 400, 54, 234, 1200, 1000)).toBe('right')
+    expect(resolveEdgeCollapse('vertical', 400, 8, 54, 234, 1200, 1000)).toBeUndefined()
+    expect(resolveEdgeCollapse('vertical', 400, 758, 54, 234, 1200, 1000)).toBeUndefined()
+
+    expect(resolveEdgeCollapse('horizontal', 8, 8, 234, 54, 1200, 1000)).toBe('top')
+    expect(resolveEdgeCollapse('horizontal', 400, 938, 234, 54, 1200, 1000)).toBe('bottom')
+    expect(resolveEdgeCollapse('horizontal', 8, 400, 234, 54, 1200, 1000)).toBeUndefined()
+    expect(resolveEdgeCollapse('horizontal', 958, 400, 234, 54, 1200, 1000)).toBeUndefined()
+  })
+
+  it('leaves a scaled peek of the board on the screen edge', () => {
+    expect(edgeCollapseOffset('left', 8, 100, 54, 234, 1200, 1000)).toEqual({ x: -48, y: 0 })
+    expect(edgeCollapseOffset('right', 1138, 100, 54, 234, 1200, 1000)).toEqual({ x: 48, y: 0 })
+    expect(edgeCollapseOffset('top', 100, 8, 234, 54, 1200, 1000)).toEqual({ x: 0, y: -48 })
+    expect(edgeCollapseOffset('bottom', 100, 938, 234, 54, 1200, 1000)).toEqual({ x: 0, y: 48 })
+    expect(collapsedWidgetRectangle('bottom', 100, 938, 234, 54, 1200, 1000)).toEqual({
+      x: 100,
+      y: 986,
+      width: 234,
+      height: 14
+    })
+  })
+
+  it('keeps the full footprint until the tuck slide has finished', () => {
+    const resting = { x: 8, y: 100, width: 54, height: 234 }
+    expect(tuckInteractionRectangle(resting, 'left', false, 8, 100, 54, 234, 1200, 1000)).toEqual({
+      x: 0,
+      y: 100,
+      width: 62,
+      height: 234
+    })
+    expect(tuckInteractionRectangle(resting, 'left', true, 8, 100, 54, 234, 1200, 1000)).toEqual({
+      x: 0,
+      y: 100,
+      width: 14,
+      height: 234
+    })
+  })
+
+  it('turns the app icon away from the nearest lateral edge', () => {
+    expect(appIconTurn(8, 54, 1200)).toBe(16)
+    expect(appIconTurn(1138, 54, 1200)).toBe(-16)
+  })
+
+  it('centers a vertical popover on the hovered provider', () => {
+    expect(resolveVerticalPopoverTop(200, 1, 140, 0, 48, 1)).toBe(223)
+    expect(resolveVerticalPopoverTop(100, 0, 120, 0, 48, 1.2)).toBe(94)
+    expect(resolveVerticalPopoverTop(80, 2, 80, 4, 54, 1)).toBe(197)
+  })
+
+  it('uses a turned vertical thumb as the popover boundary', () => {
+    expect(keepVerticalPopoverOutsideTurnedThumb(32, 140, 'left', 8, 234, 'right', undefined, 1000)).toEqual({
+      maxHeight: 360,
+      top: 56
+    })
+    expect(keepVerticalPopoverOutsideTurnedThumb(820, 140, 'right', 758, 234, undefined, 'left', 1000)).toEqual({
+      maxHeight: 140,
+      top: 804
+    })
+    expect(keepVerticalPopoverOutsideTurnedThumb(200, 140, 'left', 200, 234, 'left', undefined, 1000)).toEqual({
+      maxHeight: 360,
+      top: 200
+    })
+  })
+
+  it('keeps a tall vertical popover outside both turned thumbs', () => {
+    const gear = keepVerticalPopoverOutsideTurnedThumb(8, 400, 'right', 8, 234, 'left', undefined, 320)
+    expect(gear.top).toBe(56)
+    expect(gear.top + gear.maxHeight).toBeLessThanOrEqual(312)
+    expect(gear.maxHeight).toBe(256)
+
+    const grab = keepVerticalPopoverOutsideTurnedThumb(600, 200, 'right', 558, 234, undefined, 'left', 800)
+    expect(grab.top).toBe(544)
+    expect(grab.top + grab.maxHeight).toBe(744)
+
+    const corner = keepVerticalPopoverOutsideTurnedThumb(8, 400, 'right', 8, 234, 'left', 'left', 250)
+    expect(corner.top).toBe(56)
+    expect(corner.top + corner.maxHeight).toBe(194)
   })
 
   it('moves freely, keeps an 8px margin, and magnetically snaps inside an edge lane', () => {
@@ -152,6 +274,30 @@ describe('widget layout', () => {
       top: 8
     })
     expect(resolveDraggedWidgetPosition(1170, 999, 18, 75, 1200, 1000, 234)).toEqual({
+      candidateSide: 'right',
+      left: 1138,
+      side: 'right',
+      top: 758
+    })
+  })
+
+  it('pulls the widget into the bottom lane and stops on its outer edge', () => {
+    expect(resolveDraggedWidgetPosition(600, 960, 18, 75, 1200, 1000, 234)).toEqual({
+      candidateSide: 'bottom',
+      left: 582,
+      side: 'bottom',
+      top: 758
+    })
+  })
+
+  it('seats the widget in the corner when a side lane meets the bottom lane', () => {
+    expect(resolveDraggedWidgetPosition(26, 800, 18, 75, 1200, 1000, 234)).toEqual({
+      candidateSide: 'left',
+      left: 8,
+      side: 'left',
+      top: 758
+    })
+    expect(resolveDraggedWidgetPosition(1190, 990, 18, 75, 1200, 1000, 234)).toEqual({
       candidateSide: 'right',
       left: 1138,
       side: 'right',

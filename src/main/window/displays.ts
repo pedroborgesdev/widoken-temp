@@ -1,6 +1,6 @@
 import { powerMonitor, screen, type BrowserWindow, type Rectangle } from 'electron'
 import type { AppSettings } from '@shared/settings'
-import { resolveTargetDisplay } from './createOverlayWindow'
+import { applyOverlayDisplayBounds, resolveTargetDisplay } from './createOverlayWindow'
 import { updateInteractionWindowBounds } from './interactionRegions'
 
 const DISPLAY_SETTLE_DELAY_MS = 500
@@ -24,7 +24,7 @@ export function watchTargetDisplay(
 
       const display = resolveTargetDisplay(settings)
       const bounds = { ...display.bounds }
-      window.setBounds(bounds, false)
+      applyOverlayDisplayBounds(window, bounds)
       updateInteractionWindowBounds(window, bounds)
       await onTargetBoundsChanged?.(bounds, force)
     } catch (error) {

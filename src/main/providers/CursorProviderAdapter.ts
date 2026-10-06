@@ -1,12 +1,11 @@
 import Database from 'better-sqlite3'
 import { existsSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
 import type { ProviderSnapshot, UsageLimit } from '@shared/provider'
 import type { ProviderAdapter } from './ProviderAdapter'
+import { cursorStateDatabasePath } from './cursorStorage'
 
 const ENDPOINT = 'https://cursor.com/api/usage-summary'
-const DATABASE_PATH = join(homedir(), '.config', 'Cursor', 'User', 'globalStorage', 'state.vscdb')
+const DATABASE_PATH = cursorStateDatabasePath()
 
 interface CursorUsageResponse {
   billingCycleEnd?: string
@@ -85,14 +84,12 @@ function spendLimit(
   }
 }
 
-function parseUsage(response: CursorUsageResponse): UsageLimit[] {
+export function parseCursorUsage(response: CursorUsageResponse): UsageLimit[] {
   const resetsAt = parseReset(response.billingCycleEnd)
   const plan = response.individualUsage?.plan
   const limits = [
-    percentLimit('auto', 'Auto usage', plan?.autoPercentUsed, resetsAt),
-    plan?.apiPercentUsed && plan.apiPercentUsed > 0
-      ? percentLimit('api', 'API usage', plan.apiPercentUsed, resetsAt)
-      : undefined,
+    percentLimit('auto', 'Cursor Models', plan?.autoPercentUsed, resetsAt),
+    percentLimit('api', 'Other Models', plan?.apiPercentUsed, resetsAt),
     spendLimit('on-demand', 'On-demand usage', response.individualUsage?.onDemand, resetsAt),
     spendLimit('included', 'Included usage', response.individualUsage?.overall, resetsAt)
   ].filter((limit): limit is UsageLimit => Boolean(limit))
@@ -150,7 +147,7 @@ export class CursorProviderAdapter implements ProviderAdapter {
       if (!response.ok) throw new Error(`Cursor usage request failed with HTTP ${response.status}`)
 
       const payload = (await response.json()) as CursorUsageResponse
-      const limits = parseUsage(payload)
+      const limits = parseCursorUsage(payload)
       if (limits.length === 0) {
         return {
           providerId: this.id,

@@ -20,11 +20,17 @@ function expectGeometryClose(
   }
 }
 
+async function revealWidget(): Promise<void> {
+  await page.locator('.widget__visual').hover()
+  await expect(page.locator('.widget')).not.toHaveClass(/widget--collapsed/)
+  await expect(page.locator('.widget__visual')).toHaveCSS('transform', 'none')
+}
+
 async function openSettingsWindow(): Promise<Page> {
   const existing = electronApp.windows().find((window) => !window.isClosed() && window.url().includes('window=settings'))
   if (existing) return existing
   const windowOpened = electronApp.waitForEvent('window')
-  await page.locator('.widget').hover()
+  await revealWidget()
   await page.locator('.gear-button').click()
   settingsPage = await windowOpened
   await settingsPage.waitForLoadState('domcontentloaded')
@@ -81,8 +87,12 @@ test('renders the dynamic widget and provider usage states', async () => {
   const widget = page.locator('.widget')
   await expect(widget).toBeVisible()
   await expect(page.locator('.provider-item')).toHaveCount(4)
-  await expect.poll(async () => (await widget.boundingBox())?.height).toBeCloseTo(234, 1)
-  await widget.hover()
+  await expect.poll(async () => (await widget.boundingBox())?.height).toBeCloseTo(282, 1)
+  await expect(page.locator('.board-app')).toBeVisible()
+  await expect(page.locator('.board-app .usage-ring')).toHaveCount(0)
+  await expect.poll(async () => (await page.locator('.board-app').boundingBox())?.width).toBeCloseTo(42, 1)
+  await expect.poll(async () => (await page.locator('.board-app').boundingBox())?.height).toBeCloseTo(42, 1)
+  await revealWidget()
   await expect.poll(async () => page.locator('.widget__board').evaluate((element) => element.getBoundingClientRect().width)).toBeCloseTo(54, 1)
   await expect.poll(async () => page.locator('.gear-button img').evaluate((element) => element.getBoundingClientRect().width)).toBeCloseTo(15, 1)
 
@@ -101,11 +111,11 @@ test('renders the dynamic widget and provider usage states', async () => {
     }
   })
   expectGeometryClose(geometry, {
-    thumb: { x: 12, y: 0, width: 30, height: 234 },
-    board: { x: 0, y: 18, width: 54, height: 198 },
+    thumb: { x: 12, y: 0, width: 30, height: 282 },
+    board: { x: 0, y: 18, width: 54, height: 246 },
     firstProvider: { x: 6, y: 24, width: 42, height: 42 },
     gear: { x: 20, y: 3.5, width: 15, height: 15 },
-    grab: { x: 16.5, y: 220, width: 21, height: 9 }
+    grab: { x: 16.5, y: 268, width: 21, height: 9 }
   })
 
   await page.locator('.provider-item').first().hover()
@@ -115,30 +125,65 @@ test('renders the dynamic widget and provider usage states', async () => {
   await expect(page.locator('.usage-popover__updated')).toContainText('Updated at')
   await expect(page.locator('.usage-popover__metadata')).toHaveCount(0)
   await expect(page.locator('.usage-popover__amount')).toHaveCount(0)
-  const popover = page.locator('.usage-popover-anchor')
-  let firstAnimationStart = -1
-  await expect.poll(async () => {
-    firstAnimationStart = await popover.evaluate((element) => {
+  await expect(page.locator('.usage-popover')).toHaveCSS('width', '300px')
+  await expect(page.locator('.usage-popover__label').first()).toHaveCSS('font-size', '14px')
+  await expect(page.locator('.usage-popover__percent').first()).toHaveCSS('font-size', '13px')
+  await expect(page.locator('.usage-popover__reset').first()).toHaveCSS('font-size', '11px')
+  const popover = page.locator('.usage-popover-anchor > :is(.usage-popover, .unavailable-popover)')
+  const anchorGeometry = await page.locator('.usage-popover-anchor').evaluate((element) => {
+    const bounds = element.getBoundingClientRect()
+    return {
+      renderedWidth: bounds.width,
+      layoutWidth: (element as HTMLElement).offsetWidth,
+      transform: getComputedStyle(element).transform
+    }
+  })
+  expect(anchorGeometry.renderedWidth).toBe(anchorGeometry.layoutWidth)
+  expect(anchorGeometry.transform).toBe('none')
+  const readAnimationStart = async (): Promise<number> =>
+    popover.evaluate((element) => {
       const startTime = element.getAnimations()[0]?.startTime
       return typeof startTime === 'number' ? startTime : -1
     })
-    return firstAnimationStart
-  }).toBeGreaterThanOrEqual(0)
+  let previousAnimationStart = -1
+  const expectAnimationRestarted = async (): Promise<void> => {
+    let currentAnimationStart = -1
+    await expect.poll(async () => {
+      currentAnimationStart = await readAnimationStart()
+      return currentAnimationStart
+    }).toBeGreaterThan(previousAnimationStart)
+    previousAnimationStart = currentAnimationStart
+  }
+  await expectAnimationRestarted()
 
   await page.locator('.provider-item').nth(1).hover()
   await expect(page.locator('.usage-popover__metadata')).toContainText('Plus plan')
   await expect(page.locator('.usage-popover__percent')).toHaveText(['55%', '42%'])
+  await expectAnimationRestarted()
 
   await page.locator('.provider-item').nth(2).hover()
   await expect(page.locator('.usage-popover__metadata')).toContainText('Pro plan')
   await expect(page.locator('.usage-popover__amount')).toHaveText('16 / 20 used')
+  await expectAnimationRestarted()
 
   await page.locator('.provider-item').last().hover()
   await expect(page.locator('[data-node-id="9:375"]')).toBeVisible()
-  await expect.poll(async () => popover.evaluate((element, previousStart) => {
-    const startTime = element.getAnimations()[0]?.startTime
-    return typeof startTime === 'number' && startTime > previousStart
-  }, firstAnimationStart)).toBe(true)
+  await expectAnimationRestarted()
+})
+
+test('covers the whole display, including the taskbar area', async () => {
+  test.skip(process.platform !== 'win32', 'Windows is the platform that clamps topmost windows to the work area')
+  const geometry = await electronApp.evaluate(({ BrowserWindow, screen }) => {
+    const overlay = BrowserWindow.getAllWindows().find((candidate) => candidate.getTitle() === 'widoken overlay')
+    if (!overlay) return undefined
+    const display = screen.getDisplayMatching(overlay.getBounds())
+    return { bounds: overlay.getBounds(), display: display.bounds }
+  })
+  expect(geometry).toBeDefined()
+  expect(geometry?.bounds.x).toBeCloseTo(geometry?.display.x ?? 0, 0)
+  expect(geometry?.bounds.y).toBeCloseTo(geometry?.display.y ?? 0, 0)
+  expect(geometry?.bounds.width).toBeCloseTo(geometry?.display.width ?? 0, 0)
+  expect(geometry?.bounds.height).toBeCloseTo(geometry?.display.height ?? 0, 0)
 })
 
 test('opens settings in a separate native window', async () => {
@@ -303,7 +348,7 @@ test('opens settings in a separate native window', async () => {
   })
   const widgetPositionBeforeScale = await page.locator('.widget').boundingBox()
   await widgetScale.fill('120')
-  await expect.poll(async () => (await page.locator('.widget').boundingBox())?.height).toBeCloseTo(302.4, 0)
+  await expect.poll(async () => (await page.locator('.widget').boundingBox())?.height).toBeCloseTo(367.2, 0)
   await expect.poll(async () => (await page.locator('.widget').boundingBox())?.x).toBeCloseTo(widgetPositionBeforeScale?.x ?? 0, 0)
   await expect.poll(async () => (await page.locator('.widget').boundingBox())?.y).toBeCloseTo(widgetPositionBeforeScale?.y ?? 0, 0)
   await expect(page.locator('.widget')).toHaveCSS('transform', 'none')
@@ -312,7 +357,7 @@ test('opens settings in a separate native window', async () => {
   await expect.poll(async () => (await page.locator('.usage-ring').first().boundingBox())?.width).toBeCloseTo(50.4, 1)
   await itemGap.fill('6')
   await widgetScale.fill('100')
-  await expect.poll(async () => (await page.locator('.widget').boundingBox())?.height).toBeCloseTo(234, 0)
+  await expect.poll(async () => (await page.locator('.widget').boundingBox())?.height).toBeCloseTo(282, 0)
   await shadowCheckbox.uncheck()
   await expect(settingsWindow.locator('.settings-window')).toHaveClass(/overlay-root--shadows-disabled/)
   await expect(page.locator('.overlay-root')).toHaveClass(/overlay-root--shadows-disabled/)
@@ -343,12 +388,29 @@ test('keeps the horizontal widget anatomy aligned', async () => {
 
   const widget = page.locator('.widget')
   await expect(widget).toHaveClass(/widget--horizontal/)
-  await expect.poll(async () => (await widget.boundingBox())?.width).toBeCloseTo(234, 1)
+  await expect.poll(async () => (await widget.boundingBox())?.width).toBeCloseTo(282, 1)
   await expect.poll(async () => (await widget.boundingBox())?.height).toBeCloseTo(54, 1)
   await widget.hover()
-  await expect.poll(async () => page.locator('.widget__thumb').evaluate((element) => element.getBoundingClientRect().width)).toBeCloseTo(234, 1)
+  await expect.poll(async () => page.locator('.widget__thumb').evaluate((element) => element.getBoundingClientRect().width)).toBeCloseTo(282, 1)
   await expect.poll(async () => page.locator('.gear-button img').evaluate((element) => element.getBoundingClientRect().width)).toBeCloseTo(15, 1)
   await expect.poll(async () => page.locator('.grab-handle img').evaluate((element) => element.getBoundingClientRect().width)).toBeCloseTo(9, 1)
+  await expect(page.locator('.widget__controls')).toHaveCSS('z-index', '0')
+  await expect(page.locator('.widget__board')).toHaveCSS('z-index', '1')
+  await expect(page.locator('.widget__providers')).toHaveCSS('z-index', '2')
+  const topLayerAtControlOverlap = await page.evaluate(() => {
+    const board = document.querySelector<HTMLElement>('.widget__board')!.getBoundingClientRect()
+    const gear = document.querySelector<HTMLElement>('.gear-button')!.getBoundingClientRect()
+    const overlapLeft = Math.max(board.left, gear.left)
+    const overlapRight = Math.min(board.right, gear.right)
+    const overlapTop = Math.max(board.top, gear.top)
+    const overlapBottom = Math.min(board.bottom, gear.bottom)
+    const topElement = document.elementsFromPoint(
+      (overlapLeft + overlapRight) / 2,
+      (overlapTop + overlapBottom) / 2
+    )[0]
+    return topElement instanceof HTMLElement ? topElement.className : ''
+  })
+  expect(topLayerAtControlOverlap).toContain('widget__board')
 
   const geometry = await page.evaluate(() => {
     const widgetBox = document.querySelector<HTMLElement>('.widget')!.getBoundingClientRect()
@@ -365,19 +427,19 @@ test('keeps the horizontal widget anatomy aligned', async () => {
       thumb: relativeBox('.widget__thumb'),
       board: relativeBox('.widget__board'),
       firstProvider: relativeBox('.provider-item'),
-      lastProvider: relativeBox('.provider-item:last-child'),
+      lastProvider: relativeBox('.provider-item:nth-last-child(2)'),
       gear: relativeBox('.gear-button img'),
       grab: relativeBox('.grab-handle img')
     }
   })
 
   expectGeometryClose(geometry, {
-    thumb: { x: 0, y: 12, width: 234, height: 30 },
-    board: { x: 18, y: 0, width: 198, height: 54 },
+    thumb: { x: 0, y: 12, width: 282, height: 30 },
+    board: { x: 18, y: 0, width: 246, height: 54 },
     firstProvider: { x: 24, y: 6, width: 42, height: 42 },
     lastProvider: { x: 168, y: 6, width: 42, height: 42 },
     gear: { x: 5, y: 19.5, width: 15, height: 15 },
-    grab: { x: 220, y: 16.5, width: 9, height: 21 }
+    grab: { x: 268, y: 16.5, width: 9, height: 21 }
   })
 })
 
@@ -442,10 +504,12 @@ test('aligns horizontal hover details to the provider above or below the widget'
   const provider = page.locator('.provider-item').last()
   await provider.hover()
   const anchor = page.locator('.usage-popover-anchor')
+  const animatedPanel = anchor.locator(':scope > :is(.usage-popover, .unavailable-popover)')
   await expect(anchor).toBeVisible()
-  await expect(anchor).toHaveCSS('animation-name', 'info-popover-in')
-  await expect(anchor).toHaveCSS('animation-duration', '0.18s')
-  await anchor.evaluate(async (element) => {
+  await expect(anchor).toHaveCSS('animation-name', 'none')
+  await expect(animatedPanel).toHaveCSS('animation-name', 'info-popover-in')
+  await expect(animatedPanel).toHaveCSS('animation-duration', '0.18s')
+  await animatedPanel.evaluate(async (element) => {
     await Promise.all(element.getAnimations().map((animation) => animation.finished))
   })
 
@@ -579,7 +643,7 @@ test('drags from the grab handle and persists right-side docking', async () => {
     return box && box.y + box.height
   }).toBeCloseTo(viewport.height - 8, 0)
   await expect(page.locator('.widget')).toHaveClass(/widget--grab-turn-left/)
-  await page.locator('.widget').hover({ position: { x: 27, y: 18 } })
+  await revealWidget()
   await page.locator('.widget__thumb').evaluate(async (element) => {
     await Promise.all(element.getAnimations({ subtree: true }).map((animation) => animation.finished))
   })
@@ -612,7 +676,7 @@ test('drags from the grab handle and persists right-side docking', async () => {
   expect(settings.widget.docked).toBe(true)
   expect(settings.widget.side).toBe('right')
 
-  await page.locator('.widget').hover()
+  await revealWidget()
   const settingsWindow = await openSettingsWindow()
   const settingsPanel = settingsWindow.getByRole('complementary', { name: 'Settings' })
   await expect(settingsPanel).toBeVisible()
@@ -656,4 +720,103 @@ test('reorders providers by dragging and shows newly enabled providers immediate
   )).toBe(true)
   await expect(settingsWindow.getByRole('checkbox', { name: 'Enable GitHub Copilot' })).not.toBeChecked()
   await page.emulateMedia({ reducedMotion: 'no-preference' })
+})
+
+test('keeps the horizontal popover outside the turned thumb', async () => {
+  await closeSettingsWindow()
+  await page.evaluate(() =>
+    (window as unknown as {
+      desktop: { settings: { update: (patch: object) => Promise<unknown> } }
+    }).desktop.settings.update({
+      widget: { docked: true, horizontalPosition: 1, orientation: 'horizontal', side: 'right', verticalPosition: 1 }
+    })
+  )
+
+  const viewport = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }))
+  const widget = page.locator('.widget')
+  await expect(widget).toHaveClass(/widget--horizontal/)
+  await expect(widget).toHaveClass(/widget--grab-turn-top/)
+  await expect.poll(async () => {
+    const bounds = await widget.boundingBox()
+    return bounds ? bounds.x + bounds.width : 0
+  }).toBeCloseTo(viewport.width - 8, 0)
+  await expect.poll(async () => {
+    const bounds = await widget.boundingBox()
+    return bounds ? bounds.y + bounds.height : 0
+  }).toBeCloseTo(viewport.height - 8, 0)
+
+  await revealWidget()
+  await page.locator('.provider-item').last().hover()
+  const panel = page.locator('.usage-popover-anchor > :is(.usage-popover, .unavailable-popover)')
+  await expect(panel).toBeVisible()
+  await panel.evaluate(async (element) => {
+    await Promise.all(element.getAnimations().map((animation) => animation.finished))
+  })
+
+  const geometry = await page.evaluate(() => {
+    const panel = document.querySelector<HTMLElement>('.usage-popover, .unavailable-popover')!.getBoundingClientRect()
+    const widget = document.querySelector<HTMLElement>('.widget')!
+    const thumbElement = document.querySelector<HTMLElement>('.widget__thumb-segment--grab')!
+    const thumb = thumbElement.getBoundingClientRect()
+    return {
+      gap: thumb.left - panel.right,
+      placement: document.querySelector<HTMLElement>('.usage-popover-anchor')!.className,
+      thumbInset: widget.offsetWidth - thumbElement.offsetLeft - thumbElement.offsetWidth
+    }
+  })
+  expect(geometry.placement).toContain('top')
+  expect(geometry.gap).toBeCloseTo(6, 0)
+  expect(geometry.thumbInset).toBe(12)
+})
+
+test('keeps the vertical popover outside the turned thumb', async () => {
+  await closeSettingsWindow()
+  const widget = page.locator('.widget')
+  const panel = page.locator('.usage-popover-anchor > :is(.usage-popover, .unavailable-popover)')
+
+  await page.evaluate(() =>
+    (window as unknown as {
+      desktop: { settings: { update: (patch: object) => Promise<unknown> } }
+    }).desktop.settings.update({
+      widget: { docked: true, horizontalPosition: 1, orientation: 'vertical', side: 'right', verticalPosition: 0 }
+    })
+  )
+  await expect(widget).toHaveClass(/widget--gear-turn-left/)
+  await revealWidget()
+  await page.locator('.provider-item').first().hover()
+  await expect(panel).toBeVisible()
+  await panel.evaluate(async (element) => {
+    await Promise.all(element.getAnimations().map((animation) => animation.finished))
+  })
+  const topCorner = await page.evaluate(() => {
+    const card = document.querySelector<HTMLElement>('.usage-popover, .unavailable-popover')!.getBoundingClientRect()
+    const gear = document.querySelector<HTMLElement>('.widget__thumb-segment--gear')!.getBoundingClientRect()
+    const overlaps = !(card.right <= gear.left || card.left >= gear.right || card.bottom <= gear.top || card.top >= gear.bottom)
+    return { gap: card.top - gear.bottom, overlaps }
+  })
+  expect(topCorner.overlaps).toBe(false)
+  expect(topCorner.gap).toBeGreaterThanOrEqual(5.5)
+
+  await page.evaluate(() =>
+    (window as unknown as {
+      desktop: { settings: { update: (patch: object) => Promise<unknown> } }
+    }).desktop.settings.update({
+      widget: { docked: true, horizontalPosition: 1, orientation: 'vertical', side: 'right', verticalPosition: 1 }
+    })
+  )
+  await expect(widget).toHaveClass(/widget--grab-turn-left/)
+  await revealWidget()
+  await page.locator('.provider-item').last().hover()
+  await expect(panel).toBeVisible()
+  await panel.evaluate(async (element) => {
+    await Promise.all(element.getAnimations().map((animation) => animation.finished))
+  })
+  const bottomCorner = await page.evaluate(() => {
+    const card = document.querySelector<HTMLElement>('.usage-popover, .unavailable-popover')!.getBoundingClientRect()
+    const grab = document.querySelector<HTMLElement>('.widget__thumb-segment--grab')!.getBoundingClientRect()
+    const overlaps = !(card.right <= grab.left || card.left >= grab.right || card.bottom <= grab.top || card.top >= grab.bottom)
+    return { gap: grab.top - card.bottom, overlaps }
+  })
+  expect(bottomCorner.overlaps).toBe(false)
+  expect(bottomCorner.gap).toBeGreaterThanOrEqual(5.5)
 })

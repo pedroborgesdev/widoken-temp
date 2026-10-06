@@ -17,7 +17,7 @@ interface ProviderAdapter {
 
 ## Present adapters
 
-Claude, Cursor, ChatGPT/Codex, and GitHub Copilot use real read-only adapters. Claude reads `~/.claude/.credentials.json` and requests `https://api.anthropic.com/api/oauth/usage`; Cursor reads the editor's session fields from `~/.config/Cursor/User/globalStorage/state.vscdb` and requests `https://cursor.com/api/usage-summary`; Codex reads `~/.codex/auth.json` and requests `https://chatgpt.com/backend-api/wham/usage`; Copilot borrows `GH_TOKEN`, `GITHUB_TOKEN`, GitHub CLI `hosts.yml`, or `gh auth token` and requests `https://api.github.com/copilot_internal/user`. Antigravity remains mock/unavailable until its provider-specific authentication and usage contract is implemented.
+Claude, Cursor, ChatGPT/Codex, and GitHub Copilot use real read-only adapters. Claude reads `~/.claude/.credentials.json` and requests `https://api.anthropic.com/api/oauth/usage`; Cursor reads the editor's session fields from `%APPDATA%/Cursor/User/globalStorage/state.vscdb` on Windows, `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb` on macOS, or `~/.config/Cursor/User/globalStorage/state.vscdb` on Linux and requests `https://cursor.com/api/usage-summary`, exposing the separate Cursor Models and Other Models pools; Codex reads `~/.codex/auth.json` and requests `https://chatgpt.com/backend-api/wham/usage`; Copilot borrows `GH_TOKEN`, `GITHUB_TOKEN`, GitHub CLI `hosts.yml`, or `gh auth token` and requests `https://api.github.com/copilot_internal/user`. Antigravity remains mock/unavailable until its provider-specific authentication and usage contract is implemented.
 
 ## Adding a real adapter
 

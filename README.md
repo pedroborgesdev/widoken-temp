@@ -32,7 +32,7 @@ Para abrir somente o preview do renderer no navegador, com a mesma UI e dados mo
 npm run dev:web
 ```
 
-Windows and X11 use Electron's shaped interaction region. On KDE/Wayland, a small local KWin script reports cursor movement over D-Bus so Electron enables input only over the widget, popovers, and settings; the invisible area remains click-through.
+X11 uses Electron's shaped interaction region. Windows also shapes that region, and samples the cursor so the overlay stays click-through for native apps and other Chromium windows, including its own settings window, after a drag. On KDE/Wayland, a small local KWin script reports cursor movement over D-Bus so Electron enables input only over the widget, popovers, and settings; the invisible area remains click-through.
 
 ## Validation and packaging
 

@@ -1,7 +1,8 @@
 import { forwardRef, useLayoutEffect, useRef, type CSSProperties, type PointerEventHandler } from 'react'
 import type { ProviderView } from '@shared/provider'
 import type { DockSide, WidgetOrientation } from '@shared/settings'
-import type { ControlTurnDirection } from '../../utils/layout'
+import { boardItemCount, boardSpan, WIDGET_COLLAPSE_MS, type ControlTurnDirection, type EdgeCollapse } from '../../utils/layout'
+import { BoardAppButton } from './BoardAppButton'
 import { GearButton } from './GearButton'
 import { GrabHandle } from './GrabHandle'
 import { ProviderItem } from './ProviderItem'
@@ -14,6 +15,7 @@ interface WidgetProps {
   dragging: boolean
   snapped: boolean
   settingsOpen: boolean
+  hot: boolean
   orientation: WidgetOrientation
   itemGap: number
   scale: number
@@ -21,6 +23,12 @@ interface WidgetProps {
   coreShiftY: number
   gearTurn?: ControlTurnDirection
   grabTurn?: ControlTurnDirection
+  collapsedEdge?: EdgeCollapse
+  edge?: EdgeCollapse
+  collapseX: number
+  collapseY: number
+  edgeGap: number
+  appTurn: number
   onProviderEnter: (id: string) => void
   onProviderLeave: () => void
   onHoverChange: (hovered: boolean) => void
@@ -37,6 +45,7 @@ export const Widget = forwardRef<HTMLDivElement, WidgetProps>(function Widget(
     dragging,
     snapped,
     settingsOpen,
+    hot,
     orientation,
     itemGap,
     scale,
@@ -44,6 +53,12 @@ export const Widget = forwardRef<HTMLDivElement, WidgetProps>(function Widget(
     coreShiftY,
     gearTurn,
     grabTurn,
+    collapsedEdge,
+    edge,
+    collapseX,
+    collapseY,
+    edgeGap,
+    appTurn,
     onProviderEnter,
     onProviderLeave,
     onHoverChange,
@@ -56,6 +71,7 @@ export const Widget = forwardRef<HTMLDivElement, WidgetProps>(function Widget(
   const visualRef = useRef<HTMLDivElement>(null)
   const widgetAnimation = useRef<Animation | undefined>(undefined)
   const providerIdsSignature = providers.map((provider) => provider.id).join('|')
+  const boardItems = boardItemCount(providers.length)
   const enteringProviderIds = new Set(
     previousProviderIds.current
       ? providers.filter((provider) => !previousProviderIds.current!.has(provider.id)).map((provider) => provider.id)
@@ -131,17 +147,22 @@ export const Widget = forwardRef<HTMLDivElement, WidgetProps>(function Widget(
   return (
     <div
       ref={ref}
-      className={`widget widget--${side} widget--${orientation}${dragging ? ' widget--dragging' : ''}${snapped ? ' widget--snapped' : ''}${settingsOpen ? ' widget--settings-open' : ''}${gearTurn ? ` widget--gear-turn-${gearTurn}` : ''}${grabTurn ? ` widget--grab-turn-${grabTurn}` : ''}`}
+      className={`widget widget--${side} widget--${orientation}${dragging ? ' widget--dragging' : ''}${snapped ? ' widget--snapped' : ''}${settingsOpen ? ' widget--settings-open' : ''}${hot ? ' widget--hot' : ''}${gearTurn ? ` widget--gear-turn-${gearTurn}` : ''}${grabTurn ? ` widget--grab-turn-${grabTurn}` : ''}${edge ? ` widget--edge-${edge}` : ''}${collapsedEdge ? ` widget--collapsed widget--collapsed-${collapsedEdge}` : ''}`}
       style={{
         top: top / scale,
         left: left / scale,
-        '--provider-count': providers.length,
-        '--provider-span': `${providers.length * 42 + Math.max(0, providers.length - 1) * itemGap}px`,
-        '--provider-edge-spacing': providers.length > 0 ? '6px' : '0px',
+        '--provider-count': boardItems,
+        '--provider-span': `${boardSpan(providers.length, itemGap)}px`,
+        '--provider-edge-spacing': '6px',
         '--provider-gap': `${itemGap}px`,
         '--widget-scale': scale,
         '--widget-core-shift-x': `${coreShiftX}px`,
-        '--widget-core-shift-y': `${coreShiftY}px`
+        '--widget-core-shift-y': `${coreShiftY}px`,
+        '--widget-collapse-duration': `${WIDGET_COLLAPSE_MS}ms`,
+        '--widget-collapse-x': `${collapseX}px`,
+        '--widget-collapse-y': `${collapseY}px`,
+        '--widget-edge-gap': `${edgeGap}px`,
+        '--board-app-turn': `${appTurn}deg`
       } as CSSProperties}
       data-node-id="9:7"
       onPointerEnter={() => onHoverChange(true)}
@@ -164,6 +185,7 @@ export const Widget = forwardRef<HTMLDivElement, WidgetProps>(function Widget(
                 onLeave={onProviderLeave}
               />
             ))}
+            <BoardAppButton onClick={onSettings} />
           </div>
           <div className="widget__controls">
             <GearButton onClick={onSettings} />

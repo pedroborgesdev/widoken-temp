@@ -96,15 +96,19 @@ interface UsagePopoverProps {
   left: number
   top?: number
   bottom?: number
+  maxHeight?: number
   onEnter: () => void
   onLeave: () => void
 }
 
 export const UsagePopover = forwardRef<HTMLDivElement, UsagePopoverProps>(function UsagePopover(
-  { provider, placement, left, top, bottom, onEnter, onLeave },
+  { provider, placement, left, top, bottom, maxHeight, onEnter, onLeave },
   ref
 ) {
   const isAvailable = provider.snapshot.status === 'connected' && provider.snapshot.limits.length > 0
+  const panelStyle = maxHeight === undefined
+    ? undefined
+    : { maxHeight, ...(maxHeight < 96 ? { minHeight: 0 } : {}) }
 
   return (
     <div
@@ -115,7 +119,7 @@ export const UsagePopover = forwardRef<HTMLDivElement, UsagePopoverProps>(functi
       onPointerLeave={onLeave}
     >
       {isAvailable ? (
-        <div className={`usage-popover${provider.snapshot.limits.length === 1 ? ' usage-popover--single' : ''}`} data-node-id="9:371">
+        <div className={`usage-popover${provider.snapshot.limits.length === 1 ? ' usage-popover--single' : ''}`} data-node-id="9:371" style={panelStyle}>
           {(provider.snapshot.plan || provider.snapshot.isUnlimited) && (
             <div className="usage-popover__metadata">
               {provider.snapshot.plan && <span>{readableName(provider.snapshot.plan)} plan</span>}
@@ -161,7 +165,7 @@ export const UsagePopover = forwardRef<HTMLDivElement, UsagePopoverProps>(functi
           <p className="usage-popover__updated">{updateDescription(provider.snapshot.lastUpdatedAt)}</p>
         </div>
       ) : (
-        <UnavailablePopover message={provider.snapshot.error} />
+        <UnavailablePopover message={provider.snapshot.error} style={panelStyle} />
       )}
     </div>
   )
