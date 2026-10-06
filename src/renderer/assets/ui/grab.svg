@@ -1,0 +1,12 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="14" height="6" viewBox="0 0 14 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="grab">
+<path d="M2 1C2 1.55228 1.55228 2 1 2C0.447715 2 0 1.55228 0 1C0 0.447715 0.447715 0 1 0C1.55228 0 2 0.447715 2 1Z" fill="white" fill-opacity="0.5"/>
+<path d="M6 1C6 1.55228 5.55228 2 5 2C4.44772 2 4 1.55228 4 1C4 0.447715 4.44772 0 5 0C5.55228 0 6 0.447715 6 1Z" fill="white" fill-opacity="0.5"/>
+<path d="M10 1C10 1.55228 9.55228 2 9 2C8.44772 2 8 1.55228 8 1C8 0.447715 8.44772 0 9 0C9.55228 0 10 0.447715 10 1Z" fill="white" fill-opacity="0.5"/>
+<path d="M14 1C14 1.55228 13.5523 2 13 2C12.4477 2 12 1.55228 12 1C12 0.447715 12.4477 0 13 0C13.5523 0 14 0.447715 14 1Z" fill="white" fill-opacity="0.5"/>
+<path d="M2 5C2 5.55228 1.55228 6 1 6C0.447715 6 0 5.55228 0 5C0 4.44772 0.447715 4 1 4C1.55228 4 2 4.44772 2 5Z" fill="white" fill-opacity="0.5"/>
+<path d="M6 5C6 5.55228 5.55228 6 5 6C4.44772 6 4 5.55228 4 5C4 4.44772 4.44772 4 5 4C5.55228 4 6 4.44772 6 5Z" fill="white" fill-opacity="0.5"/>
+<path d="M10 5C10 5.55228 9.55228 6 9 6C8.44772 6 8 5.55228 8 5C8 4.44772 8.44772 4 9 4C9.55228 4 10 4.44772 10 5Z" fill="white" fill-opacity="0.5"/>
+<path d="M14 5C14 5.55228 13.5523 6 13 6C12.4477 6 12 5.55228 12 5C12 4.44772 12.4477 4 13 4C13.5523 4 14 4.44772 14 5Z" fill="white" fill-opacity="0.5"/>
+</g>
+</svg>

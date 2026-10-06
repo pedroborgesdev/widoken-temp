@@ -1,0 +1,177 @@
+import { describe, expect, it } from 'vitest'
+import { calculateVerticalPosition, switchSide } from '../../src/shared/settings'
+import {
+  getWidgetHeight,
+  getWidgetLeft,
+  getWidgetTop,
+  getWidgetWidth,
+  normalizeWidgetCoordinate,
+  resolveCornerControlLayout,
+  resolveDraggedWidgetPosition,
+  resolveDropSide,
+  resolveHorizontalPopoverPosition,
+  WIDGET_MARGIN
+} from '../../src/renderer/utils/layout'
+import { globalPointIsInsideRegions, pointIsInsideRegions } from '../../src/main/window/interactionRegions'
+
+describe('widget layout', () => {
+  it.each([
+    [1, 90],
+    [2, 138],
+    [3, 186],
+    [4, 234]
+  ])('uses the Figma height for %i providers', (providers, expected) => {
+    expect(getWidgetHeight(providers)).toBe(expected)
+  })
+
+  it('rotates the widget dimensions for horizontal layout', () => {
+    expect(getWidgetWidth(4, 'horizontal')).toBe(234)
+    expect(getWidgetHeight(4, 'horizontal')).toBe(54)
+  })
+
+  it('turns only the control that reaches a vertical corner', () => {
+    expect(resolveCornerControlLayout(1138, 758, 54, 234, 1200, 1000, 'vertical')).toEqual({
+      coreShiftX: 0,
+      coreShiftY: 18,
+      gearTurn: undefined,
+      grabTurn: 'left'
+    })
+    expect(resolveCornerControlLayout(8, 8, 54, 234, 1200, 1000, 'vertical')).toEqual({
+      coreShiftX: 0,
+      coreShiftY: -18,
+      gearTurn: 'right',
+      grabTurn: undefined
+    })
+    expect(resolveCornerControlLayout(500, 758, 54, 234, 1200, 1000, 'vertical')).toEqual({
+      coreShiftX: 0,
+      coreShiftY: 18,
+      gearTurn: undefined,
+      grabTurn: 'right'
+    })
+  })
+
+  it('turns horizontal controls toward the available corner space', () => {
+    expect(resolveCornerControlLayout(958, 938, 234, 54, 1200, 1000, 'horizontal')).toEqual({
+      coreShiftX: 18,
+      coreShiftY: 0,
+      gearTurn: undefined,
+      grabTurn: 'top'
+    })
+    expect(resolveCornerControlLayout(8, 8, 234, 54, 1200, 1000, 'horizontal')).toEqual({
+      coreShiftX: -18,
+      coreShiftY: 0,
+      gearTurn: 'bottom',
+      grabTurn: undefined
+    })
+  })
+
+  it('includes custom item gaps and scale in widget dimensions', () => {
+    expect(getWidgetHeight(4, 'vertical', 12, 1.2)).toBeCloseTo(302.4)
+    expect(getWidgetWidth(4, 'horizontal', 12, 1.2)).toBeCloseTo(302.4)
+    expect(getWidgetHeight(4, 'horizontal', 12, 1.2)).toBeCloseTo(64.8)
+  })
+
+  it('normalizes and restores vertical position', () => {
+    expect(calculateVerticalPosition(410, 0, 1000, 180)).toBe(0.5)
+    expect(getWidgetTop(0.5, 1000, 180)).toBe(410)
+    expect(getWidgetTop(0, 1000, 180)).toBe(WIDGET_MARGIN)
+    expect(getWidgetTop(1, 1000, 180)).toBe(812)
+    expect(getWidgetLeft(0.25, 1200, 54)).toBe(291)
+    expect(normalizeWidgetCoordinate(291, 1200, 54)).toBeCloseTo(0.25)
+  })
+
+  it('switches sides', () => {
+    expect(switchSide('left')).toBe('right')
+    expect(switchSide('right')).toBe('left')
+    expect(switchSide('top')).toBe('bottom')
+    expect(switchSide('bottom')).toBe('top')
+  })
+
+  it('resolves outer and arrow docking lanes', () => {
+    expect(resolveDropSide(20, 1200)).toBe('left')
+    expect(resolveDropSide(60, 1200)).toBe('left')
+    expect(resolveDropSide(1140, 1200)).toBe('right')
+    expect(resolveDropSide(1180, 1200)).toBe('right')
+    expect(resolveDropSide(600, 1200)).toBeUndefined()
+    expect(resolveDropSide(600, 1200, 54, 12, 1000, 234)).toBe('top')
+    expect(resolveDropSide(600, 1200, 54, 755, 1000, 234)).toBe('bottom')
+  })
+
+  it('starts magnetic capture when the widget itself enters a lane', () => {
+    expect(resolveDraggedWidgetPosition(80, 500, 18, 75, 1200, 1000, 234).candidateSide).toBe('left')
+    expect(resolveDraggedWidgetPosition(1102, 500, 18, 75, 1200, 1000, 234).candidateSide).toBe('right')
+    expect(resolveDraggedWidgetPosition(600, 20, 18, 75, 1200, 1000, 234).candidateSide).toBe('top')
+    expect(resolveDraggedWidgetPosition(600, 990, 18, 75, 1200, 1000, 234).candidateSide).toBe('bottom')
+  })
+
+  it('does not magnetically capture the widget when docking guides are disabled', () => {
+    expect(resolveDraggedWidgetPosition(600, 125, 18, 75, 1200, 1000, 234, 54, false)).toEqual({
+      candidateSide: undefined,
+      left: 582,
+      side: 'right',
+      top: 50
+    })
+    expect(resolveDraggedWidgetPosition(1110, 500, 18, 75, 1200, 1000, 234, 54, false)).toEqual({
+      candidateSide: undefined,
+      left: 1092,
+      side: 'right',
+      top: 425
+    })
+  })
+
+  it('aligns horizontal popovers to the provider and chooses above or below', () => {
+    expect(resolveHorizontalPopoverPosition(500, 100, 54, 2, 108, 1200, 1000)).toEqual({
+      left: 521,
+      placement: 'bottom',
+      top: 154
+    })
+    expect(resolveHorizontalPopoverPosition(500, 900, 54, 2, 108, 1200, 1000)).toEqual({
+      left: 521,
+      placement: 'top',
+      top: 786
+    })
+    expect(resolveHorizontalPopoverPosition(500, 550, 54, 2, 108, 1200, 1000)).toEqual({
+      left: 521,
+      placement: 'top',
+      top: 436
+    })
+    expect(resolveHorizontalPopoverPosition(8, 100, 54, 0, 108, 1200, 1000).left).toBe(8)
+  })
+
+  it('moves freely, keeps an 8px margin, and magnetically snaps inside an edge lane', () => {
+    expect(resolveDraggedWidgetPosition(600, 500, 18, 75, 1200, 1000, 234)).toEqual({
+      candidateSide: undefined,
+      left: 582,
+      side: 'right',
+      top: 425
+    })
+    expect(resolveDraggedWidgetPosition(40, 2, 18, 75, 1200, 1000, 234)).toEqual({
+      candidateSide: 'top',
+      left: 22,
+      side: 'top',
+      top: 8
+    })
+    expect(resolveDraggedWidgetPosition(1170, 999, 18, 75, 1200, 1000, 234)).toEqual({
+      candidateSide: 'right',
+      left: 1138,
+      side: 'right',
+      top: 758
+    })
+  })
+
+  it('detects points inside interaction regions', () => {
+    const regions = [{ x: 0, y: 400, width: 54, height: 234 }]
+    expect(pointIsInsideRegions({ x: 18, y: 450 }, regions)).toBe(true)
+    expect(pointIsInsideRegions({ x: 60, y: 450 }, regions)).toBe(false)
+    expect(pointIsInsideRegions({ x: 18, y: 640 }, regions)).toBe(false)
+  })
+
+  it('translates KWin global coordinates into display-local regions', () => {
+    const display = { x: 1600, y: 0, width: 1920, height: 1080 }
+    const regions = [{ x: 0, y: 450, width: 54, height: 234 }]
+
+    expect(globalPointIsInsideRegions({ x: 1618, y: 500 }, display, regions)).toBe(true)
+    expect(globalPointIsInsideRegions({ x: 1700, y: 500 }, display, regions)).toBe(false)
+    expect(globalPointIsInsideRegions({ x: 18, y: 500 }, display, regions)).toBe(false)
+  })
+})

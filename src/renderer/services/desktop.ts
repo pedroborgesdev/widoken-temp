@@ -1,0 +1,147 @@
+import type { DesktopApi } from '@shared/ipc'
+import type { ProviderView } from '@shared/provider'
+import { DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/settings'
+
+const STORAGE_KEY = 'widoken.preview.settings'
+
+const previewProviders: Omit<ProviderView, 'snapshot'>[] = [
+  { id: 'claude', name: 'Claude' },
+  { id: 'openai', name: 'ChatGPT' },
+  { id: 'cursor', name: 'Cursor' },
+  { id: 'antigravity', name: 'Antigravity' }
+]
+
+function futureDate(minutes: number): string {
+  return new Date(Date.now() + minutes * 60_000).toISOString()
+}
+
+function loadPreviewSettings(): AppSettings {
+  try {
+    const saved = window.localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved) as Partial<AppSettings>
+      return {
+        ...structuredClone(DEFAULT_SETTINGS),
+        ...parsed,
+        widget: { ...DEFAULT_SETTINGS.widget, ...parsed.widget },
+        analytics: { ...DEFAULT_SETTINGS.analytics, ...parsed.analytics }
+      }
+    }
+  } catch {
+    // Browser preview still works when storage is unavailable.
+  }
+  return structuredClone(DEFAULT_SETTINGS)
+}
+
+let previewSettings = loadPreviewSettings()
+const providerListeners = new Set<(providers: ProviderView[]) => void>()
+const settingsListeners = new Set<(settings: AppSettings) => void>()
+const settingsWindowListeners = new Set<(open: boolean) => void>()
+
+function previewProviderViews(): ProviderView[] {
+  const snapshots: Record<string, ProviderView['snapshot']> = {
+    claude: {
+      providerId: 'claude',
+      status: 'connected',
+      limits: [
+        { id: 'five-hour', label: '5 hours rate limit', percent: 23, resetsAt: futureDate(123) },
+        { id: 'week', label: 'Week rate limit', percent: 31, resetsAt: futureDate(4320) }
+      ],
+      lastUpdatedAt: new Date().toISOString()
+    },
+    openai: {
+      providerId: 'openai',
+      status: 'connected',
+      limits: [
+        { id: 'three-hour', label: '3 hours rate limit', percent: 55, resetsAt: futureDate(86) },
+        { id: 'week', label: 'Week rate limit', percent: 42, resetsAt: futureDate(5760) }
+      ],
+      lastUpdatedAt: new Date().toISOString()
+    },
+    cursor: {
+      providerId: 'cursor',
+      status: 'connected',
+      limits: [{ id: 'month', label: 'Monthly fast requests', percent: 80, resetsAt: futureDate(12960) }],
+      lastUpdatedAt: new Date().toISOString()
+    },
+    antigravity: {
+      providerId: 'antigravity',
+      status: 'unavailable',
+      limits: [],
+      lastUpdatedAt: new Date().toISOString(),
+      error: 'Failed to get token usage. Connect at the provider and try again.'
+    }
+  }
+
+  const catalog = new Map(previewProviders.map((provider) => [provider.id, provider]))
+  return [...previewSettings.providers]
+    .filter((provider) => provider.enabled && catalog.has(provider.id))
+    .sort((a, b) => a.order - b.order)
+    .map(({ id }) => ({ ...catalog.get(id)!, snapshot: snapshots[id] }))
+}
+
+const browserDesktopApi: DesktopApi = {
+  overlay: {
+    startDragging: async () => undefined,
+    endDragging: async () => undefined,
+    setInteractionRegions: async () => undefined
+  },
+  providers: {
+    list: async () => previewProviderViews(),
+    refresh: async () => {
+      const providers = previewProviderViews()
+      providerListeners.forEach((listener) => listener(providers))
+      return providers
+    },
+    onUpdated: (callback) => {
+      providerListeners.add(callback)
+      return () => providerListeners.delete(callback)
+    }
+  },
+  settings: {
+    get: async () => structuredClone(previewSettings),
+    update: async (patch: SettingsPatch) => {
+      previewSettings = {
+        ...previewSettings,
+        ...patch,
+        widget: { ...previewSettings.widget, ...patch.widget },
+        analytics: { ...previewSettings.analytics, ...patch.analytics },
+        providers: patch.providers ?? previewSettings.providers
+      }
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(previewSettings))
+      } catch {
+        // Persistence is optional in browser preview mode.
+      }
+      settingsListeners.forEach((listener) => listener(structuredClone(previewSettings)))
+      return structuredClone(previewSettings)
+    },
+    onUpdated: (callback) => {
+      settingsListeners.add(callback)
+      return () => settingsListeners.delete(callback)
+    },
+    onWindowState: (callback) => {
+      settingsWindowListeners.add(callback)
+      return () => settingsWindowListeners.delete(callback)
+    },
+    openWindow: async () => {
+      const url = new URL(window.location.href)
+      url.searchParams.set('window', 'settings')
+      window.open(url.toString(), 'widoken-settings', 'width=380,height=640')
+      settingsWindowListeners.forEach((listener) => listener(true))
+    },
+    closeWindow: async () => {
+      settingsWindowListeners.forEach((listener) => listener(false))
+      window.close()
+    },
+    minimizeWindow: async () => undefined,
+    resizeWindowToContent: async () => undefined
+  },
+  app: {
+    quit: async () => window.close()
+  }
+}
+
+const electronDesktopApi = (window as Window & { desktop?: DesktopApi }).desktop
+
+export const desktop = electronDesktopApi ?? browserDesktopApi

@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "lib": ["ES2022", "DOM"],
+    "types": ["node", "vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@renderer/*": ["src/renderer/*"],
+      "@shared/*": ["src/shared/*"]
+    }
+  },
+  "include": ["tests/**/*.ts", "playwright.config.ts", "vitest.config.ts"]
+}
