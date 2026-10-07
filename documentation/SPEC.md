@@ -59,26 +59,26 @@ Para estado React, `useReducer` + Context já é suficiente. Se o projeto cresce
 
 # 3. Princípio arquitetural mais importante
 
-## UMA BrowserWindow
+## DUAS SUPERFÍCIES INDEPENDENTES
 
-A aplicação deverá possuir **uma única `BrowserWindow` principal**.
+A aplicação possui uma `BrowserWindow` transparente para o widget e uma `BrowserWindow` normal para o dashboard. Elas compartilham apenas os serviços do processo principal e contratos IPC tipados.
 
-Não criar:
+Não criar janelas separadas para elementos internos do widget:
 
 ```text
 LeftWindow
 RightWindow
 PopoverWindow
-SettingsWindow
 DragWindow
 ```
 
-Tudo será renderizado dentro da mesma árvore React.
+Popovers e drag targets continuam dentro da árvore React do widget. Dashboard e widget têm entrypoints, estado e preloads independentes.
 
 ```text
 Electron Main
 │
-├── BrowserWindow única
+├── WidgetWindow
+├── DashboardWindow
 │
 ├── IPC
 ├── DisplayManager
@@ -87,17 +87,14 @@ Electron Main
 └── ProviderManager
        │
        ▼
-Preload
-       │
-       ▼
-React Renderer
+├── WidgetPreload ──► WidgetRenderer
+│                    ├── OverlayRoot
+│                    ├── Widget
+│                    ├── UsagePopover
+│                    └── SelectionGrid
 │
-├── OverlayRoot
-├── Widget
-├── ProviderItem
-├── UsagePopover
-├── SelectionGrid
-└── SettingsPanel
+└── DashboardPreload ──► DashboardRenderer
+                         └── SettingsPanel
 ```
 
 ---
@@ -1265,7 +1262,7 @@ Preload deve expor uma API mínima.
 Por exemplo:
 
 ```ts
-window.desktop = {
+window.widgetDesktop = {
   overlay: {
     startDragging(),
     endDragging(),
@@ -1283,6 +1280,18 @@ window.desktop = {
     get(),
     update(),
   },
+
+  dashboard: {
+    open(),
+  },
+}
+
+window.dashboardDesktop = {
+  providers: { list(), refresh(id) },
+  settings: { get(), update() },
+  dashboard: { close(), minimize() },
+  themes: { syncVsCode() },
+  app: { quit() },
 }
 ```
 
@@ -1337,6 +1346,10 @@ Eu entregaria para a IA exatamente esta sugestão:
 src/
 ├── main/
 │   ├── index.ts
+│   ├── application/AppController.ts
+│   ├── windows/
+│   │   ├── WidgetWindowManager.ts
+│   │   └── DashboardWindowManager.ts
 │   │
 │   ├── window/
 │   │   ├── createOverlayWindow.ts
@@ -1362,10 +1375,18 @@ src/
 │       └── settings.ipc.ts
 │
 ├── preload/
-│   ├── index.ts
-│   └── types.ts
+│   ├── widget.ts
+│   └── dashboard.ts
 │
 ├── renderer/
+│   ├── widget/
+│   │   ├── main.tsx
+│   │   ├── WidgetApp.tsx
+│   │   └── state/
+│   ├── dashboard/
+│   │   ├── main.tsx
+│   │   ├── DashboardApp.tsx
+│   │   └── state/
 │   ├── App.tsx
 │   │
 │   ├── components/
@@ -1386,10 +1407,6 @@ src/
 │   │   │   └── DropZone.tsx
 │   │   │
 │   │   └── Settings/
-│   │
-│   ├── state/
-│   │   ├── overlayReducer.ts
-│   │   └── OverlayContext.tsx
 │   │
 │   ├── hooks/
 │   │   ├── useProviders.ts

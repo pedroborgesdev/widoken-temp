@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import type { Rectangle } from 'electron'
 import { shadowPaintOutset } from '@shared/overlay'
+import { activeSyncedTheme, syncedThemeStyle } from './utils/theme'
 import { SelectionGrid } from './components/SelectionGrid/SelectionGrid'
 import { AppMenuPopover } from './components/UsagePopover/AppMenuPopover'
 import { UsagePopover } from './components/UsagePopover/UsagePopover'
 import { Widget } from './components/Widget/Widget'
-import { desktop } from './services/desktop'
-import { useOverlay } from './state/OverlayContext'
+import { widgetDesktop as desktop } from './services/desktop'
+import { useWidget } from './widget/state/WidgetContext'
 import {
   type ControlTurnDirection,
   boardLongAxis,
@@ -77,7 +78,7 @@ function elementRectangle(element: HTMLElement | null, includeOverflow = false):
 }
 
 export default function App(): React.JSX.Element {
-  const { state, dispatch } = useOverlay()
+  const { state, dispatch } = useWidget()
   const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight })
   const [widgetHovered, setWidgetHovered] = useState(false)
   const [appMenuOpen, setAppMenuOpen] = useState(false)
@@ -583,7 +584,10 @@ export default function App(): React.JSX.Element {
   return (
     <main
       className={`overlay-root overlay-root--theme-${state.settings.widget.theme} overlay-root--unavailable-${state.settings.widget.unavailableStyle} overlay-root--shadows-${state.settings.widget.shadows ? 'enabled' : 'disabled'}`}
-      style={{ '--shadow-opacity': `${state.settings.widget.shadowOpacity}%` } as CSSProperties}
+      style={{
+        ...syncedThemeStyle(activeSyncedTheme(state.settings)),
+        '--shadow-opacity': `${state.settings.widget.shadowOpacity}%`
+      } as CSSProperties}
     >
       {state.mode === 'dragging' && state.settings.widget.showDockGuides && (
         <SelectionGrid candidateSide={state.drag?.candidateSide} />
@@ -596,7 +600,7 @@ export default function App(): React.JSX.Element {
         top={effectiveTop}
         dragging={state.mode === 'dragging'}
         snapped={Boolean(state.drag?.candidateSide)}
-        settingsOpen={state.settingsWindowOpen}
+        settingsOpen={state.dashboardWindowOpen}
         hot={showCornerChrome}
         orientation={widgetOrientation}
         itemGap={itemGap}
@@ -618,7 +622,7 @@ export default function App(): React.JSX.Element {
         onAppLeave={closeAppMenuSoon}
         onSettings={() => {
           setAppMenuOpen(false)
-          void desktop.settings.openWindow()
+          void desktop.dashboard.open()
         }}
         onGrabPointerDown={startDrag}
       />

@@ -7,4 +7,5 @@ export interface ProviderAdapter {
   disconnect(): Promise<void>
   getUsage(): Promise<ProviderSnapshot>
   isConnected(): Promise<boolean>
+  isActive?(): Promise<boolean>
 }

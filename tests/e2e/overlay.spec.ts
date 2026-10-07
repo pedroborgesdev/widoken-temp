@@ -27,18 +27,23 @@ async function revealWidget(): Promise<void> {
 }
 
 async function openSettingsWindow(): Promise<Page> {
-  const existing = electronApp.windows().find((window) => !window.isClosed() && window.url().includes('window=settings'))
+  const existing = electronApp.windows().find((window) => !window.isClosed() && window.url().includes('dashboard.html'))
   if (existing) return existing
-  const windowOpened = electronApp.waitForEvent('window')
   await revealWidget()
   await page.locator('.gear-button').click()
-  settingsPage = await windowOpened
+  await expect.poll(() => electronApp.windows().some(
+    (window) => !window.isClosed() && window.url().includes('dashboard.html')
+  )).toBe(true)
+  settingsPage = electronApp.windows().find(
+    (window) => !window.isClosed() && window.url().includes('dashboard.html')
+  )
+  if (!settingsPage) throw new Error('Dashboard window did not open')
   await settingsPage.waitForLoadState('domcontentloaded')
   return settingsPage
 }
 
 async function closeSettingsWindow(): Promise<void> {
-  const current = electronApp.windows().find((window) => !window.isClosed() && window.url().includes('window=settings'))
+  const current = electronApp.windows().find((window) => !window.isClosed() && window.url().includes('dashboard.html'))
   if (!current) return
   await current.getByRole('button', { name: 'Close settings' }).click().catch((error: unknown) => {
     if (!current.isClosed()) throw error
@@ -95,6 +100,9 @@ test('renders the dynamic widget and provider usage states', async () => {
   await revealWidget()
   await expect.poll(async () => page.locator('.widget__board').evaluate((element) => element.getBoundingClientRect().width)).toBeCloseTo(54, 1)
   await expect.poll(async () => page.locator('.gear-button img').evaluate((element) => element.getBoundingClientRect().width)).toBeCloseTo(15, 1)
+  await page.locator('.widget').evaluate(async (element) => {
+    await Promise.allSettled(element.getAnimations({ subtree: true }).map((animation) => animation.finished))
+  })
 
   const geometry = await page.evaluate(() => {
     const widget = document.querySelector<HTMLElement>('.widget')!.getBoundingClientRect()
@@ -171,6 +179,62 @@ test('renders the dynamic widget and provider usage states', async () => {
   await expectAnimationRestarted()
 })
 
+test('renders visible orbiting dots while a provider request is active', async () => {
+  await revealWidget()
+  const providers = await page.evaluate(() =>
+    (window as unknown as {
+      widgetDesktop: {
+        providers: {
+          list: () => Promise<Array<{ id: string; activity?: 'idle' | 'active'; [key: string]: unknown }>>
+        }
+      }
+    }).widgetDesktop.providers.list()
+  )
+  const activeProviders = providers.map((provider) =>
+    provider.id === 'claude' ? { ...provider, activity: 'active' as const } : provider
+  )
+
+  await electronApp.evaluate(({ BrowserWindow }, payload) => {
+    BrowserWindow.getAllWindows()
+      .find((candidate) => candidate.getTitle() === 'widoken overlay')
+      ?.webContents.send('providers:updated', payload)
+  }, activeProviders)
+
+  const ring = page.locator('[data-provider-id="claude"] .usage-ring')
+  const activeRing = page.locator('[data-provider-id="claude"] .usage-ring--active')
+  const activityRing = ring.locator('.usage-ring__activity')
+  const usageArc = ring.locator('.usage-ring__value')
+  const dots = activityRing.locator('.usage-ring__activity-dot')
+  await expect(dots).toHaveCount(16)
+  await expect(page.locator('[data-provider-id="claude"] .usage-ring__track')).toHaveCount(1)
+  await expect(activityRing).toHaveCSS('animation-name', 'usage-ring-orbit')
+  await expect(activityRing).toHaveCSS('animation-duration', '3s')
+  await expect(activityRing).toHaveCSS('animation-play-state', 'running')
+  await expect(activityRing).toHaveCSS('opacity', '1')
+  await expect(usageArc).toHaveCSS('opacity', '0')
+  expect(new Set(await dots.evaluateAll((items) => items.map((dot) => dot.getAttribute('r'))))).toEqual(new Set(['1.5']))
+  expect(await dots.first().evaluate((dot) => getComputedStyle(dot).fill)).not.toBe('none')
+  expect(new Set(await dots.evaluateAll((items) => items.map((dot) => getComputedStyle(dot).opacity)))).toEqual(new Set(['1']))
+  const initialTransform = await activityRing.evaluate((element) => getComputedStyle(element).transform)
+  await page.waitForTimeout(120)
+  expect(await activityRing.evaluate((element) => getComputedStyle(element).transform)).not.toBe(initialTransform)
+
+  await electronApp.evaluate(({ BrowserWindow }, payload) => {
+    BrowserWindow.getAllWindows()
+      .find((candidate) => candidate.getTitle() === 'widoken overlay')
+      ?.webContents.send('providers:updated', payload)
+  }, providers)
+  await expect(activeRing).toHaveCount(0)
+  await expect(activityRing).toHaveCSS('opacity', '0')
+  await expect(activityRing).toHaveCSS('animation-play-state', 'paused')
+  await expect(usageArc).toHaveCSS('opacity', '1')
+
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect(usageArc).toHaveCSS('transition-property', 'stroke-dashoffset, opacity')
+  await expect(usageArc).toHaveCSS('transition-duration', '0.18s, 1s')
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+})
+
 test('covers the whole display, including the taskbar area', async () => {
   test.skip(process.platform !== 'win32', 'Windows is the platform that clamps topmost windows to the work area')
   const geometry = await electronApp.evaluate(({ BrowserWindow, screen }) => {
@@ -186,14 +250,31 @@ test('covers the whole display, including the taskbar area', async () => {
   expect(geometry?.bounds.height).toBeCloseTo(geometry?.display.height ?? 0, 0)
 })
 
-test('opens settings in a separate native window', async () => {
+test('does not expose native resize handles on the overlay', async () => {
+  const resizable = await electronApp.evaluate(({ BrowserWindow }) => {
+    const overlay = BrowserWindow.getAllWindows().find((candidate) => candidate.getTitle() === 'widoken overlay')
+    return overlay?.isResizable()
+  })
+
+  expect(resizable).toBe(false)
+})
+
+test('opens the dashboard in a separate native window with an isolated preload', async () => {
   const settingsWindow = await openSettingsWindow()
   const settings = settingsWindow.getByRole('complementary', { name: 'Settings' })
   await expect(settings).toBeVisible()
   expect(settingsWindow).not.toBe(page)
-  expect(settingsWindow.url()).toContain('window=settings')
+  expect(settingsWindow.url()).toContain('dashboard.html')
+  expect(await page.evaluate(() => {
+    const appWindow = window as unknown as { dashboardDesktop?: unknown; widgetDesktop?: unknown }
+    return { dashboard: typeof appWindow.dashboardDesktop, widget: typeof appWindow.widgetDesktop }
+  })).toEqual({ dashboard: 'undefined', widget: 'object' })
+  expect(await settingsWindow.evaluate(() => {
+    const appWindow = window as unknown as { dashboardDesktop?: unknown; widgetDesktop?: unknown }
+    return { dashboard: typeof appWindow.dashboardDesktop, widget: typeof appWindow.widgetDesktop }
+  })).toEqual({ dashboard: 'object', widget: 'undefined' })
   const nativeWindowState = await electronApp.evaluate(({ BrowserWindow, screen }) => {
-    const window = BrowserWindow.getAllWindows().find((candidate) => candidate.getTitle() === 'widoken settings')
+    const window = BrowserWindow.getAllWindows().find((candidate) => candidate.getTitle() === 'widoken dashboard')
     return window
       ? {
           bounds: window.getBounds(),
@@ -211,7 +292,7 @@ test('opens settings in a separate native window', async () => {
   expect(nativeWindowState?.bounds.width).toBe(880)
   const expectedSettingsHeight = Math.min(590, (nativeWindowState?.workArea.height ?? 622) - 32)
   await expect.poll(async () => electronApp.evaluate(({ BrowserWindow }) =>
-    BrowserWindow.getAllWindows().find((candidate) => candidate.getTitle() === 'widoken settings')?.getBounds().height
+    BrowserWindow.getAllWindows().find((candidate) => candidate.getTitle() === 'widoken dashboard')?.getBounds().height
   )).toBeCloseTo(expectedSettingsHeight, 0)
   await expect(page.getByRole('complementary', { name: 'Settings' })).toHaveCount(0)
   await expect(settings).toHaveCSS('position', 'relative')
@@ -269,6 +350,44 @@ test('opens settings in a separate native window', async () => {
   )).toBe('rgb(15, 15, 19)')
 
   const themeControl = settingsWindow.locator('.settings-control').filter({ hasText: 'Theme' })
+  await expect(settingsWindow.getByRole('button', { name: 'Sync with VS Code' })).toBeVisible()
+  await settingsWindow.evaluate(async () => {
+    const desktop = (window as unknown as {
+      dashboardDesktop: { settings: { update: (patch: unknown) => Promise<unknown> } }
+    }).dashboardDesktop
+    await desktop.settings.update({
+      widget: {
+        themeMode: 'vscode',
+        vscodeTheme: {
+          colorScheme: 'dark',
+          name: 'Fixture VS Code Theme',
+          colors: {
+            accent: '#123456',
+            danger: '#ff5555',
+            elevated: '#223344',
+            hover: '#334455',
+            muted: '#8899aa',
+            onAccent: '#ffffff',
+            shadow: '#000000',
+            strong: '#ffffff',
+            success: '#55ff55',
+            surface: '#112233',
+            text: '#ddeeff',
+            thumb: '#0a1b2c',
+            track: '#445566',
+            warning: '#ffff55'
+          }
+        }
+      }
+    })
+  })
+  await expect(themeControl.locator('.settings-select__trigger')).toContainText('Select theme')
+  await expect(page.locator('.widget__board')).toHaveCSS('background-color', 'rgb(17, 34, 51)')
+  await expect(page.locator('.widget__thumb-segment').first()).toHaveCSS('background-color', 'rgb(17, 34, 51)')
+  await themeControl.locator('.settings-select__trigger').click()
+  await themeControl.getByRole('option', { name: 'Dark Pastel' }).click()
+  await expect(page.locator('.widget__board')).toHaveCSS('background-color', 'rgb(15, 15, 19)')
+  await expect(page.locator('.widget__thumb-segment').first()).toHaveCSS('background-color', 'rgb(15, 15, 19)')
   await themeControl.locator('.settings-select__trigger').click()
   await expect(themeControl.getByRole('option')).toHaveCount(11)
   await expect(themeControl.locator('.settings-select__menu')).not.toHaveCSS('box-shadow', 'none')
@@ -282,6 +401,18 @@ test('opens settings in a separate native window', async () => {
   await themeControl.getByRole('option', { name: 'Dracula' }).click()
   await expect(page.locator('.overlay-root')).toHaveClass(/overlay-root--theme-dracula/)
   await expect(page.locator('.widget__board')).toHaveCSS('background-color', 'rgb(40, 42, 54)')
+  await expect.poll(async () => page.evaluate(() => {
+    const board = getComputedStyle(document.querySelector<HTMLElement>('.widget__board')!).backgroundColor
+    const dimmed = getComputedStyle(
+      document.querySelector<HTMLElement>('.provider-item--unavailable .provider-item__icon-shell')!
+    ).backgroundColor
+    const brightness = (value: string): number => {
+      const channels = value.match(/[\d.]+/g)?.slice(0, 3).map(Number) ?? []
+      const scale = value.startsWith('color(') ? 255 : 1
+      return channels.reduce((total, channel) => total + channel * scale, 0)
+    }
+    return brightness(dimmed) < brightness(board)
+  })).toBe(true)
   await expect(settingsWindow.locator('.settings-window')).toHaveCSS('background-color', 'rgb(15, 15, 19)')
   await expect(appearanceShadowSwitch).toHaveCSS('background-color', 'rgb(231, 227, 244)')
   await expect.poll(async () => appearanceShadowSwitch.evaluate((element) =>
@@ -306,11 +437,11 @@ test('opens settings in a separate native window', async () => {
   await expect(localAnalyticsCheckbox).not.toBeChecked()
   await localAnalyticsCheckbox.check()
   await expect.poll(async () => settingsWindow.evaluate(() =>
-    (window as unknown as { desktop: { settings: { get: () => Promise<{ analytics: { localInsights: boolean } }> } } }).desktop.settings.get()
+    (window as unknown as { dashboardDesktop: { settings: { get: () => Promise<{ analytics: { localInsights: boolean } }> } } }).dashboardDesktop.settings.get()
   ).then((settings) => settings.analytics.localInsights)).toBe(true)
   await localAnalyticsCheckbox.uncheck()
   await expect.poll(async () => settingsWindow.evaluate(() =>
-    (window as unknown as { desktop: { settings: { get: () => Promise<{ analytics: { localInsights: boolean } }> } } }).desktop.settings.get()
+    (window as unknown as { dashboardDesktop: { settings: { get: () => Promise<{ analytics: { localInsights: boolean } }> } } }).dashboardDesktop.settings.get()
   ).then((settings) => settings.analytics.localInsights)).toBe(false)
 
   await selectSettingsPage(settingsWindow, 'Behavior')
@@ -318,11 +449,11 @@ test('opens settings in a separate native window', async () => {
   await expect(dockingGuidesCheckbox).toBeChecked()
   await dockingGuidesCheckbox.uncheck()
   await expect.poll(async () => settingsWindow.evaluate(() =>
-    (window as unknown as { desktop: { settings: { get: () => Promise<{ widget: { showDockGuides: boolean } }> } } }).desktop.settings.get()
+    (window as unknown as { dashboardDesktop: { settings: { get: () => Promise<{ widget: { showDockGuides: boolean } }> } } }).dashboardDesktop.settings.get()
   ).then((settings) => settings.widget.showDockGuides)).toBe(false)
   await dockingGuidesCheckbox.check()
   await expect.poll(async () => settingsWindow.evaluate(() =>
-    (window as unknown as { desktop: { settings: { get: () => Promise<{ widget: { showDockGuides: boolean } }> } } }).desktop.settings.get()
+    (window as unknown as { dashboardDesktop: { settings: { get: () => Promise<{ widget: { showDockGuides: boolean } }> } } }).dashboardDesktop.settings.get()
   ).then((settings) => settings.widget.showDockGuides)).toBe(true)
   const edgeTuckCheckbox = settingsWindow.getByRole('checkbox', { name: 'Tuck into screen edge' })
   await expect(edgeTuckCheckbox).toBeChecked()
@@ -460,7 +591,7 @@ test('disables both docking guides and magnetic capture from settings', async ()
   const dockingGuidesCheckbox = settingsWindow.getByRole('checkbox', { name: 'Docking guides' })
   await dockingGuidesCheckbox.uncheck()
   await expect.poll(async () => settingsWindow.evaluate(() =>
-    (window as unknown as { desktop: { settings: { get: () => Promise<{ widget: { docked: boolean; showDockGuides: boolean } }> } } }).desktop.settings.get()
+    (window as unknown as { dashboardDesktop: { settings: { get: () => Promise<{ widget: { docked: boolean; showDockGuides: boolean } }> } } }).dashboardDesktop.settings.get()
   ).then((settings) => settings.widget)).toMatchObject({ docked: false, showDockGuides: false })
   await closeSettingsWindow()
 
@@ -485,7 +616,7 @@ test('disables both docking guides and magnetic capture from settings', async ()
   await page.mouse.up()
 
   const persisted = await page.evaluate(() =>
-    (window as unknown as { desktop: { settings: { get: () => Promise<{ widget: { docked: boolean } }> } } }).desktop.settings.get()
+    (window as unknown as { widgetDesktop: { settings: { get: () => Promise<{ widget: { docked: boolean } }> } } }).widgetDesktop.settings.get()
   )
   expect(persisted.widget.docked).toBe(false)
 
@@ -526,7 +657,7 @@ test('aligns horizontal hover details to the provider above or below the widget'
 
   const geometry = await page.evaluate(() => {
     const widget = document.querySelector<HTMLElement>('.widget')!.getBoundingClientRect()
-    const provider = [...document.querySelectorAll<HTMLElement>('.provider-item')].at(-1)!.getBoundingClientRect()
+    const provider = Array.from(document.querySelectorAll<HTMLElement>('.provider-item')).at(-1)!.getBoundingClientRect()
     const anchor = document.querySelector<HTMLElement>('.usage-popover-anchor')!.getBoundingClientRect()
     const panel = document.querySelector<HTMLElement>('.unavailable-popover, .usage-popover')!.getBoundingClientRect()
     return {
@@ -555,7 +686,7 @@ test('drags from the grab handle and persists right-side docking', async () => {
     await Promise.all(element.getAnimations().map((animation) => animation.finished))
   })
   await expect.poll(async () => page.evaluate(() =>
-    (window as unknown as { desktop: { settings: { get: () => Promise<{ widget: { showDockGuides: boolean } }> } } }).desktop.settings.get()
+    (window as unknown as { widgetDesktop: { settings: { get: () => Promise<{ widget: { showDockGuides: boolean } }> } } }).widgetDesktop.settings.get()
   ).then((settings) => settings.widget.showDockGuides)).toBe(true)
   const revealHandle = async (): Promise<void> => {
     await revealWidget()
@@ -599,7 +730,7 @@ test('drags from the grab handle and persists right-side docking', async () => {
   expect(widgetBox!.x).toBeGreaterThan(100)
   expect(widgetBox!.x + widgetBox!.width).toBeLessThan(viewport.width - 100)
   let settings = await page.evaluate(() =>
-    (window as unknown as { desktop: { settings: { get: () => Promise<{ widget: { docked: boolean; side: string } }> } } }).desktop.settings.get()
+    (window as unknown as { widgetDesktop: { settings: { get: () => Promise<{ widget: { docked: boolean; side: string } }> } } }).widgetDesktop.settings.get()
   )
   expect(settings.widget.docked).toBe(false)
 
@@ -615,7 +746,7 @@ test('drags from the grab handle and persists right-side docking', async () => {
   await page.mouse.up()
   await expect.poll(async () => (await page.locator('.widget').boundingBox())?.y).toBeCloseTo(8, 0)
   settings = await page.evaluate(() =>
-    (window as unknown as { desktop: { settings: { get: () => Promise<{ widget: { docked: boolean; side: string } }> } } }).desktop.settings.get()
+    (window as unknown as { widgetDesktop: { settings: { get: () => Promise<{ widget: { docked: boolean; side: string } }> } } }).widgetDesktop.settings.get()
   )
   expect(settings.widget.side).toBe('top')
 
@@ -631,7 +762,7 @@ test('drags from the grab handle and persists right-side docking', async () => {
     return box && box.y + box.height
   }).toBeCloseTo(viewport.height - 8, 0)
   settings = await page.evaluate(() =>
-    (window as unknown as { desktop: { settings: { get: () => Promise<{ widget: { docked: boolean; side: string } }> } } }).desktop.settings.get()
+    (window as unknown as { widgetDesktop: { settings: { get: () => Promise<{ widget: { docked: boolean; side: string } }> } } }).widgetDesktop.settings.get()
   )
   expect(settings.widget.side).toBe('bottom')
 
@@ -692,7 +823,7 @@ test('drags from the grab handle and persists right-side docking', async () => {
   expect(cornerGeometry.gearCenter).toBeGreaterThan(cornerGeometry.widgetLeft)
   expect(cornerGeometry.gearCenter).toBeLessThan(cornerGeometry.widgetRight)
   settings = await page.evaluate(() =>
-    (window as unknown as { desktop: { settings: { get: () => Promise<{ widget: { docked: boolean; side: string } }> } } }).desktop.settings.get()
+    (window as unknown as { widgetDesktop: { settings: { get: () => Promise<{ widget: { docked: boolean; side: string } }> } } }).widgetDesktop.settings.get()
   )
   expect(settings.widget.docked).toBe(true)
   expect(settings.widget.side).toBe('right')
@@ -747,8 +878,8 @@ test('keeps the horizontal popover outside the turned thumb', async () => {
   await closeSettingsWindow()
   await page.evaluate(() =>
     (window as unknown as {
-      desktop: { settings: { update: (patch: object) => Promise<unknown> } }
-    }).desktop.settings.update({
+      widgetDesktop: { settings: { update: (patch: object) => Promise<unknown> } }
+    }).widgetDesktop.settings.update({
       widget: { docked: true, horizontalPosition: 1, orientation: 'horizontal', side: 'right', verticalPosition: 1 }
     })
   )
@@ -797,8 +928,8 @@ test('keeps the vertical popover outside the turned thumb', async () => {
 
   await page.evaluate(() =>
     (window as unknown as {
-      desktop: { settings: { update: (patch: object) => Promise<unknown> } }
-    }).desktop.settings.update({
+      widgetDesktop: { settings: { update: (patch: object) => Promise<unknown> } }
+    }).widgetDesktop.settings.update({
       widget: { docked: true, horizontalPosition: 1, orientation: 'vertical', side: 'right', verticalPosition: 0 }
     })
   )
@@ -820,8 +951,8 @@ test('keeps the vertical popover outside the turned thumb', async () => {
 
   await page.evaluate(() =>
     (window as unknown as {
-      desktop: { settings: { update: (patch: object) => Promise<unknown> } }
-    }).desktop.settings.update({
+      widgetDesktop: { settings: { update: (patch: object) => Promise<unknown> } }
+    }).widgetDesktop.settings.update({
       widget: { docked: true, horizontalPosition: 1, orientation: 'vertical', side: 'right', verticalPosition: 1 }
     })
   )
@@ -840,4 +971,32 @@ test('keeps the vertical popover outside the turned thumb', async () => {
   })
   expect(bottomCorner.overlaps).toBe(false)
   expect(bottomCorner.gap).toBeGreaterThanOrEqual(5.5)
+})
+
+test('turns the widget off and back on without closing the dashboard', async () => {
+  const dashboard = await openSettingsWindow()
+  await selectSettingsPage(dashboard, 'General')
+  const widgetEnabled = dashboard.getByRole('checkbox', { name: 'Widget enabled' })
+  await expect(widgetEnabled).toBeChecked()
+
+  const previousWidget = page
+  await widgetEnabled.uncheck()
+  await expect.poll(() => previousWidget.isClosed()).toBe(true)
+  await expect(dashboard.getByRole('complementary', { name: 'Settings' })).toBeVisible()
+  await expect.poll(() => electronApp.windows().some(
+    (window) => !window.isClosed() && window.url().includes('widget.html')
+  )).toBe(false)
+
+  await widgetEnabled.check()
+  await expect.poll(() => electronApp.windows().some(
+    (window) => !window.isClosed() && window.url().includes('widget.html')
+  )).toBe(true)
+  const restartedWidget = electronApp.windows().find(
+    (window) => !window.isClosed() && window.url().includes('widget.html')
+  )
+  if (!restartedWidget) throw new Error('Widget window did not restart')
+  page = restartedWidget
+  await page.waitForLoadState('domcontentloaded')
+  await expect(page.locator('.widget')).toBeVisible()
+  await expect(widgetEnabled).toBeChecked()
 })

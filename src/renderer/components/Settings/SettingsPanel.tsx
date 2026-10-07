@@ -1,6 +1,6 @@
 import { forwardRef, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faGear, faPalette, faPuzzlePiece, faSliders } from '@fortawesome/free-solid-svg-icons'
+import { faArrowsRotate, faGear, faPalette, faPuzzlePiece, faSliders } from '@fortawesome/free-solid-svg-icons'
 import type { AppSettings, DockSide, SettingsPatch } from '@shared/settings'
 import { ProviderSettingsList } from './ProviderSettingsList'
 import { SettingsCheckbox, SettingsRange, SettingsSection } from './SettingsControls'
@@ -14,6 +14,7 @@ interface SettingsPanelProps {
   top?: number
   variant?: 'overlay' | 'window'
   onUpdate: (patch: SettingsPatch) => void
+  onSyncVsCodeTheme: () => Promise<string>
   onClose: () => void
   onMinimize: () => void
 }
@@ -28,10 +29,25 @@ const navigationItems = [
 ] as const
 
 export const SettingsPanel = forwardRef<HTMLDivElement, SettingsPanelProps>(function SettingsPanel(
-  { settings, side = 'left', left, top, variant = 'overlay', onUpdate, onClose, onMinimize },
+  { settings, side = 'left', left, top, variant = 'overlay', onUpdate, onSyncVsCodeTheme, onClose, onMinimize },
   ref
 ) {
   const [activePage, setActivePage] = useState<SettingsPage>('appearance')
+  const [themeSyncing, setThemeSyncing] = useState(false)
+  const [themeSyncMessage, setThemeSyncMessage] = useState<string>()
+
+  const syncVsCodeTheme = async (): Promise<void> => {
+    setThemeSyncing(true)
+    setThemeSyncMessage(undefined)
+    try {
+      const name = await onSyncVsCodeTheme()
+      setThemeSyncMessage(`Synced: ${name}`)
+    } catch (error) {
+      setThemeSyncMessage(error instanceof Error ? error.message : 'Could not sync the VS Code theme.')
+    } finally {
+      setThemeSyncing(false)
+    }
+  }
 
   const toggleProvider = (id: string): void => {
     onUpdate({
@@ -104,7 +120,8 @@ export const SettingsPanel = forwardRef<HTMLDivElement, SettingsPanelProps>(func
             <div className="settings-panel__grid">
               <SettingsSelect
                 label="Theme"
-                value={settings.widget.theme}
+                value={settings.widget.themeMode === 'preset' ? settings.widget.theme : ''}
+                placeholder="Select theme"
                 options={[
                   { value: 'dark', label: 'Dark' },
                   { value: 'slate', label: 'Slate' },
@@ -118,8 +135,33 @@ export const SettingsPanel = forwardRef<HTMLDivElement, SettingsPanelProps>(func
                   { value: 'monokai', label: 'Monokai' },
                   { value: 'dark-pastel', label: 'Dark Pastel' }
                 ]}
-                onChange={(value) => onUpdate({ widget: { theme: value as AppSettings['widget']['theme'] } })}
+                onChange={(value) => onUpdate({
+                  widget: {
+                    theme: value as AppSettings['widget']['theme'],
+                    themeMode: 'preset'
+                  }
+                })}
               />
+              <div className="settings-theme-sync">
+                <div>
+                  <span>VS Code theme</span>
+                  <small className={themeSyncMessage && !themeSyncMessage.startsWith('Synced:') ? 'settings-theme-sync__error' : undefined}>
+                    {themeSyncMessage
+                      ?? (settings.widget.themeMode === 'vscode' && settings.widget.vscodeTheme
+                        ? `Synced: ${settings.widget.vscodeTheme.name}`
+                        : 'Use the colors from your active VS Code theme.')}
+                  </small>
+                </div>
+                <button
+                  className="settings-action-button"
+                  type="button"
+                  disabled={themeSyncing}
+                  onClick={() => void syncVsCodeTheme()}
+                >
+                  <FontAwesomeIcon icon={faArrowsRotate} aria-hidden="true" />
+                  <span>{themeSyncing ? 'Syncing…' : 'Sync with VS Code'}</span>
+                </button>
+              </div>
               <SettingsSelect
                 label="Widget layout"
                 value={settings.widget.orientation}
@@ -213,6 +255,11 @@ export const SettingsPanel = forwardRef<HTMLDivElement, SettingsPanelProps>(func
           {activePage === 'general' && (
             <SettingsSection title="General">
               <div className="settings-panel__grid">
+                <SettingsCheckbox
+                  checked={settings.widget.enabled}
+                  label="Widget enabled"
+                  onChange={(enabled) => onUpdate({ widget: { enabled } })}
+                />
                 <SettingsCheckbox checked={settings.launchAtStartup} label="Launch at startup" onChange={(checked) => onUpdate({ launchAtStartup: checked })} />
                 <SettingsCheckbox
                   checked={settings.analytics.localInsights}

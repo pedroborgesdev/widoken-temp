@@ -18,6 +18,8 @@ Only the six-pixel grab affordance starts a drag. During drag, the entire window
 
 At pointer release, settings are persisted, the grid is hidden, and native interaction returns to the widget rectangle. Provider rows remain hover targets and never initiate widget movement.
 
+While a provider reports an in-flight request, the usage arc fades out as sixteen equal, fully opaque, severity-colored dots fade in and rotate around the track once every 3 seconds. When the request completes, the dots fade out and the usage arc fades back in. Both crossfades take 1 second, while the track stays visible throughout.
+
 In vertical layout, popovers open to the left or right as before. In horizontal layout, each popover is centered on its hovered provider and opens below or above the widget according to the available screen space, while preserving the 8 px viewport margin. Popovers and settings are included in the native interaction shape so moving across the gap does not hand the pointer to the underlying application.
 
 On KDE/Wayland the KWin bridge applies the selected display's exact logical geometry instead of relying on compositor maximization. This prevents a 1920 px external display from inheriting the 1600 px horizontal limit of a scaled laptop panel.

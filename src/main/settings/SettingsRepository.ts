@@ -7,10 +7,29 @@ import {
   clampVerticalPosition,
   type AppSettings,
   type ProviderSetting,
-  type SettingsPatch
+  type SettingsPatch,
+  type SyncedThemeColors,
+  type SyncedVsCodeTheme
 } from '@shared/settings'
 
 const PROVIDER_IDS = new Set(DEFAULT_SETTINGS.providers.map((provider) => provider.id))
+const THEME_COLOR_KEYS = [
+  'accent',
+  'danger',
+  'elevated',
+  'hover',
+  'muted',
+  'onAccent',
+  'shadow',
+  'strong',
+  'success',
+  'surface',
+  'text',
+  'thumb',
+  'track',
+  'warning'
+] as const satisfies readonly (keyof SyncedThemeColors)[]
+const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i
 
 function clampNumber(value: unknown, minimum: number, maximum: number, fallback: number): number {
   const number = Number(value)
@@ -36,16 +55,37 @@ function sanitizeProviders(value: unknown): ProviderSetting[] {
   return providers.sort((a, b) => a.order - b.order).map((provider, order) => ({ ...provider, order }))
 }
 
+function sanitizeSyncedTheme(value: unknown): SyncedVsCodeTheme | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const candidate = value as Partial<SyncedVsCodeTheme>
+  if (typeof candidate.name !== 'string' || !candidate.name.trim() || !candidate.colors) return undefined
+  const colors = {} as SyncedThemeColors
+  for (const key of THEME_COLOR_KEYS) {
+    const color = candidate.colors[key]
+    if (typeof color !== 'string' || !HEX_COLOR.test(color)) return undefined
+    colors[key] = color
+  }
+  return {
+    colorScheme: candidate.colorScheme === 'light' ? 'light' : 'dark',
+    colors,
+    name: candidate.name.trim()
+  }
+}
+
 function sanitizeSettings(value: unknown): AppSettings {
   const candidate = value && typeof value === 'object' ? (value as Partial<AppSettings>) : {}
   const widget = candidate.widget && typeof candidate.widget === 'object' ? candidate.widget : DEFAULT_SETTINGS.widget
   const refresh = Number(candidate.refreshIntervalSeconds)
+  const vscodeTheme = sanitizeSyncedTheme(widget.vscodeTheme)
 
   return {
     widget: {
+      enabled: widget.enabled !== false,
       theme: APP_THEMES.includes(widget.theme as AppSettings['widget']['theme'])
         ? widget.theme as AppSettings['widget']['theme']
         : DEFAULT_SETTINGS.widget.theme,
+      themeMode: widget.themeMode === 'vscode' && vscodeTheme ? 'vscode' : 'preset',
+      vscodeTheme,
       shadows: widget.shadows !== false,
       showDockGuides: widget.showDockGuides !== false,
       edgeTuck: widget.edgeTuck !== false,

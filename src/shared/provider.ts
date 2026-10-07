@@ -62,6 +62,7 @@ export interface ProviderDescriptor {
 
 export interface ProviderView extends ProviderDescriptor {
   snapshot: ProviderSnapshot
+  activity?: 'idle' | 'active'
 }
 
 export function clampPercent(percent: number): number {

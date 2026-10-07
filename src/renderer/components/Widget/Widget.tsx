@@ -90,6 +90,10 @@ export const Widget = forwardRef<HTMLDivElement, WidgetProps>(function Widget(
 
     const added = [...nextProviderIds].some((id) => !previousIds.has(id))
     const removed = [...previousIds].some((id) => !nextProviderIds.has(id))
+    // Hydrating the initial provider snapshot is startup, not a user-visible
+    // add operation. Keep the first paint stable; later provider toggles still
+    // get the entry/removal animation.
+    if (previousIds.size === 0 && added) return
     if (!added && !removed) {
       widgetAnimation.current?.cancel()
       widgetAnimation.current = undefined

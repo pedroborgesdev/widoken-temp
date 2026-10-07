@@ -9,3 +9,9 @@ describe('application themes', () => {
     expect(APP_THEMES).toContain('dark-pastel')
   })
 })
+
+describe('widget lifecycle settings', () => {
+  it('starts with the widget enabled', () => {
+    expect(DEFAULT_SETTINGS.widget.enabled).toBe(true)
+  })
+})

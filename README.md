@@ -6,11 +6,13 @@
 
 The desktop MVP includes:
 
-- one transparent, frameless overlay window and a separate settings window;
+- independent widget and dashboard windows with separate renderer entrypoints, state, and sandboxed preloads;
 - a dynamic 1–4 provider widget with Figma assets and programmatic usage rings;
 - healthy, loading, disconnected, unavailable, and error data states;
+- live Codex request activity, shown as severity-colored dots orbiting the provider until the turn completes;
 - vertical and horizontal widget layouts, usage popovers, free two-axis dragging, two full-height magnetic docking columns, and an 8 px screen margin;
-- persisted provider order, enabled state, refresh interval, startup preference, docking state, and normalized horizontal/vertical position;
+- persisted widget on/off state, provider order, enabled state, refresh interval, startup preference, docking state, and normalized horizontal/vertical position;
+- one-click VS Code theme import on Linux, Windows, and macOS, including installed themes and workbench color customizations;
 - a sandboxed preload API and typed IPC handlers;
 - provider polling with a real read-only Cursor adapter, explicit unavailable/error states for providers not yet connected, unit tests, and an Electron smoke test;
 - Electron Builder targets for Windows NSIS and Linux AppImage/deb.
@@ -32,7 +34,7 @@ Para abrir somente o preview do renderer no navegador, com a mesma UI e dados mo
 npm run dev:web
 ```
 
-X11 uses Electron's shaped interaction region. Windows also shapes that region, and samples the cursor so the overlay stays click-through for native apps and other Chromium windows, including its own settings window, after a drag. On KDE/Wayland, a small local KWin script reports cursor movement over D-Bus so Electron enables input only over the widget, popovers, and settings; the invisible area remains click-through.
+X11 uses Electron's shaped interaction region. Windows also shapes that region, and samples the cursor so the overlay stays click-through for native apps and other Chromium windows, including its own dashboard, after a drag. On KDE/Wayland, a small local KWin script reports cursor movement over D-Bus so Electron enables input only over the widget and popovers; the invisible area remains click-through.
 
 ## Validation and packaging
 

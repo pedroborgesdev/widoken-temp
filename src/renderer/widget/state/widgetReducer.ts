@@ -1,7 +1,7 @@
 import type { ProviderView } from '@shared/provider'
 import { DEFAULT_SETTINGS, type AppSettings, type DockSide } from '@shared/settings'
 
-export type OverlayMode = 'passive' | 'provider-hover' | 'dragging' | 'settings'
+export type WidgetMode = 'passive' | 'provider-hover' | 'dragging'
 
 export interface DragState {
   left: number
@@ -10,38 +10,36 @@ export interface DragState {
   candidateSide?: DockSide
 }
 
-export interface OverlayState {
-  mode: OverlayMode
+export interface WidgetState {
+  mode: WidgetMode
   settings: AppSettings
   settingsReady: boolean
-  settingsWindowOpen: boolean
+  dashboardWindowOpen: boolean
   providers: ProviderView[]
   hoveredProviderId?: string
   drag?: DragState
 }
 
-export type OverlayAction =
+export type WidgetAction =
   | { type: 'settings-loaded'; settings: AppSettings }
   | { type: 'settings-updated'; settings: AppSettings }
   | { type: 'providers-updated'; providers: ProviderView[] }
   | { type: 'provider-hovered'; providerId: string }
   | { type: 'provider-left' }
-  | { type: 'settings-opened' }
-  | { type: 'settings-closed' }
-  | { type: 'settings-window-changed'; open: boolean }
+  | { type: 'dashboard-window-changed'; open: boolean }
   | { type: 'drag-started'; drag: DragState }
   | { type: 'drag-moved'; drag: DragState }
   | { type: 'drag-ended'; settings: AppSettings }
 
-export const initialOverlayState: OverlayState = {
+export const initialWidgetState: WidgetState = {
   mode: 'passive',
   settings: DEFAULT_SETTINGS,
   settingsReady: false,
-  settingsWindowOpen: false,
+  dashboardWindowOpen: false,
   providers: []
 }
 
-export function overlayReducer(state: OverlayState, action: OverlayAction): OverlayState {
+export function widgetReducer(state: WidgetState, action: WidgetAction): WidgetState {
   switch (action.type) {
     case 'settings-loaded':
       return { ...state, settings: action.settings, settingsReady: true }
@@ -55,12 +53,8 @@ export function overlayReducer(state: OverlayState, action: OverlayAction): Over
       return state.mode === 'provider-hover'
         ? { ...state, mode: 'passive', hoveredProviderId: undefined }
         : state
-    case 'settings-opened':
-      return { ...state, mode: 'settings', hoveredProviderId: undefined }
-    case 'settings-closed':
-      return { ...state, mode: 'passive' }
-    case 'settings-window-changed':
-      return { ...state, settingsWindowOpen: action.open }
+    case 'dashboard-window-changed':
+      return { ...state, dashboardWindowOpen: action.open }
     case 'drag-started':
     case 'drag-moved':
       return { ...state, mode: 'dragging', hoveredProviderId: undefined, drag: action.drag }

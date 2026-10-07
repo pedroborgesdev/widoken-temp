@@ -11,13 +11,14 @@ interface SettingsSelectProps {
   label: string
   value: string | number
   options: SettingsSelectOption[]
+  placeholder?: string
   onChange: (value: string) => void
 }
 
-export function SettingsSelect({ label, value, options, onChange }: SettingsSelectProps): React.JSX.Element {
+export function SettingsSelect({ label, value, options, placeholder, onChange }: SettingsSelectProps): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const selected = options.find((option) => String(option.value) === String(value)) ?? options[0]
+  const selected = options.find((option) => String(option.value) === String(value))
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent): void => {
@@ -38,7 +39,7 @@ export function SettingsSelect({ label, value, options, onChange }: SettingsSele
           aria-expanded={open}
           onClick={() => setOpen((current) => !current)}
         >
-          <span>{selected?.label}</span>
+          <span className={selected ? undefined : 'settings-select__placeholder'}>{selected?.label ?? placeholder ?? ''}</span>
           <FontAwesomeIcon className="settings-select__chevron" icon={faChevronDown} aria-hidden="true" />
         </button>
         {open && (

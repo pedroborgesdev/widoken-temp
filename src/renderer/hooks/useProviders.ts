@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import type { ProviderView } from '@shared/provider'
-import { desktop } from '../services/desktop'
+import { widgetDesktop as desktop } from '../services/desktop'
 
 export function useProviders(onProviders: (providers: ProviderView[]) => void): void {
   useEffect(() => {

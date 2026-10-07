@@ -1,8 +1,9 @@
-import type { DesktopApi } from '@shared/ipc'
+import type { DashboardDesktopApi, WidgetDesktopApi } from '@shared/ipc'
 
 declare global {
   interface Window {
-    desktop: DesktopApi
+    widgetDesktop?: WidgetDesktopApi
+    dashboardDesktop?: DashboardDesktopApi
   }
 }
 

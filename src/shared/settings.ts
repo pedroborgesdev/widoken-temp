@@ -13,6 +13,30 @@ export const APP_THEMES = [
   'dark-pastel'
 ] as const
 export type AppTheme = typeof APP_THEMES[number]
+export type ThemeMode = 'preset' | 'vscode'
+
+export interface SyncedThemeColors {
+  accent: string
+  danger: string
+  elevated: string
+  hover: string
+  muted: string
+  onAccent: string
+  shadow: string
+  strong: string
+  success: string
+  surface: string
+  text: string
+  thumb: string
+  track: string
+  warning: string
+}
+
+export interface SyncedVsCodeTheme {
+  colorScheme: 'dark' | 'light'
+  colors: SyncedThemeColors
+  name: string
+}
 export type WidgetOrientation = 'vertical' | 'horizontal'
 export type UnavailableStyle = 'dim' | 'normal'
 
@@ -24,7 +48,10 @@ export interface ProviderSetting {
 
 export interface AppSettings {
   widget: {
+    enabled: boolean
     theme: AppTheme
+    themeMode: ThemeMode
+    vscodeTheme?: SyncedVsCodeTheme
     shadows: boolean
     showDockGuides: boolean
     edgeTuck: boolean
@@ -51,7 +78,9 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   widget: {
+    enabled: true,
     theme: 'dark',
+    themeMode: 'preset',
     shadows: true,
     showDockGuides: true,
     edgeTuck: true,

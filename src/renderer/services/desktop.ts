@@ -1,4 +1,4 @@
-import type { DesktopApi } from '@shared/ipc'
+import type { DashboardDesktopApi, DesktopApi, WidgetDesktopApi } from '@shared/ipc'
 import type { ProviderView } from '@shared/provider'
 import { DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/settings'
 
@@ -36,7 +36,7 @@ function loadPreviewSettings(): AppSettings {
 let previewSettings = loadPreviewSettings()
 const providerListeners = new Set<(providers: ProviderView[]) => void>()
 const settingsListeners = new Set<(settings: AppSettings) => void>()
-const settingsWindowListeners = new Set<(open: boolean) => void>()
+const dashboardWindowListeners = new Set<(open: boolean) => void>()
 
 function previewProviderViews(): ProviderView[] {
   const snapshots: Record<string, ProviderView['snapshot']> = {
@@ -119,29 +119,33 @@ const browserDesktopApi: DesktopApi = {
     onUpdated: (callback) => {
       settingsListeners.add(callback)
       return () => settingsListeners.delete(callback)
-    },
+    }
+  },
+  dashboard: {
     onWindowState: (callback) => {
-      settingsWindowListeners.add(callback)
-      return () => settingsWindowListeners.delete(callback)
+      dashboardWindowListeners.add(callback)
+      return () => dashboardWindowListeners.delete(callback)
     },
-    openWindow: async () => {
-      const url = new URL(window.location.href)
-      url.searchParams.set('window', 'settings')
-      window.open(url.toString(), 'widoken-settings', 'width=380,height=640')
-      settingsWindowListeners.forEach((listener) => listener(true))
+    open: async () => {
+      window.open(new URL('/dashboard.html', window.location.href).toString(), 'widoken-dashboard', 'width=880,height=590')
+      dashboardWindowListeners.forEach((listener) => listener(true))
     },
-    closeWindow: async () => {
-      settingsWindowListeners.forEach((listener) => listener(false))
+    close: async () => {
+      dashboardWindowListeners.forEach((listener) => listener(false))
       window.close()
     },
-    minimizeWindow: async () => undefined,
-    resizeWindowToContent: async () => undefined
+    minimize: async () => undefined,
+    resizeToContent: async () => undefined
+  },
+  themes: {
+    syncVsCode: async () => {
+      throw new Error('VS Code theme sync is only available in the desktop app.')
+    }
   },
   app: {
     quit: async () => window.close()
   }
 }
 
-const electronDesktopApi = (window as Window & { desktop?: DesktopApi }).desktop
-
-export const desktop = electronDesktopApi ?? browserDesktopApi
+export const widgetDesktop: WidgetDesktopApi = window.widgetDesktop ?? browserDesktopApi
+export const dashboardDesktop: DashboardDesktopApi = window.dashboardDesktop ?? browserDesktopApi

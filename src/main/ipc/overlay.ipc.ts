@@ -14,14 +14,21 @@ function refreshWindowsCursor(window: BrowserWindow): void {
   updateInteractionCursor(window, screen.getCursorScreenPoint())
 }
 
-export function registerOverlayIpc(window: BrowserWindow): void {
+export function registerOverlayIpc(getWindow: () => BrowserWindow | undefined): void {
   ipcMain.on(IPC.overlayStartDragging, (event) => {
+    const window = getWindow()
+    if (!window || event.sender !== window.webContents) {
+      event.returnValue = undefined
+      return
+    }
     refreshWindowsCursor(window)
     makeWindowFullyInteractive(window)
     event.returnValue = undefined
   })
 
-  ipcMain.handle(IPC.overlayEndDragging, (_event, regions: Rectangle[], paintOutset?: number) => {
+  ipcMain.handle(IPC.overlayEndDragging, (event, regions: Rectangle[], paintOutset?: number) => {
+    const window = getWindow()
+    if (!window || event.sender !== window.webContents) return
     refreshWindowsCursor(window)
     endFullInteraction(window)
     applyInteractionRegions(
@@ -31,7 +38,9 @@ export function registerOverlayIpc(window: BrowserWindow): void {
     )
   })
 
-  ipcMain.handle(IPC.overlaySetRegions, (_event, regions: Rectangle[], paintOutset?: number) => {
+  ipcMain.handle(IPC.overlaySetRegions, (event, regions: Rectangle[], paintOutset?: number) => {
+    const window = getWindow()
+    if (!window || event.sender !== window.webContents) return
     refreshWindowsCursor(window)
     applyInteractionRegions(
       window,

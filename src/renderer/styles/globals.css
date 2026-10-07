@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-overlay-thumb: #101010;
+  --color-overlay-thumb: #171717;
   --color-overlay-surface: #171717;
   --color-overlay-elevated: #202020;
   --color-overlay-track: #4b4b4b;
@@ -183,7 +183,7 @@
 }
 
 .overlay-root--theme-dark-pastel {
-  --color-overlay-thumb: #09090c;
+  --color-overlay-thumb: #0f0f13;
   --color-overlay-surface: #0f0f13;
   --color-overlay-elevated: #18181e;
   --color-overlay-track: #26272f;
@@ -371,7 +371,7 @@ button {
   width: 30px;
   height: 42px;
   border-radius: 6px;
-  background: var(--color-overlay-thumb);
+  background: var(--color-overlay-surface);
   transform: translate(var(--widget-core-shift-x), var(--widget-core-shift-y));
   transition:
     top 180ms cubic-bezier(0.2, 0.85, 0.3, 1.08),
@@ -535,7 +535,7 @@ button {
 
 .overlay-root--unavailable-dim .provider-item--unavailable .provider-item__icon-shell {
   isolation: isolate;
-  background: color-mix(in srgb, var(--color-overlay-muted) 32%, var(--color-overlay-thumb));
+  background: color-mix(in srgb, var(--color-overlay-surface) 72%, #000);
 }
 
 .overlay-root--unavailable-dim .provider-item--unavailable .provider-item__logo {
@@ -553,7 +553,8 @@ button {
   overflow: visible;
 }
 
-.usage-ring circle {
+.usage-ring__track,
+.usage-ring__value {
   fill: none;
   stroke-width: 3;
 }
@@ -563,8 +564,9 @@ button {
 }
 
 .usage-ring__value {
+  opacity: 1;
   stroke-linecap: round;
-  transition: stroke-dashoffset 180ms ease;
+  transition: stroke-dashoffset 180ms ease, opacity 1s ease;
 }
 
 .usage-ring__value--success {
@@ -581,6 +583,48 @@ button {
 
 .usage-ring__value--muted {
   stroke: var(--color-overlay-track);
+}
+
+.usage-ring__activity {
+  opacity: 0;
+  transform-box: view-box;
+  transform-origin: center;
+  animation: usage-ring-orbit 3000ms linear infinite;
+  animation-play-state: paused;
+  transition: opacity 1s ease;
+  will-change: transform, opacity;
+}
+
+.usage-ring--active .usage-ring__value {
+  opacity: 0;
+}
+
+.usage-ring--active .usage-ring__activity {
+  opacity: 1;
+  animation-play-state: running;
+}
+
+.usage-ring__activity-dot {
+  fill: inherit;
+  opacity: 1;
+  stroke: none;
+  stroke-width: 0;
+}
+
+.usage-ring__activity--success {
+  fill: var(--color-overlay-success);
+}
+
+.usage-ring__activity--warning {
+  fill: var(--color-overlay-warning);
+}
+
+.usage-ring__activity--danger {
+  fill: var(--color-overlay-danger);
+}
+
+.usage-ring__activity--muted {
+  fill: var(--color-overlay-track);
 }
 
 .provider-item__icon-shell {
@@ -1564,6 +1608,10 @@ button {
   white-space: nowrap;
 }
 
+.settings-select__placeholder {
+  color: var(--color-overlay-muted);
+}
+
 .settings-select__chevron {
   width: 10px;
   height: 10px;
@@ -1617,6 +1665,72 @@ button {
 .settings-select__option:hover:not(.settings-select__option--selected) {
   background: var(--color-overlay-hover);
   color: var(--color-overlay-strong);
+}
+
+.settings-theme-sync {
+  display: grid;
+  min-height: 70px;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid var(--color-overlay-track);
+}
+
+.settings-theme-sync > div {
+  display: grid;
+  gap: 3px;
+}
+
+.settings-theme-sync > div > span {
+  color: var(--color-overlay-text);
+  font-size: 13.5px;
+}
+
+.settings-theme-sync small {
+  overflow: hidden;
+  color: var(--color-overlay-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+}
+
+.settings-theme-sync small.settings-theme-sync__error {
+  color: var(--color-overlay-danger);
+}
+
+.settings-action-button {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  cursor: pointer;
+  border: 1px solid var(--color-overlay-track);
+  border-radius: 6px;
+  background: var(--color-overlay-elevated);
+  color: var(--color-overlay-strong);
+  font: inherit;
+  font-size: 13px;
+  transition: border-color 120ms ease, background-color 120ms ease, opacity 120ms ease;
+}
+
+.settings-action-button:hover:not(:disabled) {
+  border-color: var(--color-overlay-muted);
+  background: var(--color-overlay-hover);
+}
+
+.settings-action-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.settings-action-button svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
 }
 
 .settings-panel input {
@@ -1965,9 +2079,12 @@ button {
   }
 }
 
+@keyframes usage-ring-orbit {
+  to { transform: rotate(360deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .widget,
-  .usage-ring__value,
   .drop-zone {
     transition: none;
   }

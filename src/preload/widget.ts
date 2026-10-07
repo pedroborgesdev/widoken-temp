@@ -1,9 +1,25 @@
 import { contextBridge, ipcRenderer, type Rectangle } from 'electron'
-import { IPC, type DesktopApi } from '@shared/ipc'
+import type { WidgetDesktopApi } from '@shared/ipc'
 import type { ProviderView } from '@shared/provider'
 import type { AppSettings, SettingsPatch } from '@shared/settings'
 
-const desktopApi: DesktopApi = {
+// Keep sandboxed preload bundles self-contained. Electron's sandboxed preload
+// cannot require Rollup's generated local shared chunks.
+const IPC = {
+  overlayStartDragging: 'overlay:start-dragging',
+  overlayEndDragging: 'overlay:end-dragging',
+  overlaySetRegions: 'overlay:set-regions',
+  providersList: 'providers:list',
+  providersRefresh: 'providers:refresh',
+  providersUpdated: 'providers:updated',
+  settingsGet: 'settings:get',
+  settingsUpdate: 'settings:update',
+  settingsUpdated: 'settings:updated',
+  dashboardWindowOpen: 'dashboard-window:open',
+  dashboardWindowState: 'dashboard-window:state'
+} as const
+
+const widgetDesktopApi: WidgetDesktopApi = {
   overlay: {
     startDragging: () => {
       ipcRenderer.sendSync(IPC.overlayStartDragging)
@@ -30,20 +46,16 @@ const desktopApi: DesktopApi = {
       const listener = (_event: Electron.IpcRendererEvent, settings: AppSettings): void => callback(settings)
       ipcRenderer.on(IPC.settingsUpdated, listener)
       return () => ipcRenderer.removeListener(IPC.settingsUpdated, listener)
-    },
+    }
+  },
+  dashboard: {
     onWindowState: (callback: (open: boolean) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, open: boolean): void => callback(open)
-      ipcRenderer.on(IPC.settingsWindowState, listener)
-      return () => ipcRenderer.removeListener(IPC.settingsWindowState, listener)
+      ipcRenderer.on(IPC.dashboardWindowState, listener)
+      return () => ipcRenderer.removeListener(IPC.dashboardWindowState, listener)
     },
-    openWindow: () => ipcRenderer.invoke(IPC.settingsWindowOpen),
-    closeWindow: () => ipcRenderer.invoke(IPC.settingsWindowClose),
-    minimizeWindow: () => ipcRenderer.invoke(IPC.settingsWindowMinimize),
-    resizeWindowToContent: (height) => ipcRenderer.invoke(IPC.settingsWindowResizeToContent, height)
-  },
-  app: {
-    quit: () => ipcRenderer.invoke(IPC.appQuit)
+    open: () => ipcRenderer.invoke(IPC.dashboardWindowOpen)
   }
 }
 
-contextBridge.exposeInMainWorld('desktop', desktopApi)
+contextBridge.exposeInMainWorld('widgetDesktop', widgetDesktopApi)

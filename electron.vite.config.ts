@@ -20,9 +20,13 @@ export default defineConfig({
     },
     build: {
       rollupOptions: {
+        input: {
+          widget: resolve('src/preload/widget.ts'),
+          dashboard: resolve('src/preload/dashboard.ts')
+        },
         output: {
           format: 'cjs',
-          entryFileNames: 'index.cjs'
+          entryFileNames: '[name].cjs'
         }
       }
     }
@@ -38,7 +42,10 @@ export default defineConfig({
     plugins: [react()],
     build: {
       rollupOptions: {
-        input: resolve('index.html')
+        input: {
+          widget: resolve('widget.html'),
+          dashboard: resolve('dashboard.html')
+        }
       }
     }
   }

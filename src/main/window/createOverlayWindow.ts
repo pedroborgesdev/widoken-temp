@@ -65,8 +65,11 @@ export function createOverlayWindow(settings: AppSettings, configuredDisplay?: D
     height,
     frame: false,
     transparent: true,
-    resizable: wayland,
-    maximizable: wayland,
+    // The overlay fills the display. If it remains resizable on Wayland, the
+    // compositor treats a tucked widget at the screen edge as a native resize
+    // handle before the renderer can receive the pointer event.
+    resizable: false,
+    maximizable: false,
     movable: false,
     alwaysOnTop: true,
     ...(process.platform === 'win32' ? { thickFrame: false } : {}),
@@ -78,7 +81,10 @@ export function createOverlayWindow(settings: AppSettings, configuredDisplay?: D
     title: 'widoken overlay',
     show: false,
     webPreferences: {
-      preload: join(__dirname, '../preload/index.cjs'),
+      preload: join(__dirname, '../preload/widget.cjs'),
+      // The overlay is intentionally shown without taking focus. Keep its
+      // activity indicator smooth even while Chromium considers it inactive.
+      backgroundThrottling: false,
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true
@@ -117,9 +123,12 @@ export function createOverlayWindow(settings: AppSettings, configuredDisplay?: D
   window.webContents.once('did-finish-load', showOverlay)
 
   if (process.env.ELECTRON_RENDERER_URL) {
-    void window.loadURL(process.env.ELECTRON_RENDERER_URL)
+    const url = new URL(process.env.ELECTRON_RENDERER_URL)
+    url.pathname = '/widget.html'
+    url.search = ''
+    void window.loadURL(url.toString())
   } else {
-    void window.loadFile(join(__dirname, '../renderer/index.html'))
+    void window.loadFile(join(__dirname, '../renderer/widget.html'))
   }
 
   return window

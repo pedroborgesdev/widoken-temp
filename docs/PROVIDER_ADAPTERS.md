@@ -19,6 +19,8 @@ interface ProviderAdapter {
 
 Claude, Cursor, ChatGPT/Codex, and GitHub Copilot use real read-only adapters. Claude reads `~/.claude/.credentials.json` and requests `https://api.anthropic.com/api/oauth/usage`; Cursor reads the editor's session fields from `%APPDATA%/Cursor/User/globalStorage/state.vscdb` on Windows, `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb` on macOS, or `~/.config/Cursor/User/globalStorage/state.vscdb` on Linux and requests `https://cursor.com/api/usage-summary`, exposing the separate Cursor Models and Other Models pools; Codex reads `~/.codex/auth.json` and requests `https://chatgpt.com/backend-api/wham/usage`; Copilot borrows `GH_TOKEN`, `GITHUB_TOKEN`, GitHub CLI `hosts.yml`, or `gh auth token` and requests `https://api.github.com/copilot_internal/user`. Antigravity remains mock/unavailable until its provider-specific authentication and usage contract is implemented.
 
+Codex also has a read-only activity probe. It follows current and previous-day rollout files under `~/.codex/sessions`, treats `task_started`/`turn_started` as active and completion/abort markers as idle, and expires abandoned markers after 30 minutes. Activity is polled separately from quota usage so the widget can react within 750 ms. When a turn ends, Widoken refreshes that provider's quota immediately. Other providers remain idle until their clients expose an equally reliable local activity boundary; file modification alone is not treated as a live request.
+
 ## Adding a real adapter
 
 1. Use a supported vendor endpoint or an explicitly approved local integration.

@@ -3,6 +3,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { ProviderSnapshot, UsageLimit } from '@shared/provider'
 import type { ProviderAdapter } from './ProviderAdapter'
+import { CodexActivityProbe } from './CodexActivityProbe'
 
 const ENDPOINT = 'https://chatgpt.com/backend-api/wham/usage'
 const AUTH_PATH = join(homedir(), '.codex', 'auth.json')
@@ -78,6 +79,7 @@ export class CodexProviderAdapter implements ProviderAdapter {
   readonly id = 'openai'
   readonly name = 'ChatGPT'
   private connected = true
+  private readonly activityProbe = new CodexActivityProbe()
 
   async connect(): Promise<void> {
     this.connected = true
@@ -89,6 +91,10 @@ export class CodexProviderAdapter implements ProviderAdapter {
 
   async isConnected(): Promise<boolean> {
     return this.connected && Boolean(readCredentials())
+  }
+
+  async isActive(): Promise<boolean> {
+    return this.activityProbe.isActive()
   }
 
   async getUsage(): Promise<ProviderSnapshot> {
