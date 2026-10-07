@@ -1,12 +1,13 @@
 import { BrowserWindow, type Display } from 'electron'
 import { join } from 'node:path'
+import { dashboardRouteQuery, type DashboardRoute } from '@shared/dashboard'
 import { appIconPath } from './appIcon'
 
-const DASHBOARD_WINDOW_WIDTH = 880
-const DASHBOARD_WINDOW_HEIGHT = 590
+export const DASHBOARD_WINDOW_WIDTH = 1180
+export const DASHBOARD_WINDOW_HEIGHT = 760
 const DASHBOARD_WINDOW_MARGIN = 16
 
-export function createDashboardWindow(display: Display): BrowserWindow {
+export function createDashboardWindow(display: Display, route: DashboardRoute): BrowserWindow {
   const width = Math.min(DASHBOARD_WINDOW_WIDTH, display.workArea.width - DASHBOARD_WINDOW_MARGIN * 2)
   const height = Math.min(DASHBOARD_WINDOW_HEIGHT, display.workArea.height - DASHBOARD_WINDOW_MARGIN * 2)
   const x = Math.round(display.workArea.x + (display.workArea.width - width) / 2)
@@ -47,13 +48,14 @@ export function createDashboardWindow(display: Display): BrowserWindow {
     window.show()
   })
 
+  const query = dashboardRouteQuery(route)
   if (process.env.ELECTRON_RENDERER_URL) {
     const url = new URL(process.env.ELECTRON_RENDERER_URL)
     url.pathname = '/dashboard.html'
-    url.search = ''
+    url.search = new URLSearchParams(query).toString()
     void window.loadURL(url.toString())
   } else {
-    void window.loadFile(join(__dirname, '../renderer/dashboard.html'))
+    void window.loadFile(join(__dirname, '../renderer/dashboard.html'), { query })
   }
 
   return window

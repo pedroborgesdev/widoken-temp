@@ -1,27 +1,7 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import type { ProviderSetting } from '@shared/settings'
-import antigravityLogo from '../../assets/providers/antigravity.png'
-import claudeLogo from '../../assets/providers/claude.png'
-import cursorLogo from '../../assets/providers/cursor.png'
-import copilotLogo from '../../assets/providers/github-copilot.png'
-import openaiLogo from '../../assets/providers/openai.png'
+import { providerLogos, providerName } from '../../utils/providerBranding'
 import { SettingsSection } from './SettingsControls'
-
-const providerNames: Record<string, string> = {
-  claude: 'Claude',
-  openai: 'ChatGPT',
-  cursor: 'Cursor',
-  antigravity: 'Antigravity',
-  copilot: 'GitHub Copilot'
-}
-
-const providerLogos: Record<string, string> = {
-  claude: claudeLogo,
-  openai: openaiLogo,
-  cursor: cursorLogo,
-  antigravity: antigravityLogo,
-  copilot: copilotLogo
-}
 
 interface ProviderSettingsListProps {
   providers: ProviderSetting[]
@@ -31,7 +11,11 @@ interface ProviderSettingsListProps {
 
 type DropPosition = { id: string; edge: 'before' | 'after' }
 
-export function ProviderSettingsList({ providers, onToggle, onReorder }: ProviderSettingsListProps): React.JSX.Element {
+export function ProviderSettingsList({
+  providers,
+  onToggle,
+  onReorder
+}: ProviderSettingsListProps): React.JSX.Element {
   const ordered = [...providers].sort((a, b) => a.order - b.order)
   const draggedIdRef = useRef<string | undefined>(undefined)
   const dropPositionRef = useRef<DropPosition | undefined>(undefined)
@@ -109,7 +93,7 @@ export function ProviderSettingsList({ providers, onToggle, onReorder }: Provide
     <SettingsSection title="Providers" description="Drag the handle to change the order in the widget.">
       <div className="provider-settings-list">
         {ordered.map((provider) => {
-          const name = providerNames[provider.id] ?? provider.id
+          const name = providerName(provider.id)
           const dropClass = dropPosition?.id === provider.id
             ? ` provider-setting--drop-${dropPosition.edge}`
             : ''

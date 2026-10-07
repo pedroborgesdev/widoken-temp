@@ -47,7 +47,7 @@ export class AppController {
       settingsRepository,
       providerManager,
       {
-        open: () => dashboardWindows.open(),
+        open: (route) => dashboardWindows.open(route),
         close: () => dashboardWindows.close(),
         minimize: () => dashboardWindows.minimize(),
         resizeToContent: (height) => dashboardWindows.resizeToContent(height)

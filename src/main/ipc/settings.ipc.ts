@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron'
+import { sanitizeDashboardRoute, type DashboardRoute } from '@shared/dashboard'
 import { IPC } from '@shared/ipc'
 import type { AppSettings, SettingsPatch } from '@shared/settings'
 import type { ProviderManager } from '../providers/ProviderManager'
@@ -8,7 +9,7 @@ import { syncVsCodeTheme } from '../themes/VsCodeThemeService'
 interface DashboardWindowActions {
   close: () => void
   minimize: () => void
-  open: () => void
+  open: (route?: DashboardRoute) => void
   resizeToContent: (height: number) => void
 }
 
@@ -30,7 +31,9 @@ export function registerSettingsIpc(
     void providers.refresh()
     return settings
   })
-  ipcMain.handle(IPC.dashboardWindowOpen, () => dashboardWindow.open())
+  ipcMain.handle(IPC.dashboardWindowOpen, (_event, route?: unknown) =>
+    dashboardWindow.open(route === undefined ? undefined : sanitizeDashboardRoute(route))
+  )
   ipcMain.handle(IPC.dashboardWindowClose, () => dashboardWindow.close())
   ipcMain.handle(IPC.dashboardWindowMinimize, () => dashboardWindow.minimize())
   ipcMain.handle(IPC.dashboardWindowResizeToContent, (_event, height: number) => dashboardWindow.resizeToContent(height))

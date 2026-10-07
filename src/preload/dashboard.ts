@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { DashboardRoute } from '@shared/dashboard'
 import type { DashboardDesktopApi } from '@shared/ipc'
 import type { ProviderView } from '@shared/provider'
 import type { AppSettings, SettingsPatch } from '@shared/settings'
@@ -15,6 +16,7 @@ const IPC = {
   dashboardWindowClose: 'dashboard-window:close',
   dashboardWindowMinimize: 'dashboard-window:minimize',
   dashboardWindowResizeToContent: 'dashboard-window:resize-to-content',
+  dashboardNavigate: 'dashboard:navigate',
   themeSyncVsCode: 'theme:sync-vscode',
   appQuit: 'app:quit'
 } as const
@@ -41,7 +43,12 @@ const dashboardDesktopApi: DashboardDesktopApi = {
   dashboard: {
     close: () => ipcRenderer.invoke(IPC.dashboardWindowClose),
     minimize: () => ipcRenderer.invoke(IPC.dashboardWindowMinimize),
-    resizeToContent: (height: number) => ipcRenderer.invoke(IPC.dashboardWindowResizeToContent, height)
+    resizeToContent: (height: number) => ipcRenderer.invoke(IPC.dashboardWindowResizeToContent, height),
+    onNavigate: (callback: (route: DashboardRoute) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, route: DashboardRoute): void => callback(route)
+      ipcRenderer.on(IPC.dashboardNavigate, listener)
+      return () => ipcRenderer.removeListener(IPC.dashboardNavigate, listener)
+    }
   },
   themes: {
     syncVsCode: () => ipcRenderer.invoke(IPC.themeSyncVsCode)

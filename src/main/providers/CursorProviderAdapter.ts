@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import { existsSync } from 'node:fs'
 import type { ProviderSnapshot, UsageLimit } from '@shared/provider'
+import { CursorActivityProbe } from './CursorActivityProbe'
 import type { ProviderAdapter } from './ProviderAdapter'
 import { cursorStateDatabasePath } from './cursorStorage'
 
@@ -101,6 +102,7 @@ export class CursorProviderAdapter implements ProviderAdapter {
   readonly id = 'cursor'
   readonly name = 'Cursor'
   private connected = true
+  private readonly activityProbe = new CursorActivityProbe()
 
   async connect(): Promise<void> {
     this.connected = true
@@ -112,6 +114,10 @@ export class CursorProviderAdapter implements ProviderAdapter {
 
   async isConnected(): Promise<boolean> {
     return this.connected && Boolean(readCredentials())
+  }
+
+  async isActive(): Promise<boolean> {
+    return this.activityProbe.isActive()
   }
 
   async getUsage(): Promise<ProviderSnapshot> {

@@ -1,4 +1,5 @@
 import type { Rectangle } from 'electron'
+import type { DashboardRoute } from './dashboard'
 import type { ProviderView } from './provider'
 import type { AppSettings, SettingsPatch } from './settings'
 import type { SyncedVsCodeTheme } from './settings'
@@ -18,6 +19,7 @@ export const IPC = {
   dashboardWindowMinimize: 'dashboard-window:minimize',
   dashboardWindowResizeToContent: 'dashboard-window:resize-to-content',
   dashboardWindowState: 'dashboard-window:state',
+  dashboardNavigate: 'dashboard:navigate',
   themeSyncVsCode: 'theme:sync-vscode',
   appQuit: 'app:quit'
 } as const
@@ -44,7 +46,7 @@ export interface WidgetDesktopApi {
   settings: SettingsApi
   dashboard: {
     onWindowState(callback: (open: boolean) => void): () => void
-    open(): Promise<void>
+    open(route?: DashboardRoute): Promise<void>
   }
 }
 
@@ -55,6 +57,7 @@ export interface DashboardDesktopApi {
     close(): Promise<void>
     minimize(): Promise<void>
     resizeToContent(height: number): Promise<void>
+    onNavigate(callback: (route: DashboardRoute) => void): () => void
   }
   themes: {
     syncVsCode(): Promise<SyncedVsCodeTheme>

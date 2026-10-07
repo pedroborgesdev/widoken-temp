@@ -14,7 +14,7 @@ Only the six-pixel grab affordance starts a drag. During drag, the entire window
 - entering either magnetic target pulls the widget to that edge, inset by 8 px, and releasing docks it there;
 - releasing elsewhere keeps the widget free and persists normalized horizontal and vertical coordinates;
 - movement is clamped to an 8 px margin on every screen edge (equivalent to Tailwind's default `spacing-2`);
-- a vertical widget tucked against the left or right edge slides into that edge until 14 px of the board remain, and a horizontal widget does the same on the top or bottom edge. Touching only the ends of the long axis does not tuck it. Hover, an open popover, or a drag brings the widget back out. An open settings window does not. The Behavior page's "Tuck into screen edge" switch turns this off.
+- a vertical widget tucked against the left or right edge slides into that edge until 14 px of the board remain, and a horizontal widget does the same on the top or bottom edge. Touching only the ends of the long axis does not tuck it. Hover, an open popover, or a drag brings the widget back out. An open dashboard window does not. The "Tuck into screen edge" switch in the dashboard's Widget › Behavior page turns this off.
 
 At pointer release, settings are persisted, the grid is hidden, and native interaction returns to the widget rectangle. Provider rows remain hover targets and never initiate widget movement.
 

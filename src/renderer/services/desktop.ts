@@ -1,3 +1,4 @@
+import { dashboardRouteQuery, sanitizeDashboardRoute } from '@shared/dashboard'
 import type { DashboardDesktopApi, DesktopApi, WidgetDesktopApi } from '@shared/ipc'
 import type { ProviderView } from '@shared/provider'
 import { DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/settings'
@@ -20,11 +21,18 @@ function loadPreviewSettings(): AppSettings {
     const saved = window.localStorage.getItem(STORAGE_KEY)
     if (saved) {
       const parsed = JSON.parse(saved) as Partial<AppSettings>
+      const defaults = structuredClone(DEFAULT_SETTINGS)
       return {
-        ...structuredClone(DEFAULT_SETTINGS),
+        ...defaults,
         ...parsed,
         widget: { ...DEFAULT_SETTINGS.widget, ...parsed.widget },
-        analytics: { ...DEFAULT_SETTINGS.analytics, ...parsed.analytics }
+        analytics: { ...DEFAULT_SETTINGS.analytics, ...parsed.analytics },
+        providers: defaults.providers.map((fallback) => {
+          const provider = parsed.providers?.find((candidate) => candidate.id === fallback.id)
+          return provider
+            ? { ...fallback, ...provider, usageDisplay: { ...fallback.usageDisplay, ...provider.usageDisplay } }
+            : fallback
+        })
       }
     }
   } catch {
@@ -126,8 +134,10 @@ const browserDesktopApi: DesktopApi = {
       dashboardWindowListeners.add(callback)
       return () => dashboardWindowListeners.delete(callback)
     },
-    open: async () => {
-      window.open(new URL('/dashboard.html', window.location.href).toString(), 'widoken-dashboard', 'width=880,height=590')
+    open: async (route) => {
+      const url = new URL('/dashboard.html', window.location.href)
+      if (route) url.search = new URLSearchParams(dashboardRouteQuery(sanitizeDashboardRoute(route))).toString()
+      window.open(url.toString(), 'widoken-dashboard', 'width=1180,height=760')
       dashboardWindowListeners.forEach((listener) => listener(true))
     },
     close: async () => {
@@ -135,7 +145,8 @@ const browserDesktopApi: DesktopApi = {
       window.close()
     },
     minimize: async () => undefined,
-    resizeToContent: async () => undefined
+    resizeToContent: async () => undefined,
+    onNavigate: () => () => undefined
   },
   themes: {
     syncVsCode: async () => {

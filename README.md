@@ -9,7 +9,7 @@ The desktop MVP includes:
 - independent widget and dashboard windows with separate renderer entrypoints, state, and sandboxed preloads;
 - a dynamic 1–4 provider widget with Figma assets and programmatic usage rings;
 - healthy, loading, disconnected, unavailable, and error data states;
-- live Codex request activity, shown as severity-colored dots orbiting the provider until the turn completes;
+- live Codex and Cursor agent activity, shown as severity-colored dots orbiting the provider until the turn completes;
 - vertical and horizontal widget layouts, usage popovers, free two-axis dragging, two full-height magnetic docking columns, and an 8 px screen margin;
 - persisted widget on/off state, provider order, enabled state, refresh interval, startup preference, docking state, and normalized horizontal/vertical position;
 - one-click VS Code theme import on Linux, Windows, and macOS, including installed themes and workbench color customizations;
@@ -17,7 +17,7 @@ The desktop MVP includes:
 - provider polling with a real read-only Cursor adapter, explicit unavailable/error states for providers not yet connected, unit tests, and an Electron smoke test;
 - Electron Builder targets for Windows NSIS and Linux AppImage/deb.
 
-Claude, Cursor, Codex, and GitHub Copilot usage are collected from their local sessions and official usage endpoints. Antigravity still needs a provider-specific adapter. The app does not scrape browser cookies; local session files are read only by the main process and only for the provider integrations described in [Provider adapters](docs/PROVIDER_ADAPTERS.md). GitHub Copilot is available in Settings and disabled by default.
+Claude, Cursor, Codex, and GitHub Copilot usage are collected from their local sessions and official usage endpoints. Antigravity still needs a provider-specific adapter. The app does not scrape browser cookies; local session files are read only by the main process and only for the provider integrations described in [Provider adapters](docs/PROVIDER_ADAPTERS.md). GitHub Copilot is available in the dashboard's Widget › Providers page and disabled by default.
 
 ## Development
 

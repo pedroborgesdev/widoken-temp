@@ -1,19 +1,12 @@
 import { forwardRef } from 'react'
 import type { ProviderListPrice, ProviderView, UsageTrend } from '@shared/provider'
-import type { DockSide } from '@shared/settings'
+import { displayedUsageLimits } from '@shared/providerUsage'
+import type { DockSide, ProviderUsageDisplay } from '@shared/settings'
+import { percentDescription, readableName, resetDescription } from '../../utils/usageFormat'
 import { UnavailablePopover } from './UnavailablePopover'
 import { UsageBar } from './UsageBar'
 
 export type PopoverPlacement = DockSide | 'top' | 'bottom'
-
-function percentDescription(value: number): string {
-  const percent = Math.min(100, Math.max(0, value))
-  return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(percent)}%`
-}
-
-function readableName(value: string): string {
-  return value.replaceAll('_', ' ').replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
-}
 
 function amountDescription(used?: number, limit?: number, remaining?: number): string | undefined {
   const format = (value: number): string => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value)
@@ -73,25 +66,9 @@ function TrendDetails({ trend }: { trend?: UsageTrend }): React.JSX.Element {
   )
 }
 
-function resetDescription(value?: string): string {
-  if (!value) return 'Reset time unavailable'
-  const reset = new Date(value)
-  if (Number.isNaN(reset.getTime())) return value
-
-  const difference = reset.getTime() - Date.now()
-  const minutes = Math.max(0, Math.round(difference / 60_000))
-  const relative = minutes >= 1440 ? `${Math.round(minutes / 1440)} days` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`
-  const formatted = new Intl.DateTimeFormat(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    month: minutes >= 1440 ? '2-digit' : undefined,
-    day: minutes >= 1440 ? '2-digit' : undefined
-  }).format(reset)
-  return `Resets at ${formatted} (in ${relative})`
-}
-
 interface UsagePopoverProps {
   provider: ProviderView
+  usageDisplay?: ProviderUsageDisplay
   placement: PopoverPlacement
   left: number
   top?: number
@@ -102,10 +79,14 @@ interface UsagePopoverProps {
 }
 
 export const UsagePopover = forwardRef<HTMLDivElement, UsagePopoverProps>(function UsagePopover(
-  { provider, placement, left, top, bottom, maxHeight, onEnter, onLeave },
+  { provider, usageDisplay, placement, left, top, bottom, maxHeight, onEnter, onLeave },
   ref
 ) {
   const isAvailable = provider.snapshot.status === 'connected' && provider.snapshot.limits.length > 0
+  const displayedSides = new Map(
+    displayedUsageLimits(provider.id, provider.snapshot.limits, usageDisplay)
+      .flatMap(({ limit, side }) => side ? [[limit.id, side] as const] : [])
+  )
   const panelStyle = maxHeight === undefined
     ? undefined
     : { maxHeight, ...(maxHeight < 96 ? { minHeight: 0 } : {}) }
@@ -136,7 +117,14 @@ export const UsagePopover = forwardRef<HTMLDivElement, UsagePopoverProps>(functi
               return (
                 <div className="usage-popover__limit" key={limit.id}>
                   <div className="usage-popover__heading">
-                    <p className="usage-popover__label">{limit.label}</p>
+                    <p className="usage-popover__label">
+                      {limit.label}
+                      {displayedSides.has(limit.id) && (
+                        <span className={`usage-popover__side usage-popover__side--${displayedSides.get(limit.id)}`}>
+                          {displayedSides.get(limit.id)}
+                        </span>
+                      )}
+                    </p>
                     <strong className="usage-popover__percent">
                       {limit.unlimited ? 'Unlimited' : percentDescription(limit.percent)}
                     </strong>

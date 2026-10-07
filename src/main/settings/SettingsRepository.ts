@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs'
 import { dirname } from 'node:path'
+import { PROVIDER_USAGE_LIMITS } from '@shared/providerUsage'
 import {
   DEFAULT_SETTINGS,
   APP_THEMES,
@@ -7,6 +8,7 @@ import {
   clampVerticalPosition,
   type AppSettings,
   type ProviderSetting,
+  type ProviderUsageDisplay,
   type SettingsPatch,
   type SyncedThemeColors,
   type SyncedVsCodeTheme
@@ -36,16 +38,45 @@ function clampNumber(value: unknown, minimum: number, maximum: number, fallback:
   return Number.isFinite(number) ? Math.min(maximum, Math.max(minimum, number)) : fallback
 }
 
+function sanitizeProviderUsage(
+  providerId: string,
+  value: unknown,
+  fallback: ProviderUsageDisplay
+): ProviderUsageDisplay {
+  const candidate = value && typeof value === 'object' ? value as Partial<ProviderUsageDisplay> : fallback
+  const ids = new Set((PROVIDER_USAGE_LIMITS[providerId] ?? []).map((option) => option.id))
+  const primaryLimitId = typeof candidate.primaryLimitId === 'string' && ids.has(candidate.primaryLimitId)
+    ? candidate.primaryLimitId
+    : fallback.primaryLimitId
+  let secondaryLimitId = typeof candidate.secondaryLimitId === 'string' && ids.has(candidate.secondaryLimitId)
+    ? candidate.secondaryLimitId
+    : fallback.secondaryLimitId
+  if (secondaryLimitId === primaryLimitId) {
+    secondaryLimitId = [...ids].find((id) => id !== primaryLimitId)
+  }
+  return {
+    split: ids.size >= 2 && candidate.split !== false,
+    primaryLimitId,
+    secondaryLimitId
+  }
+}
+
 function sanitizeProviders(value: unknown): ProviderSetting[] {
   if (!Array.isArray(value)) return DEFAULT_SETTINGS.providers
 
   const seen = new Set<string>()
-  const providers = value.flatMap((candidate, index) => {
+  const providers = value.flatMap<ProviderSetting>((candidate, index) => {
     if (!candidate || typeof candidate !== 'object') return []
     const item = candidate as Partial<ProviderSetting>
     if (typeof item.id !== 'string' || !PROVIDER_IDS.has(item.id) || seen.has(item.id)) return []
     seen.add(item.id)
-    return [{ id: item.id, enabled: item.enabled !== false, order: Number.isFinite(item.order) ? Number(item.order) : index }]
+    const fallback = DEFAULT_SETTINGS.providers.find((provider) => provider.id === item.id)!
+    return [{
+      id: item.id,
+      enabled: item.enabled !== false,
+      order: Number.isFinite(item.order) ? Number(item.order) : index,
+      usageDisplay: sanitizeProviderUsage(item.id, item.usageDisplay, fallback.usageDisplay)
+    } satisfies ProviderSetting]
   })
 
   for (const fallback of DEFAULT_SETTINGS.providers) {

@@ -1,10 +1,10 @@
 import { useCallback, type CSSProperties } from 'react'
-import { SettingsPanel } from '../components/Settings/SettingsPanel'
 import { dashboardDesktop } from '../services/desktop'
+import { DashboardPanel } from './DashboardPanel'
 import { useDashboard } from './state/DashboardContext'
 
 export function DashboardApp(): React.JSX.Element {
-  const { settings, settingsReady, updateSettings } = useDashboard()
+  const { settings, settingsReady, providers, route, navigate, updateSettings } = useDashboard()
 
   const syncVsCodeTheme = useCallback(async (): Promise<string> => {
     const theme = await dashboardDesktop.themes.syncVsCode()
@@ -18,9 +18,11 @@ export function DashboardApp(): React.JSX.Element {
       style={{ '--shadow-opacity': `${settings.widget.shadowOpacity}%` } as CSSProperties}
     >
       {settingsReady && (
-        <SettingsPanel
-          variant="window"
+        <DashboardPanel
           settings={settings}
+          providers={providers}
+          route={route}
+          onNavigate={navigate}
           onUpdate={(patch) => void updateSettings(patch)}
           onSyncVsCodeTheme={syncVsCodeTheme}
           onClose={() => void dashboardDesktop.dashboard.close()}

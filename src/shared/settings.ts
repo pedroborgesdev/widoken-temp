@@ -40,10 +40,17 @@ export interface SyncedVsCodeTheme {
 export type WidgetOrientation = 'vertical' | 'horizontal'
 export type UnavailableStyle = 'dim' | 'normal'
 
+export interface ProviderUsageDisplay {
+  split: boolean
+  primaryLimitId?: string
+  secondaryLimitId?: string
+}
+
 export interface ProviderSetting {
   id: string
   enabled: boolean
   order: number
+  usageDisplay: ProviderUsageDisplay
 }
 
 export interface AppSettings {
@@ -98,11 +105,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
     localInsights: false
   },
   providers: [
-    { id: 'claude', enabled: true, order: 0 },
-    { id: 'openai', enabled: true, order: 1 },
-    { id: 'cursor', enabled: true, order: 2 },
-    { id: 'antigravity', enabled: true, order: 3 },
-    { id: 'copilot', enabled: false, order: 4 }
+    { id: 'claude', enabled: true, order: 0, usageDisplay: { split: true, primaryLimitId: 'session', secondaryLimitId: 'weekly' } },
+    { id: 'openai', enabled: true, order: 1, usageDisplay: { split: true, primaryLimitId: 'primary', secondaryLimitId: 'secondary' } },
+    { id: 'cursor', enabled: true, order: 2, usageDisplay: { split: true, primaryLimitId: 'auto', secondaryLimitId: 'api' } },
+    { id: 'antigravity', enabled: true, order: 3, usageDisplay: { split: false } },
+    { id: 'copilot', enabled: false, order: 4, usageDisplay: { split: true, primaryLimitId: 'premium_interactions', secondaryLimitId: 'chat' } }
   ],
   refreshIntervalSeconds: 45,
   launchAtStartup: false

@@ -1,6 +1,6 @@
 import { forwardRef, useLayoutEffect, useRef, type CSSProperties, type PointerEventHandler } from 'react'
 import type { ProviderView } from '@shared/provider'
-import type { DockSide, WidgetOrientation } from '@shared/settings'
+import type { DockSide, ProviderSetting, WidgetOrientation } from '@shared/settings'
 import { boardItemCount, boardSpan, WIDGET_COLLAPSE_MS, type ControlTurnDirection, type EdgeCollapse } from '../../utils/layout'
 import { BoardAppButton } from './BoardAppButton'
 import { GearButton } from './GearButton'
@@ -9,6 +9,7 @@ import { ProviderItem } from './ProviderItem'
 
 interface WidgetProps {
   providers: ProviderView[]
+  providerSettings: ProviderSetting[]
   side: DockSide
   left: number
   top: number
@@ -34,6 +35,7 @@ interface WidgetProps {
   onHoverChange: (hovered: boolean) => void
   onAppEnter: () => void
   onAppLeave: () => void
+  onDashboard: () => void
   onSettings: () => void
   onGrabPointerDown: PointerEventHandler<HTMLButtonElement>
 }
@@ -41,6 +43,7 @@ interface WidgetProps {
 export const Widget = forwardRef<HTMLDivElement, WidgetProps>(function Widget(
   {
     providers,
+    providerSettings,
     side,
     left,
     top,
@@ -66,6 +69,7 @@ export const Widget = forwardRef<HTMLDivElement, WidgetProps>(function Widget(
     onHoverChange,
     onAppEnter,
     onAppLeave,
+    onDashboard,
     onSettings,
     onGrabPointerDown
   },
@@ -188,12 +192,13 @@ export const Widget = forwardRef<HTMLDivElement, WidgetProps>(function Widget(
               <ProviderItem
                 key={provider.id}
                 provider={provider}
+                usageDisplay={providerSettings.find((setting) => setting.id === provider.id)?.usageDisplay}
                 animateEntry={enteringProviderIds.has(provider.id)}
                 onEnter={() => onProviderEnter(provider.id)}
                 onLeave={onProviderLeave}
               />
             ))}
-            <BoardAppButton onClick={onSettings} onEnter={onAppEnter} onLeave={onAppLeave} />
+            <BoardAppButton onClick={onDashboard} onEnter={onAppEnter} onLeave={onAppLeave} />
           </div>
           <div className="widget__controls">
             <GearButton onClick={onSettings} />

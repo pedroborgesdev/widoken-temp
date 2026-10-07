@@ -1,16 +1,9 @@
-import { createReadStream, promises as fs } from 'node:fs'
+import { promises as fs } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { StringDecoder } from 'node:string_decoder'
+import { JsonlActivityTracker } from './JsonlActivityTracker'
 
 const DEFAULT_STALE_AFTER_MS = 30 * 60 * 1000
-
-interface TrackedRollout {
-  active: boolean
-  modifiedAt: number
-  offset: number
-  remainder: string
-}
 
 interface RolloutEvent {
   type?: string
@@ -50,12 +43,14 @@ function activityFromLine(line: string, current: boolean): boolean {
 }
 
 export class CodexActivityProbe {
-  private readonly tracked = new Map<string, TrackedRollout>()
+  private readonly tracker: JsonlActivityTracker
 
   constructor(
     private readonly sessionsRoot = join(homedir(), '.codex', 'sessions'),
-    private readonly staleAfterMs = DEFAULT_STALE_AFTER_MS
-  ) {}
+    staleAfterMs = DEFAULT_STALE_AFTER_MS
+  ) {
+    this.tracker = new JsonlActivityTracker(activityFromLine, staleAfterMs)
+  }
 
   async isActive(now = Date.now()): Promise<boolean> {
     const yesterday = new Date(now)
@@ -65,28 +60,7 @@ export class CodexActivityProbe {
       dateDirectory(this.sessionsRoot, yesterday)
     ])]
     const candidates = (await Promise.all(directories.map((directory) => this.rolloutFiles(directory)))).flat()
-    const seen = new Set(candidates)
-
-    for (const path of candidates) {
-      try {
-        const stats = await fs.stat(path)
-        if (now - stats.mtimeMs > this.staleAfterMs) {
-          this.tracked.delete(path)
-          continue
-        }
-        await this.updateRollout(path, stats.size, stats.mtimeMs)
-      } catch {
-        this.tracked.delete(path)
-      }
-    }
-
-    for (const path of this.tracked.keys()) {
-      if (!seen.has(path)) this.tracked.delete(path)
-    }
-
-    return [...this.tracked.values()].some(
-      (rollout) => rollout.active && now - rollout.modifiedAt <= this.staleAfterMs
-    )
+    return this.tracker.update(candidates, now)
   }
 
   private async rolloutFiles(directory: string): Promise<string[]> {
@@ -98,28 +72,5 @@ export class CodexActivityProbe {
     } catch {
       return []
     }
-  }
-
-  private async updateRollout(path: string, size: number, modifiedAt: number): Promise<void> {
-    let rollout = this.tracked.get(path)
-    if (!rollout || size < rollout.offset) {
-      rollout = { active: false, modifiedAt, offset: 0, remainder: '' }
-      this.tracked.set(path, rollout)
-    }
-    rollout.modifiedAt = modifiedAt
-    if (size === rollout.offset) return
-
-    const decoder = new StringDecoder('utf8')
-    let pending = rollout.remainder
-    const stream = createReadStream(path, { start: rollout.offset, end: size - 1 })
-    for await (const chunk of stream) {
-      pending += decoder.write(chunk as Buffer)
-      const lines = pending.split('\n')
-      pending = lines.pop() ?? ''
-      for (const line of lines) rollout.active = activityFromLine(line, rollout.active)
-    }
-    pending += decoder.end()
-    rollout.remainder = pending
-    rollout.offset = size
   }
 }

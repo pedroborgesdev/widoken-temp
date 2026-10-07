@@ -4,6 +4,7 @@ import { ProviderManager } from '../../src/main/providers/ProviderManager'
 import type { ProviderAdapter } from '../../src/main/providers/ProviderAdapter'
 
 afterEach(() => vi.useRealTimers())
+const usageDisplay = { split: false }
 
 describe('ProviderManager', () => {
   it('publishes newly enabled providers immediately without waiting for a refresh', () => {
@@ -19,7 +20,7 @@ describe('ProviderManager', () => {
     const onUpdate = vi.fn()
     const manager = new ProviderManager(new Map([['instant', adapter]]), onUpdate)
 
-    manager.configure([{ id: 'instant', enabled: true, order: 0 }], 30)
+    manager.configure([{ id: 'instant', enabled: true, order: 0, usageDisplay }], 30)
 
     expect(onUpdate).toHaveBeenCalledOnce()
     expect(onUpdate.mock.calls[0][0]).toMatchObject([
@@ -41,7 +42,7 @@ describe('ProviderManager', () => {
       }
     }
     const manager = new ProviderManager(new Map([['broken', broken]]), () => undefined)
-    manager.configure([{ id: 'broken', enabled: true, order: 0 }], 30)
+    manager.configure([{ id: 'broken', enabled: true, order: 0, usageDisplay }], 30)
 
     const [provider] = await manager.refresh()
     expect(provider.snapshot.status).toBe('error')
@@ -81,12 +82,12 @@ describe('ProviderManager', () => {
       getUsage: secondUsage
     }
     const manager = new ProviderManager(new Map([['first', first], ['second', second]]), () => undefined)
-    manager.configure([{ id: 'first', enabled: true, order: 0 }], 30)
+    manager.configure([{ id: 'first', enabled: true, order: 0, usageDisplay }], 30)
     const activeRefresh = manager.refresh()
 
     manager.configure([
-      { id: 'first', enabled: true, order: 0 },
-      { id: 'second', enabled: true, order: 1 }
+      { id: 'first', enabled: true, order: 0, usageDisplay },
+      { id: 'second', enabled: true, order: 1, usageDisplay }
     ], 30)
     const reconfiguredRefresh = manager.refresh()
     finishFirst()
@@ -116,7 +117,7 @@ describe('ProviderManager', () => {
     }
     const onUpdate = vi.fn()
     const manager = new ProviderManager(new Map([['active', adapter]]), onUpdate)
-    manager.start([{ id: 'active', enabled: true, order: 0 }], 30)
+    manager.start([{ id: 'active', enabled: true, order: 0, usageDisplay }], 30)
     await vi.advanceTimersByTimeAsync(0)
 
     active = true

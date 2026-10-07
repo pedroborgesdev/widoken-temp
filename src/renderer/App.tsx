@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import type { Rectangle } from 'electron'
+import { DEFAULT_WIDGET_SECTION } from '@shared/dashboard'
 import { shadowPaintOutset } from '@shared/overlay'
 import { activeSyncedTheme, syncedThemeStyle } from './utils/theme'
 import { SelectionGrid } from './components/SelectionGrid/SelectionGrid'
@@ -193,6 +194,7 @@ export default function App(): React.JSX.Element {
     : effectiveLeft + widgetWidth / 2 <= viewport.width / 2 ? 'left' : 'right'
   const hoveredIndex = providers.findIndex((provider) => provider.id === state.hoveredProviderId)
   const hoveredProvider = hoveredIndex >= 0 ? providers[hoveredIndex] : undefined
+  const hoveredProviderSetting = providerSettings.find((setting) => setting.id === hoveredProvider?.id)
   const popoverIndex = appMenuOpen ? providers.length : hoveredIndex
   const hasUsage = hoveredProvider?.snapshot.status === 'connected' && hoveredProvider.snapshot.limits.length > 0
   const popoverHeight = !hasUsage
@@ -595,6 +597,7 @@ export default function App(): React.JSX.Element {
       <Widget
         ref={widgetRef}
         providers={providers}
+        providerSettings={providerSettings}
         side={effectiveSide}
         left={effectiveLeft}
         top={effectiveTop}
@@ -620,9 +623,13 @@ export default function App(): React.JSX.Element {
         onHoverChange={setWidgetHovered}
         onAppEnter={openAppMenu}
         onAppLeave={closeAppMenuSoon}
+        onDashboard={() => {
+          setAppMenuOpen(false)
+          void desktop.dashboard.open({ page: 'dashboard' })
+        }}
         onSettings={() => {
           setAppMenuOpen(false)
-          void desktop.dashboard.open()
+          void desktop.dashboard.open({ page: 'widget', section: DEFAULT_WIDGET_SECTION })
         }}
         onGrabPointerDown={startDrag}
       />
@@ -631,6 +638,7 @@ export default function App(): React.JSX.Element {
           key={hoveredProvider.id}
           ref={popoverRef}
           provider={hoveredProvider}
+          usageDisplay={hoveredProviderSetting?.usageDisplay}
           placement={popoverPlacement}
           left={popoverLeft}
           top={popoverTop}

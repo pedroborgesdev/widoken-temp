@@ -19,9 +19,9 @@ Electron main process
         │   └── drag and interaction regions
         │
         └── dashboard preload → dashboard renderer
-            ├── DashboardProvider
-            ├── settings navigation
-            └── future dashboard features
+            ├── DashboardProvider (settings, provider snapshots, route)
+            ├── Dashboard page: usage overview and app settings
+            └── Widget page: Providers, Usage ring, Appearance, Behavior
 ```
 
 ## Process and window boundaries
@@ -42,10 +42,12 @@ The role-specific preloads deliberately expose different capabilities:
 
 `ProviderManager`, analytics, and settings are application services rather than widget services. Provider polling therefore has one source of truth and can serve both renderers without duplicated sessions or polling.
 
-Provider activity is a separate, optional adapter capability. It is sampled on a short interval and merged into `ProviderView` without changing the slower quota refresh cadence. Codex implements this capability from durable turn-boundary events in its local rollouts; an active-to-idle transition triggers a targeted quota refresh.
+Provider activity is a separate, optional adapter capability. It is sampled on a short interval and merged into `ProviderView` without changing the slower quota refresh cadence. Codex and Cursor implement this capability from durable turn-boundary events in their local rollouts and agent transcripts; an active-to-idle transition triggers a targeted quota refresh.
 
 ## State and communication
 
 The widget's reducer contains only overlay interaction state: `passive`, `provider-hover`, and `dragging`. Dashboard settings state lives in `DashboardProvider`; React state is never shared directly between the windows. Persisted changes and live snapshots cross the boundary through typed IPC events.
+
+The dashboard has two top-level pages. Selecting Widget expands a second sidebar, to the right of the main one, with every widget setting. The widget can ask for a page when it opens the dashboard: the widoken icon opens the Dashboard page and the gear opens Widget › Appearance. The main process sanitizes that `DashboardRoute`; a new window receives it as a query parameter, and an open window receives it over `dashboard:navigate`. Opening the dashboard without a route, such as from a second app instance, keeps the current page.
 
 Settings are atomically replaced under Electron's `userData` directory with owner-only file permissions. Free widget positions are stored as 0–1 ratios, together with the optional docked edge, so layout survives resolution changes.

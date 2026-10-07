@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, type Rectangle } from 'electron'
+import type { DashboardRoute } from '@shared/dashboard'
 import type { WidgetDesktopApi } from '@shared/ipc'
 import type { ProviderView } from '@shared/provider'
 import type { AppSettings, SettingsPatch } from '@shared/settings'
@@ -54,7 +55,7 @@ const widgetDesktopApi: WidgetDesktopApi = {
       ipcRenderer.on(IPC.dashboardWindowState, listener)
       return () => ipcRenderer.removeListener(IPC.dashboardWindowState, listener)
     },
-    open: () => ipcRenderer.invoke(IPC.dashboardWindowOpen)
+    open: (route?: DashboardRoute) => ipcRenderer.invoke(IPC.dashboardWindowOpen, route)
   }
 }
 

@@ -1,4 +1,6 @@
 import { screen, type BrowserWindow } from 'electron'
+import { DEFAULT_DASHBOARD_ROUTE, type DashboardRoute } from '@shared/dashboard'
+import { IPC } from '@shared/ipc'
 import { createDashboardWindow } from '../window/createDashboardWindow'
 import { resolveTargetDisplay } from '../window/createOverlayWindow'
 import type { SettingsRepository } from '../settings/SettingsRepository'
@@ -17,17 +19,19 @@ export class DashboardWindowManager {
     return this.dashboardWindow && !this.dashboardWindow.isDestroyed() ? this.dashboardWindow : undefined
   }
 
-  async open(): Promise<void> {
+  /** Without a route an already open dashboard keeps its current page. */
+  async open(route?: DashboardRoute): Promise<void> {
+    if (this.opening) await this.opening
     const existing = this.window
     if (existing) {
       if (existing.isMinimized()) existing.restore()
       existing.show()
       existing.focus()
+      if (route) this.navigate(existing, route)
       return
     }
-    if (this.opening) return this.opening
 
-    this.opening = this.create()
+    this.opening = this.create(route ?? DEFAULT_DASHBOARD_ROUTE)
     try {
       await this.opening
     } finally {
@@ -63,14 +67,22 @@ export class DashboardWindowManager {
     if (window) window.destroy()
   }
 
-  private async create(): Promise<void> {
+  private navigate(window: BrowserWindow, route: DashboardRoute): void {
+    const send = (): void => {
+      if (!window.isDestroyed()) window.webContents.send(IPC.dashboardNavigate, route)
+    }
+    if (window.webContents.isLoading()) window.webContents.once('did-finish-load', send)
+    else send()
+  }
+
+  private async create(route: DashboardRoute): Promise<void> {
     const settings = await this.settingsRepository.get()
     if (this.window) return
     const widgetWindow = this.getWidgetWindow()
     const display = widgetWindow
       ? screen.getDisplayMatching(widgetWindow.getBounds())
       : resolveTargetDisplay(settings)
-    const window = createDashboardWindow(display)
+    const window = createDashboardWindow(display, route)
     this.dashboardWindow = window
     this.onWindowStateChanged(true)
     window.once('closed', () => {

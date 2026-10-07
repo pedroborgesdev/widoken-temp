@@ -23,8 +23,8 @@ function createTestRegistry(): Map<string, ProviderAdapter> {
       name: 'ChatGPT',
       plan: 'plus',
       limits: [
-        { id: 'three-hour', label: '3 hours rate limit', percent: 55, resetsAt: inMinutes(86) },
-        { id: 'week', label: 'Week rate limit', percent: 42, resetsAt: inDays(4) }
+        { id: 'primary', label: 'Primary window', percent: 55, resetsAt: inMinutes(86) },
+        { id: 'secondary', label: 'Secondary window', percent: 42, resetsAt: inDays(4) }
       ]
     }),
     new MockProviderAdapter({
