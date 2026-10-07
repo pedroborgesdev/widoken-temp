@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import type { Rectangle } from 'electron'
+import { shadowPaintOutset } from '@shared/overlay'
 import { SelectionGrid } from './components/SelectionGrid/SelectionGrid'
+import { AppMenuPopover } from './components/UsagePopover/AppMenuPopover'
 import { UsagePopover } from './components/UsagePopover/UsagePopover'
 import { Widget } from './components/Widget/Widget'
 import { desktop } from './services/desktop'
@@ -78,6 +80,7 @@ export default function App(): React.JSX.Element {
   const { state, dispatch } = useOverlay()
   const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight })
   const [widgetHovered, setWidgetHovered] = useState(false)
+  const [appMenuOpen, setAppMenuOpen] = useState(false)
   const [tucked, setTucked] = useState(false)
   const [collapseSettled, setCollapseSettled] = useState(false)
   const [expandSettled, setExpandSettled] = useState(true)
@@ -97,7 +100,13 @@ export default function App(): React.JSX.Element {
   )
   const providerMap = useMemo(() => new Map(state.providers.map((provider) => [provider.id, provider])), [state.providers])
   const providers = useMemo(
-    () => providerSettings.flatMap((setting) => (providerMap.has(setting.id) ? [providerMap.get(setting.id)!] : [])),
+    () => providerSettings.flatMap((setting) => {
+      const provider = providerMap.get(setting.id)
+      // Loading has no real status yet. Mounting it now paints the full-color
+      // icon, and the dim treatment only arrives on the next snapshot.
+      if (!provider || provider.snapshot.status === 'loading') return []
+      return [provider]
+    }),
     [providerMap, providerSettings]
   )
   const widgetOrientation = state.settings.widget.orientation
@@ -109,7 +118,7 @@ export default function App(): React.JSX.Element {
   const baseWidgetHeight = widgetOrientation === 'vertical' ? boardLength : getWidgetHeight(1, 'horizontal', itemGap)
   const widgetWidth = baseWidgetWidth * widgetScale
   const widgetHeight = baseWidgetHeight * widgetScale
-  const freeTop = getWidgetTop(state.settings.widget.verticalPosition, viewport.height, widgetHeight)
+  const freeTop = getWidgetTop(state.settings.widget.verticalPosition, viewport.height, baseWidgetHeight)
   const maxTop = Math.max(WIDGET_MARGIN, viewport.height - widgetHeight - WIDGET_MARGIN)
   const freeLeft = getWidgetLeft(state.settings.widget.horizontalPosition, viewport.width, baseWidgetWidth)
   const persistedTop = state.settings.widget.docked && (state.settings.widget.side === 'top' || state.settings.widget.side === 'bottom')
@@ -125,20 +134,29 @@ export default function App(): React.JSX.Element {
   const effectiveTop = state.mode === 'dragging' && state.drag ? state.drag.top : persistedTop
   const effectiveLeft = state.mode === 'dragging' && state.drag ? state.drag.left : persistedLeft
   const effectiveSide = state.mode === 'dragging' && state.drag ? state.drag.side : state.settings.widget.side
-  const edgeCollapse = resolveEdgeCollapse(
-    widgetOrientation,
-    effectiveLeft,
-    effectiveTop,
-    widgetWidth,
-    widgetHeight,
-    viewport.width,
-    viewport.height
-  )
+  const edgeCollapse = state.settings.widget.edgeTuck
+    ? resolveEdgeCollapse(
+        widgetOrientation,
+        effectiveLeft,
+        effectiveTop,
+        widgetWidth,
+        widgetHeight,
+        viewport.width,
+        viewport.height
+      )
+    : undefined
   const holdWidgetOpen = widgetHovered
+    || appMenuOpen
     || state.mode === 'dragging'
     || state.mode === 'provider-hover'
   const showCornerChrome = widgetHovered || state.mode === 'dragging'
   const collapsed = Boolean(edgeCollapse) && tucked && !holdWidgetOpen
+  // A settled tuck has to stay clipped to the peek. Padding that sliver would
+  // paint the shadow of the part that already slid off the screen.
+  const paintOutset = shadowPaintOutset(
+    state.settings.widget.shadows && !(collapsed && collapseSettled),
+    widgetScale
+  )
   const edgeGap = !edgeCollapse
     ? 0
     : edgeCollapse === 'left'
@@ -174,6 +192,7 @@ export default function App(): React.JSX.Element {
     : effectiveLeft + widgetWidth / 2 <= viewport.width / 2 ? 'left' : 'right'
   const hoveredIndex = providers.findIndex((provider) => provider.id === state.hoveredProviderId)
   const hoveredProvider = hoveredIndex >= 0 ? providers[hoveredIndex] : undefined
+  const popoverIndex = appMenuOpen ? providers.length : hoveredIndex
   const hasUsage = hoveredProvider?.snapshot.status === 'connected' && hoveredProvider.snapshot.limits.length > 0
   const popoverHeight = !hasUsage
     ? POPOVER_HEIGHT_UNAVAILABLE
@@ -190,13 +209,14 @@ export default function App(): React.JSX.Element {
             ? 24 + hoveredProvider.snapshot.analytics.localMetrics.length * 14
             : 0)
       )
+  const popoverId = appMenuOpen ? 'app-menu' : hoveredProvider?.id
   const measuredPopover = resolvedPopoverHeight
-  const verticalLayoutHeight = measuredPopover && measuredPopover.id === hoveredProvider?.id
+  const verticalLayoutHeight = measuredPopover && measuredPopover.id === popoverId
     ? measuredPopover.height
     : popoverHeight
   const baseVerticalPopoverTop = resolveVerticalPopoverTop(
     effectiveTop,
-    hoveredIndex,
+    popoverIndex,
     verticalLayoutHeight,
     cornerControls.coreShiftY,
     providerPitch,
@@ -222,7 +242,7 @@ export default function App(): React.JSX.Element {
       effectiveLeft + cornerControls.coreShiftX * widgetScale,
       effectiveTop,
       widgetHeight,
-      hoveredIndex,
+      popoverIndex,
       popoverHeight,
       viewport.width,
       viewport.height,
@@ -248,8 +268,7 @@ export default function App(): React.JSX.Element {
   const popoverLeft = widgetOrientation === 'horizontal' ? horizontalPopover.left : verticalPopoverLeft
   const popoverMaxHeight = widgetOrientation === 'vertical' ? verticalPopover.maxHeight : undefined
   useLayoutEffect(() => {
-    const providerId = hoveredProvider?.id
-    if (widgetOrientation !== 'vertical' || state.mode !== 'provider-hover' || !providerId) {
+    if (widgetOrientation !== 'vertical' || !popoverId || (state.mode !== 'provider-hover' && !appMenuOpen)) {
       setResolvedPopoverHeight((current) => (current === undefined ? current : undefined))
       return
     }
@@ -260,9 +279,9 @@ export default function App(): React.JSX.Element {
     const height = panel.offsetHeight
     panel.style.maxHeight = previousMaxHeight
     setResolvedPopoverHeight((current) =>
-      current?.id === providerId && current.height === height ? current : { height, id: providerId }
+      current?.id === popoverId && current.height === height ? current : { height, id: popoverId }
     )
-  }, [hoveredProvider?.id, popoverHeight, state.mode, viewport.height, widgetOrientation])
+  }, [appMenuOpen, popoverHeight, popoverId, state.mode, viewport.height, widgetOrientation])
   useEffect(() => {
     if (!edgeCollapse || holdWidgetOpen) {
       setTucked(false)
@@ -331,8 +350,11 @@ export default function App(): React.JSX.Element {
     expandSettledRef.current = expandSettled
     if (!becameSettled || state.mode === 'dragging') return
     const providerId = widgetRef.current?.querySelector<HTMLElement>('.provider-item:hover')?.dataset.providerId
-    if (!providerId) return
-    dispatch({ type: 'provider-hovered', providerId })
+    if (providerId) {
+      dispatch({ type: 'provider-hovered', providerId })
+      return
+    }
+    if (widgetRef.current?.querySelector('.board-app:hover')) setAppMenuOpen(true)
   }, [dispatch, expandSettled, state.mode])
   useEffect(() => {
     const onResize = (): void => setViewport((current) =>
@@ -379,9 +401,9 @@ export default function App(): React.JSX.Element {
           viewport.height,
           widgetScale
         ),
-        state.mode === 'provider-hover' ? elementRectangle(popoverRef.current) : undefined
+        state.mode === 'provider-hover' || appMenuOpen ? elementRectangle(popoverRef.current) : undefined
       ].filter((region): region is Rectangle => Boolean(region))
-      void desktop.overlay.setInteractionRegions(regions)
+      void desktop.overlay.setInteractionRegions(regions, paintOutset)
     }
     const widget = widgetRef.current
     widget?.addEventListener('transitionend', updateInteractionRegions)
@@ -399,6 +421,7 @@ export default function App(): React.JSX.Element {
     providers.length,
     state.mode,
     state.settingsReady,
+    appMenuOpen,
     state.hoveredProviderId,
     collapsed,
     collapseSettled,
@@ -408,6 +431,7 @@ export default function App(): React.JSX.Element {
     widgetHeight,
     widgetHovered,
     widgetOrientation,
+    paintOutset,
     widgetScale,
     widgetWidth
   ])
@@ -418,8 +442,21 @@ export default function App(): React.JSX.Element {
 
   const openProvider = (providerId: string): void => {
     cancelHoverClose()
+    setAppMenuOpen(false)
     if (state.mode === 'dragging' || !expandSettled) return
     dispatch({ type: 'provider-hovered', providerId })
+  }
+
+  const openAppMenu = (): void => {
+    cancelHoverClose()
+    if (state.mode === 'dragging' || !expandSettled) return
+    if (state.mode === 'provider-hover') dispatch({ type: 'provider-left' })
+    setAppMenuOpen(true)
+  }
+
+  const closeAppMenuSoon = (): void => {
+    cancelHoverClose()
+    hoverTimer.current = window.setTimeout(() => setAppMenuOpen(false), 90)
   }
 
   const closeProviderSoon = (): void => {
@@ -464,18 +501,18 @@ export default function App(): React.JSX.Element {
           widgetHovered ? finalCornerControls.grabTurn : undefined,
           widgetScale
         )
-      ])
+      ], paintOutset)
       const settings = await desktop.settings.update({
         widget: {
           docked: Boolean(position.candidateSide),
           horizontalPosition: normalizeWidgetCoordinate(position.left, viewport.width, baseWidgetWidth),
           side: position.side,
-          verticalPosition: normalizeWidgetCoordinate(position.top, viewport.height, widgetHeight)
+          verticalPosition: normalizeWidgetCoordinate(position.top, viewport.height, baseWidgetHeight)
         }
       })
       dispatch({ type: 'drag-ended', settings })
     },
-    [baseWidgetHeight, baseWidgetWidth, dispatch, state.settings.widget.showDockGuides, viewport.height, viewport.width, widgetHeight, widgetHovered, widgetOrientation, widgetScale, widgetWidth]
+    [baseWidgetHeight, baseWidgetWidth, dispatch, paintOutset, state.settings.widget.showDockGuides, viewport.height, viewport.width, widgetHeight, widgetHovered, widgetOrientation, widgetScale, widgetWidth]
   )
 
   useEffect(() => {
@@ -536,6 +573,7 @@ export default function App(): React.JSX.Element {
       widgetWidth,
       state.settings.widget.showDockGuides
     )
+    setAppMenuOpen(false)
     dispatch({
       type: 'drag-started',
       drag
@@ -576,7 +614,12 @@ export default function App(): React.JSX.Element {
         onProviderEnter={openProvider}
         onProviderLeave={closeProviderSoon}
         onHoverChange={setWidgetHovered}
-        onSettings={() => void desktop.settings.openWindow()}
+        onAppEnter={openAppMenu}
+        onAppLeave={closeAppMenuSoon}
+        onSettings={() => {
+          setAppMenuOpen(false)
+          void desktop.settings.openWindow()
+        }}
         onGrabPointerDown={startDrag}
       />
       {expandSettled && state.mode === 'provider-hover' && hoveredProvider && (
@@ -592,6 +635,17 @@ export default function App(): React.JSX.Element {
           onEnter={cancelHoverClose}
           onLeave={closeProviderSoon}
         />
+      )}
+      {expandSettled && appMenuOpen && state.mode !== 'dragging' && !hoveredProvider && (
+        <div
+          ref={popoverRef}
+          className={`usage-popover-anchor usage-popover-anchor--${popoverPlacement}`}
+          style={{ top: popoverTop, bottom: popoverBottom, left: popoverLeft }}
+          onPointerEnter={cancelHoverClose}
+          onPointerLeave={closeAppMenuSoon}
+        >
+          <AppMenuPopover style={popoverMaxHeight === undefined ? undefined : { maxHeight: popoverMaxHeight, ...(popoverMaxHeight < 96 ? { minHeight: 0 } : {}) }} />
+        </div>
       )}
     </main>
   )

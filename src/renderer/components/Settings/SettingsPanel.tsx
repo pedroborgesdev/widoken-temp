@@ -63,10 +63,7 @@ export const SettingsPanel = forwardRef<HTMLDivElement, SettingsPanelProps>(func
           <span className="settings-panel__mark" aria-hidden="true">
             <img className="settings-panel__app-icon" src={appIcon} alt="" />
           </span>
-          <div>
-            <strong>widoken</strong>
-            <span>Overlay preferences</span>
-          </div>
+          <strong>widoken</strong>
         </div>
         <div className="settings-panel__window-actions">
           <button className="settings-panel__minimize" type="button" onClick={onMinimize} aria-label="Minimize settings">−</button>
@@ -76,7 +73,6 @@ export const SettingsPanel = forwardRef<HTMLDivElement, SettingsPanelProps>(func
 
       <div className="settings-panel__content">
         <nav className="settings-panel__sidebar" aria-label="Settings sections">
-          <span className="settings-panel__sidebar-label">Settings</span>
           <div className="settings-panel__navigation">
             {navigationItems.map((item) => (
               <button
@@ -104,7 +100,7 @@ export const SettingsPanel = forwardRef<HTMLDivElement, SettingsPanelProps>(func
           )}
 
           {activePage === 'appearance' && (
-          <SettingsSection title="Appearance" description="Customize the widget's visual style and proportions.">
+          <SettingsSection title="Appearance">
             <div className="settings-panel__grid">
               <SettingsSelect
                 label="Theme"
@@ -166,7 +162,7 @@ export const SettingsPanel = forwardRef<HTMLDivElement, SettingsPanelProps>(func
           )}
 
           {activePage === 'behavior' && (
-            <SettingsSection title="Behavior" description="Control docking, placement and update frequency.">
+            <SettingsSection title="Behavior">
               <div className="settings-panel__grid">
                 <SettingsSelect
                   label="Dock side"
@@ -205,12 +201,17 @@ export const SettingsPanel = forwardRef<HTMLDivElement, SettingsPanelProps>(func
                     }
                   })}
                 />
+                <SettingsCheckbox
+                  checked={settings.widget.edgeTuck}
+                  label="Tuck into screen edge"
+                  onChange={(edgeTuck) => onUpdate({ widget: { edgeTuck } })}
+                />
               </div>
             </SettingsSection>
           )}
 
           {activePage === 'general' && (
-            <SettingsSection title="General" description="Configure startup and local data preferences.">
+            <SettingsSection title="General">
               <div className="settings-panel__grid">
                 <SettingsCheckbox checked={settings.launchAtStartup} label="Launch at startup" onChange={(checked) => onUpdate({ launchAtStartup: checked })} />
                 <SettingsCheckbox

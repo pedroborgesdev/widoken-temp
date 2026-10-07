@@ -27,6 +27,7 @@ export interface AppSettings {
     theme: AppTheme
     shadows: boolean
     showDockGuides: boolean
+    edgeTuck: boolean
     shadowOpacity: number
     itemGap: number
     scale: number
@@ -53,6 +54,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     theme: 'dark',
     shadows: true,
     showDockGuides: true,
+    edgeTuck: true,
     shadowOpacity: 45,
     itemGap: 6,
     scale: 100,

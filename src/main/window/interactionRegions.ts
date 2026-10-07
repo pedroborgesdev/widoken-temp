@@ -34,8 +34,8 @@ export function updateInteractionWindowBounds(window: BrowserWindow, windowBound
   adapter.updateWindowBounds(window, windowBounds)
 }
 
-export function applyInteractionRegions(window: BrowserWindow, regions: Rectangle[]): void {
-  adapter.applyRegions(window, regions)
+export function applyInteractionRegions(window: BrowserWindow, regions: Rectangle[], paintOutset = 0): void {
+  adapter.applyRegions(window, regions, paintOutset)
 }
 
 export function updateInteractionCursor(window: BrowserWindow, cursor: Point): void {

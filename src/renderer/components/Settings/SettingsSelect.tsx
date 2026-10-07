@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faChevronDown } from '@fortawesome/free-solid-svg-icons'
 
 export interface SettingsSelectOption {
   value: string | number
@@ -37,7 +39,7 @@ export function SettingsSelect({ label, value, options, onChange }: SettingsSele
           onClick={() => setOpen((current) => !current)}
         >
           <span>{selected?.label}</span>
-          <span className="settings-select__chevron" aria-hidden="true">⌄</span>
+          <FontAwesomeIcon className="settings-select__chevron" icon={faChevronDown} aria-hidden="true" />
         </button>
         {open && (
           <div className="settings-select__menu" role="listbox" aria-label={label}>

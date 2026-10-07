@@ -25,19 +25,20 @@ interface ProviderItemProps {
 export function ProviderItem({ provider, animateEntry, onEnter, onLeave }: ProviderItemProps): React.JSX.Element {
   const percent = summaryUsage(provider.snapshot.limits)
   const [shouldAnimateEntry] = useState(animateEntry)
+  const status = provider.snapshot.status
 
   return (
     <button
-      className={`provider-item provider-item--${provider.snapshot.status}${shouldAnimateEntry ? ' provider-item--entering' : ''}`}
+      className={`provider-item provider-item--${status}${shouldAnimateEntry ? ' provider-item--entering' : ''}`}
       type="button"
       data-provider-id={provider.id}
-      aria-label={`${provider.name}: ${provider.snapshot.status}${provider.snapshot.status === 'connected' ? `, ${percent}% used` : ''}`}
+      aria-label={`${provider.name}: ${status}${status === 'connected' ? `, ${percent}% used` : ''}`}
       onPointerEnter={onEnter}
       onPointerLeave={onLeave}
       onFocus={onEnter}
       onBlur={onLeave}
     >
-      <UsageRing percent={percent} status={provider.snapshot.status} />
+      <UsageRing percent={percent} status={status} />
       <span className="provider-item__icon-shell">
         <img
           className={`provider-item__logo provider-item__logo--${provider.id}`}

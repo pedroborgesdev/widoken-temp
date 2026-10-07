@@ -9,8 +9,10 @@ const desktopApi: DesktopApi = {
       ipcRenderer.sendSync(IPC.overlayStartDragging)
       return Promise.resolve()
     },
-    endDragging: (regions: Rectangle[]) => ipcRenderer.invoke(IPC.overlayEndDragging, regions),
-    setInteractionRegions: (regions: Rectangle[]) => ipcRenderer.invoke(IPC.overlaySetRegions, regions)
+    endDragging: (regions: Rectangle[], paintOutset?: number) =>
+      ipcRenderer.invoke(IPC.overlayEndDragging, regions, paintOutset),
+    setInteractionRegions: (regions: Rectangle[], paintOutset?: number) =>
+      ipcRenderer.invoke(IPC.overlaySetRegions, regions, paintOutset)
   },
   providers: {
     list: () => ipcRenderer.invoke(IPC.providersList),

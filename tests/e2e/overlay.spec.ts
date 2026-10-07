@@ -256,15 +256,17 @@ test('opens settings in a separate native window', async () => {
   await expect(settingsWindow.locator('.settings-panel__app-icon')).toBeVisible()
   await expect(settingsWindow.locator('.settings-panel__mark')).toHaveCSS('border-top-width', '0px')
   await expect(settingsWindow.locator('.settings-window')).toHaveClass(/overlay-root--theme-dark-pastel/)
-  await expect(settingsWindow.locator('.settings-window')).toHaveCSS('background-color', 'rgb(25, 26, 34)')
+  await expect(settingsWindow.locator('.settings-window')).toHaveCSS('background-color', 'rgb(15, 15, 19)')
   await expect.poll(async () => settingsWindow.locator('.settings-window').evaluate((element) =>
     getComputedStyle(element).getPropertyValue('--color-overlay-blue').trim()
   )).toBe('#e7e3f4')
-  const appearanceShadowCheckbox = settingsWindow.getByRole('checkbox', { name: 'Enable shadows' })
-  await expect(appearanceShadowCheckbox).toHaveCSS('background-color', 'rgb(231, 227, 244)')
-  await expect.poll(async () => appearanceShadowCheckbox.evaluate((element) =>
-    getComputedStyle(element, '::after').borderRightColor
-  )).toBe('rgb(25, 26, 34)')
+  const switchTrack = (name: string) =>
+    settingsWindow.locator('.settings-check--standalone').filter({ hasText: name }).locator('.settings-switch > span')
+  const appearanceShadowSwitch = switchTrack('Enable shadows')
+  await expect(appearanceShadowSwitch).toHaveCSS('background-color', 'rgb(231, 227, 244)')
+  await expect.poll(async () => appearanceShadowSwitch.evaluate((element) =>
+    getComputedStyle(element, '::after').backgroundColor
+  )).toBe('rgb(15, 15, 19)')
 
   const themeControl = settingsWindow.locator('.settings-control').filter({ hasText: 'Theme' })
   await themeControl.locator('.settings-select__trigger').click()
@@ -273,33 +275,33 @@ test('opens settings in a separate native window', async () => {
   const selectedOption = themeControl.locator('.settings-select__option--selected')
   const hoverOption = themeControl.locator('.settings-select__option:not(.settings-select__option--selected)').first()
   await expect(selectedOption).toHaveCSS('background-color', 'rgb(231, 227, 244)')
-  await expect(selectedOption).toHaveCSS('color', 'rgb(25, 26, 34)')
+  await expect(selectedOption).toHaveCSS('color', 'rgb(15, 15, 19)')
   await hoverOption.hover()
-  await expect(hoverOption).toHaveCSS('background-color', 'rgb(50, 52, 67)')
-  await expect(hoverOption).toHaveCSS('color', 'rgb(244, 242, 248)')
+  await expect(hoverOption).toHaveCSS('background-color', 'rgb(29, 30, 37)')
+  await expect(hoverOption).toHaveCSS('color', 'rgb(246, 245, 249)')
   await themeControl.getByRole('option', { name: 'Dracula' }).click()
   await expect(page.locator('.overlay-root')).toHaveClass(/overlay-root--theme-dracula/)
   await expect(page.locator('.widget__board')).toHaveCSS('background-color', 'rgb(40, 42, 54)')
-  await expect(settingsWindow.locator('.settings-window')).toHaveCSS('background-color', 'rgb(25, 26, 34)')
-  await expect(appearanceShadowCheckbox).toHaveCSS('background-color', 'rgb(231, 227, 244)')
-  await expect.poll(async () => appearanceShadowCheckbox.evaluate((element) =>
-    getComputedStyle(element, '::after').borderRightColor
-  )).toBe('rgb(25, 26, 34)')
+  await expect(settingsWindow.locator('.settings-window')).toHaveCSS('background-color', 'rgb(15, 15, 19)')
+  await expect(appearanceShadowSwitch).toHaveCSS('background-color', 'rgb(231, 227, 244)')
+  await expect.poll(async () => appearanceShadowSwitch.evaluate((element) =>
+    getComputedStyle(element, '::after').backgroundColor
+  )).toBe('rgb(15, 15, 19)')
   await themeControl.locator('.settings-select__trigger').click()
   const selectedDraculaOption = themeControl.getByRole('option', { name: 'Dracula' })
   await selectedDraculaOption.hover()
   await expect(selectedDraculaOption).toHaveCSS('background-color', 'rgb(231, 227, 244)')
   const darkPastelOption = themeControl.getByRole('option', { name: 'Dark Pastel' })
   await darkPastelOption.hover()
-  await expect(darkPastelOption).toHaveCSS('background-color', 'rgb(50, 52, 67)')
+  await expect(darkPastelOption).toHaveCSS('background-color', 'rgb(29, 30, 37)')
   await themeControl.getByRole('option', { name: 'Dracula' }).click()
 
   await selectSettingsPage(settingsWindow, 'General')
   const startupCheckbox = settingsWindow.getByRole('checkbox', { name: 'Launch at startup' })
   await startupCheckbox.check()
-  await expect.poll(async () => startupCheckbox.evaluate((element) =>
-    getComputedStyle(element, '::after').borderRightColor
-  )).toBe('rgb(25, 26, 34)')
+  await expect.poll(async () => switchTrack('Launch at startup').evaluate((element) =>
+    getComputedStyle(element, '::after').backgroundColor
+  )).toBe('rgb(15, 15, 19)')
   const localAnalyticsCheckbox = settingsWindow.getByRole('checkbox', { name: 'Local analytics' })
   await expect(localAnalyticsCheckbox).not.toBeChecked()
   await localAnalyticsCheckbox.check()
@@ -322,13 +324,23 @@ test('opens settings in a separate native window', async () => {
   await expect.poll(async () => settingsWindow.evaluate(() =>
     (window as unknown as { desktop: { settings: { get: () => Promise<{ widget: { showDockGuides: boolean } }> } } }).desktop.settings.get()
   ).then((settings) => settings.widget.showDockGuides)).toBe(true)
+  const edgeTuckCheckbox = settingsWindow.getByRole('checkbox', { name: 'Tuck into screen edge' })
+  await expect(edgeTuckCheckbox).toBeChecked()
+  await page.mouse.move(700, 500)
+  await expect(page.locator('.widget')).toHaveClass(/widget--collapsed/)
+  await edgeTuckCheckbox.uncheck()
+  await expect(page.locator('.widget')).not.toHaveClass(/widget--collapsed/)
+  await page.waitForTimeout(600)
+  await expect(page.locator('.widget')).not.toHaveClass(/widget--collapsed/)
+  await expect(page.locator('.widget')).not.toHaveClass(/widget--edge-/)
+  await edgeTuckCheckbox.check()
+  await expect(page.locator('.widget')).toHaveClass(/widget--collapsed/)
 
   await selectSettingsPage(settingsWindow, 'Providers')
   await expect(settingsWindow.locator('.provider-setting__icon-shell').first()).not.toHaveCSS('background-color', 'rgb(8, 8, 8)')
   await selectSettingsPage(settingsWindow, 'Appearance')
   const shadowCheckbox = settingsWindow.getByRole('checkbox', { name: 'Enable shadows' })
   await expect(shadowCheckbox).toBeChecked()
-  await expect(settingsWindow.locator('.settings-panel__section').first()).not.toHaveCSS('box-shadow', 'none')
   await expect(page.locator('.widget__board')).toHaveCSS('box-shadow', 'none')
   await expect(page.locator('.widget__thumb')).toHaveCSS('box-shadow', 'none')
   await expect(page.locator('.widget')).not.toHaveCSS('filter', 'none')
@@ -361,7 +373,6 @@ test('opens settings in a separate native window', async () => {
   await shadowCheckbox.uncheck()
   await expect(settingsWindow.locator('.settings-window')).toHaveClass(/overlay-root--shadows-disabled/)
   await expect(page.locator('.overlay-root')).toHaveClass(/overlay-root--shadows-disabled/)
-  await expect(settingsWindow.locator('.settings-panel__section').first()).toHaveCSS('box-shadow', 'none')
   await expect(page.locator('.widget')).toHaveCSS('filter', 'none')
   await selectSettingsPage(settingsWindow, 'Providers')
   await expect(settingsWindow.locator('.provider-setting__drag-handle')).toHaveCount(5)
@@ -515,7 +526,7 @@ test('aligns horizontal hover details to the provider above or below the widget'
 
   const geometry = await page.evaluate(() => {
     const widget = document.querySelector<HTMLElement>('.widget')!.getBoundingClientRect()
-    const provider = document.querySelector<HTMLElement>('.provider-item:last-child')!.getBoundingClientRect()
+    const provider = [...document.querySelectorAll<HTMLElement>('.provider-item')].at(-1)!.getBoundingClientRect()
     const anchor = document.querySelector<HTMLElement>('.usage-popover-anchor')!.getBoundingClientRect()
     const panel = document.querySelector<HTMLElement>('.unavailable-popover, .usage-popover')!.getBoundingClientRect()
     return {
@@ -546,6 +557,14 @@ test('drags from the grab handle and persists right-side docking', async () => {
   await expect.poll(async () => page.evaluate(() =>
     (window as unknown as { desktop: { settings: { get: () => Promise<{ widget: { showDockGuides: boolean } }> } } }).desktop.settings.get()
   ).then((settings) => settings.widget.showDockGuides)).toBe(true)
+  const revealHandle = async (): Promise<void> => {
+    await revealWidget()
+    await expect(page.locator('.widget__controls')).toHaveCSS('visibility', 'visible')
+    await page.locator('.widget__controls').evaluate(async (element) => {
+      await Promise.all(element.getAnimations({ subtree: true }).map((animation) => animation.finished))
+    })
+  }
+  await revealHandle()
   let box = await handle.boundingBox()
   const viewport = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }))
   expect(box).not.toBeNull()
@@ -584,6 +603,7 @@ test('drags from the grab handle and persists right-side docking', async () => {
   )
   expect(settings.widget.docked).toBe(false)
 
+  await revealHandle()
   box = await handle.boundingBox()
   await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2)
   await page.mouse.down()
@@ -599,6 +619,7 @@ test('drags from the grab handle and persists right-side docking', async () => {
   )
   expect(settings.widget.side).toBe('top')
 
+  await revealHandle()
   box = await handle.boundingBox()
   await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2)
   await page.mouse.down()
@@ -642,8 +663,8 @@ test('drags from the grab handle and persists right-side docking', async () => {
     const box = await page.locator('.widget').boundingBox()
     return box && box.y + box.height
   }).toBeCloseTo(viewport.height - 8, 0)
-  await expect(page.locator('.widget')).toHaveClass(/widget--grab-turn-left/)
   await revealWidget()
+  await expect(page.locator('.widget')).toHaveClass(/widget--grab-turn-left/)
   await page.locator('.widget__thumb').evaluate(async (element) => {
     await Promise.all(element.getAnimations({ subtree: true }).map((animation) => animation.finished))
   })
@@ -735,7 +756,6 @@ test('keeps the horizontal popover outside the turned thumb', async () => {
   const viewport = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }))
   const widget = page.locator('.widget')
   await expect(widget).toHaveClass(/widget--horizontal/)
-  await expect(widget).toHaveClass(/widget--grab-turn-top/)
   await expect.poll(async () => {
     const bounds = await widget.boundingBox()
     return bounds ? bounds.x + bounds.width : 0
@@ -746,6 +766,7 @@ test('keeps the horizontal popover outside the turned thumb', async () => {
   }).toBeCloseTo(viewport.height - 8, 0)
 
   await revealWidget()
+  await expect(widget).toHaveClass(/widget--grab-turn-top/)
   await page.locator('.provider-item').last().hover()
   const panel = page.locator('.usage-popover-anchor > :is(.usage-popover, .unavailable-popover)')
   await expect(panel).toBeVisible()
@@ -781,8 +802,8 @@ test('keeps the vertical popover outside the turned thumb', async () => {
       widget: { docked: true, horizontalPosition: 1, orientation: 'vertical', side: 'right', verticalPosition: 0 }
     })
   )
-  await expect(widget).toHaveClass(/widget--gear-turn-left/)
   await revealWidget()
+  await expect(widget).toHaveClass(/widget--gear-turn-left/)
   await page.locator('.provider-item').first().hover()
   await expect(panel).toBeVisible()
   await panel.evaluate(async (element) => {
@@ -804,8 +825,8 @@ test('keeps the vertical popover outside the turned thumb', async () => {
       widget: { docked: true, horizontalPosition: 1, orientation: 'vertical', side: 'right', verticalPosition: 1 }
     })
   )
-  await expect(widget).toHaveClass(/widget--grab-turn-left/)
   await revealWidget()
+  await expect(widget).toHaveClass(/widget--grab-turn-left/)
   await page.locator('.provider-item').last().hover()
   await expect(panel).toBeVisible()
   await panel.evaluate(async (element) => {

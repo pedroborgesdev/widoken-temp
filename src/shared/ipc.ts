@@ -23,8 +23,8 @@ export const IPC = {
 export interface DesktopApi {
   overlay: {
     startDragging(): Promise<void>
-    endDragging(regions: Rectangle[]): Promise<void>
-    setInteractionRegions(regions: Rectangle[]): Promise<void>
+    endDragging(regions: Rectangle[], paintOutset?: number): Promise<void>
+    setInteractionRegions(regions: Rectangle[], paintOutset?: number): Promise<void>
   }
   providers: {
     list(): Promise<ProviderView[]>

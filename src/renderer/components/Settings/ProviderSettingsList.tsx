@@ -106,7 +106,7 @@ export function ProviderSettingsList({ providers, onToggle, onReorder }: Provide
   }
 
   return (
-    <SettingsSection title="Providers" description="Enable services and drag the handle to change their widget order.">
+    <SettingsSection title="Providers" description="Drag the handle to change the order in the widget.">
       <div className="provider-settings-list">
         {ordered.map((provider) => {
           const name = providerNames[provider.id] ?? provider.id

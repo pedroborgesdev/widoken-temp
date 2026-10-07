@@ -48,6 +48,7 @@ function sanitizeSettings(value: unknown): AppSettings {
         : DEFAULT_SETTINGS.widget.theme,
       shadows: widget.shadows !== false,
       showDockGuides: widget.showDockGuides !== false,
+      edgeTuck: widget.edgeTuck !== false,
       shadowOpacity: clampNumber(widget.shadowOpacity, 0, 100, DEFAULT_SETTINGS.widget.shadowOpacity),
       itemGap: clampNumber(widget.itemGap, 0, 18, DEFAULT_SETTINGS.widget.itemGap),
       scale: clampNumber(widget.scale, 70, 150, DEFAULT_SETTINGS.widget.scale),

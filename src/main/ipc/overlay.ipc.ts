@@ -1,5 +1,6 @@
 import { ipcMain, screen, type BrowserWindow, type Rectangle } from 'electron'
 import { IPC } from '@shared/ipc'
+import { sanitizePaintOutset } from '../window/interactionRegionAdapters'
 import {
   applyInteractionRegions,
   endFullInteraction,
@@ -20,14 +21,22 @@ export function registerOverlayIpc(window: BrowserWindow): void {
     event.returnValue = undefined
   })
 
-  ipcMain.handle(IPC.overlayEndDragging, (_event, regions: Rectangle[]) => {
+  ipcMain.handle(IPC.overlayEndDragging, (_event, regions: Rectangle[], paintOutset?: number) => {
     refreshWindowsCursor(window)
     endFullInteraction(window)
-    applyInteractionRegions(window, sanitizeRegions(regions, window.getContentBounds()))
+    applyInteractionRegions(
+      window,
+      sanitizeRegions(regions, window.getContentBounds()),
+      sanitizePaintOutset(Number(paintOutset))
+    )
   })
 
-  ipcMain.handle(IPC.overlaySetRegions, (_event, regions: Rectangle[]) => {
+  ipcMain.handle(IPC.overlaySetRegions, (_event, regions: Rectangle[], paintOutset?: number) => {
     refreshWindowsCursor(window)
-    applyInteractionRegions(window, sanitizeRegions(regions, window.getContentBounds()))
+    applyInteractionRegions(
+      window,
+      sanitizeRegions(regions, window.getContentBounds()),
+      sanitizePaintOutset(Number(paintOutset))
+    )
   })
 }

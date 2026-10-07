@@ -1,5 +1,6 @@
 import { BrowserWindow, screen, type Display, type Rectangle } from 'electron'
 import { join } from 'node:path'
+import { shadowPaintOutset } from '@shared/overlay'
 import type { AppSettings } from '@shared/settings'
 import { applyInteractionRegions, registerInteractionDisplay, updateInteractionCursor, updateInteractionWindowBounds } from './interactionRegions'
 import { isNativeWayland } from './platform'
@@ -48,7 +49,7 @@ export function createOverlayWindow(settings: AppSettings, configuredDisplay?: D
     ? settings.widget.side === 'top' ? margin : Math.max(margin, height - widgetHeight - margin)
     : Math.min(
         Math.max(margin, height - widgetHeight - margin),
-        Math.round(margin + settings.widget.verticalPosition * Math.max(0, height - widgetHeight - margin * 2))
+        Math.round(margin + settings.widget.verticalPosition * Math.max(0, height - baseWidgetHeight - margin * 2))
       )
   const widgetX = settings.widget.docked && (settings.widget.side === 'left' || settings.widget.side === 'right')
     ? settings.widget.side === 'left' ? margin : width - widgetWidth - margin
@@ -109,7 +110,7 @@ export function createOverlayWindow(settings: AppSettings, configuredDisplay?: D
         updateInteractionWindowBounds(window, display.bounds)
       }, 0)
     }
-    applyInteractionRegions(window, initialRegions)
+    applyInteractionRegions(window, initialRegions, shadowPaintOutset(settings.widget.shadows, scale))
   }
 
   window.once('ready-to-show', showOverlay)

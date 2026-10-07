@@ -39,10 +39,7 @@ export function SettingsRange({
 }): React.JSX.Element {
   return (
     <label className="settings-range">
-      <span className="settings-range__heading">
-        <span>{label}</span>
-        <output>{Math.round(value)}{suffix}</output>
-      </span>
+      <span className="settings-range__label">{label}</span>
       <input
         type="range"
         min={minimum}
@@ -51,6 +48,7 @@ export function SettingsRange({
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
       />
+      <output>{Math.round(value)}{suffix}</output>
     </label>
   )
 }
@@ -66,8 +64,16 @@ export function SettingsCheckbox({
 }): React.JSX.Element {
   return (
     <label className="settings-check settings-check--standalone">
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
       <span>{label}</span>
+      <span className="settings-switch">
+        <input
+          className="settings-switch__input"
+          type="checkbox"
+          checked={checked}
+          onChange={(event) => onChange(event.target.checked)}
+        />
+        <span aria-hidden="true" />
+      </span>
     </label>
   )
 }

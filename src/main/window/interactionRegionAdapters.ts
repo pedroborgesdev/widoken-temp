@@ -10,7 +10,7 @@ export interface InteractionWindow {
 export interface InteractionRegionAdapter {
   registerDisplay(window: InteractionWindow, displayBounds: Rectangle): void
   updateWindowBounds(window: InteractionWindow, windowBounds: Rectangle): void
-  applyRegions(window: InteractionWindow, regions: Rectangle[]): void
+  applyRegions(window: InteractionWindow, regions: Rectangle[], paintOutset?: number): void
   updateCursor(window: InteractionWindow, cursor: Point): void
   makeFullyInteractive(window: InteractionWindow): void
   endFullInteraction(window: InteractionWindow): void
@@ -21,6 +21,7 @@ interface WindowsInteractionState {
   displayBounds: Rectangle
   forceInteractive: boolean
   ignoringMouse?: boolean
+  paintOutset: number
   regions: Rectangle[]
 }
 
@@ -30,7 +31,7 @@ class WindowsInteractionRegionAdapter implements InteractionRegionAdapter {
   registerDisplay(window: InteractionWindow, displayBounds: Rectangle): void {
     const state = this.states.get(window)
     if (!state) {
-      this.states.set(window, { displayBounds, forceInteractive: false, regions: [] })
+      this.states.set(window, { displayBounds, forceInteractive: false, paintOutset: 0, regions: [] })
       return
     }
     state.displayBounds = displayBounds
@@ -46,9 +47,10 @@ class WindowsInteractionRegionAdapter implements InteractionRegionAdapter {
     this.syncMouse(window, state, true)
   }
 
-  applyRegions(window: InteractionWindow, regions: Rectangle[]): void {
+  applyRegions(window: InteractionWindow, regions: Rectangle[], paintOutset = 0): void {
     const state = this.ensureState(window)
     state.regions = regions
+    state.paintOutset = sanitizePaintOutset(paintOutset)
     this.syncMouse(window, state, true)
   }
 
@@ -77,6 +79,7 @@ class WindowsInteractionRegionAdapter implements InteractionRegionAdapter {
     const state = {
       displayBounds: { x: 0, y: 0, width, height },
       forceInteractive: false,
+      paintOutset: 0,
       regions: []
     }
     this.states.set(window, state)
@@ -123,9 +126,9 @@ class WindowsInteractionRegionAdapter implements InteractionRegionAdapter {
   }
 
   private interactiveShape(window: InteractionWindow, state: WindowsInteractionState): Rectangle[] {
-    if (!state.forceInteractive) return state.regions
     const [width, height] = window.getContentSize()
-    return [{ x: 0, y: 0, width, height }]
+    if (state.forceInteractive) return [{ x: 0, y: 0, width, height }]
+    return expandRectanglesForPaint(state.regions, width, height, state.paintOutset)
   }
 }
 
@@ -240,6 +243,30 @@ export function createInteractionRegionAdapter(
   if (platform === 'linux' && nativeWayland) return new WaylandInteractionRegionAdapter()
   if (platform === 'linux') return new LinuxX11InteractionRegionAdapter()
   return new DefaultInteractionRegionAdapter()
+}
+
+export function sanitizePaintOutset(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0
+  return Math.min(240, Math.round(value))
+}
+
+export function expandRectanglesForPaint(
+  regions: Rectangle[],
+  contentWidth: number,
+  contentHeight: number,
+  outset: number
+): Rectangle[] {
+  if (outset <= 0 || regions.length === 0) return regions
+  return regions.map((region) => {
+    const x = Math.max(0, region.x - outset)
+    const y = Math.max(0, region.y - outset)
+    const right = Math.min(contentWidth, region.x + region.width + outset)
+    const bottom = Math.min(contentHeight, region.y + region.height + outset)
+    const width = right - x
+    const height = bottom - y
+    if (width <= 0 || height <= 0) return region
+    return { x, y, width, height }
+  })
 }
 
 export function pointIsInsideRegions(point: Point, regions: Rectangle[]): boolean {

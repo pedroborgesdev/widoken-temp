@@ -97,6 +97,29 @@ describe('interaction region adapters', () => {
     ])
   })
 
+  it('paints the Windows shadow outside the widget without capturing that margin', () => {
+    const adapter = createInteractionRegionAdapter('win32', false)
+    const { calls, window } = createWindow()
+
+    adapter.registerDisplay(window, display)
+    adapter.applyRegions(window, widget, 48)
+
+    expect(calls).toEqual([
+      { name: 'ignore', value: true, forward: undefined },
+      { name: 'shape', value: [{ x: 0, y: 0, width: 112, height: 302 }] }
+    ])
+
+    calls.length = 0
+    adapter.updateCursor(window, { x: 4, y: 4 })
+    expect(calls).toEqual([])
+
+    adapter.updateCursor(window, { x: 30, y: 40 })
+    expect(calls).toEqual([
+      { name: 'ignore', value: false, forward: undefined },
+      { name: 'shape', value: [{ x: 0, y: 0, width: 112, height: 302 }] }
+    ])
+  })
+
   it('does not forward Windows mouse moves while click-through is on', () => {
     const adapter = createInteractionRegionAdapter('win32', false)
     const { calls, window } = createWindow()
