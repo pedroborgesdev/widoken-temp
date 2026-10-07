@@ -81,6 +81,8 @@ export interface AppSettings {
   providers: ProviderSetting[]
   refreshIntervalSeconds: number
   launchAtStartup: boolean
+  openDashboardAtStartup: boolean
+  dashboardFollowsWidgetTheme: boolean
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -112,10 +114,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
     { id: 'copilot', enabled: false, order: 4, usageDisplay: { split: true, primaryLimitId: 'premium_interactions', secondaryLimitId: 'chat' } }
   ],
   refreshIntervalSeconds: 45,
-  launchAtStartup: false
+  launchAtStartup: false,
+  openDashboardAtStartup: false,
+  dashboardFollowsWidgetTheme: false
 }
 
-export type SettingsPatch = Partial<Pick<AppSettings, 'refreshIntervalSeconds' | 'launchAtStartup'>> & {
+export type SettingsPatch = Partial<Pick<
+  AppSettings,
+  'refreshIntervalSeconds' | 'launchAtStartup' | 'openDashboardAtStartup' | 'dashboardFollowsWidgetTheme'
+>> & {
   widget?: Partial<AppSettings['widget']>
   analytics?: Partial<AppSettings['analytics']>
   providers?: ProviderSetting[]

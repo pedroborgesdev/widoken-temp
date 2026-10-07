@@ -3,22 +3,26 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faCircleNotch,
   faGauge,
+  faGear,
   faLayerGroup,
   faPalette,
   faPuzzlePiece,
   faSliders
 } from '@fortawesome/free-solid-svg-icons'
-import { DEFAULT_WIDGET_SECTION, type DashboardRoute, type WidgetSettingsSection } from '@shared/dashboard'
+import { DEFAULT_WIDGET_SECTION, type DashboardPage, type DashboardRoute, type WidgetSettingsSection } from '@shared/dashboard'
 import type { ProviderView } from '@shared/provider'
+import type { UsageHistory } from '@shared/usageHistory'
 import type { AppSettings, SettingsPatch } from '@shared/settings'
 import appIcon from '../../../resources/widoken.png'
+import { GeneralPage } from './pages/GeneralPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { WidgetSettingsPage } from './pages/WidgetSettingsPage'
 
 const pageItems = [
   { id: 'dashboard', label: 'Dashboard', icon: faGauge },
-  { id: 'widget', label: 'Widget', icon: faLayerGroup }
-] as const
+  { id: 'widget', label: 'Widget', icon: faLayerGroup },
+  { id: 'general', label: 'General', icon: faGear }
+] as const satisfies ReadonlyArray<{ id: DashboardPage; label: string; icon: unknown }>
 
 const widgetSectionItems = [
   { id: 'providers', label: 'Providers', icon: faPuzzlePiece },
@@ -30,6 +34,7 @@ const widgetSectionItems = [
 interface DashboardPanelProps {
   settings: AppSettings
   providers: ProviderView[]
+  history: UsageHistory
   route: DashboardRoute
   onNavigate: (route: DashboardRoute) => void
   onUpdate: (patch: SettingsPatch) => void
@@ -41,6 +46,7 @@ interface DashboardPanelProps {
 export function DashboardPanel({
   settings,
   providers,
+  history,
   route,
   onNavigate,
   onUpdate,
@@ -82,8 +88,8 @@ export function DashboardPanel({
                   type="button"
                   aria-current={active ? 'page' : undefined}
                   aria-expanded={item.id === 'widget' ? widgetOpen : undefined}
-                  aria-controls={item.id === 'widget' ? 'dashboard-widget-sections' : 'dashboard-page-dashboard'}
-                  onClick={() => item.id === 'widget' ? openWidgetSection(widgetSection) : onNavigate({ page: 'dashboard' })}
+                  aria-controls={item.id === 'widget' ? 'dashboard-widget-sections' : `dashboard-page-${item.id}`}
+                  onClick={() => item.id === 'widget' ? openWidgetSection(widgetSection) : onNavigate({ page: item.id })}
                 >
                   <FontAwesomeIcon icon={item.icon} aria-hidden="true" />
                   <span>{item.label}</span>
@@ -125,7 +131,7 @@ export function DashboardPanel({
 
         <div
           className="settings-panel__workspace"
-          id={widgetOpen ? `dashboard-page-widget-${widgetSection}` : 'dashboard-page-dashboard'}
+          id={widgetOpen ? `dashboard-page-widget-${widgetSection}` : `dashboard-page-${route.page}`}
         >
           {widgetOpen ? (
             <WidgetSettingsPage
@@ -135,11 +141,13 @@ export function DashboardPanel({
               onUpdate={onUpdate}
               onSyncVsCodeTheme={onSyncVsCodeTheme}
             />
+          ) : route.page === 'general' ? (
+            <GeneralPage settings={settings} onUpdate={onUpdate} />
           ) : (
             <OverviewPage
               settings={settings}
               providers={providers}
-              onUpdate={onUpdate}
+              history={history}
               onChooseProviders={() => openWidgetSection('providers')}
             />
           )}

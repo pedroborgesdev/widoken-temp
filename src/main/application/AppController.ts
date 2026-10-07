@@ -4,6 +4,7 @@ import { IPC } from '@shared/ipc'
 import type { ProviderView } from '@shared/provider'
 import type { AppSettings } from '@shared/settings'
 import { AnalyticsService } from '../analytics/AnalyticsService'
+import { registerAnalyticsIpc } from '../ipc/analytics.ipc'
 import { registerOverlayIpc } from '../ipc/overlay.ipc'
 import { registerProvidersIpc } from '../ipc/providers.ipc'
 import { registerSettingsIpc } from '../ipc/settings.ipc'
@@ -42,6 +43,7 @@ export class AppController {
     this.providerManager = providerManager
 
     registerOverlayIpc(() => widgetWindows.window)
+    registerAnalyticsIpc(analyticsService)
     registerProvidersIpc(providerManager)
     registerSettingsIpc(
       settingsRepository,
@@ -58,7 +60,7 @@ export class AppController {
     providerManager.start(settings.providers, settings.refreshIntervalSeconds, settings.analytics.localInsights)
     app.setLoginItemSettings({ openAtLogin: settings.launchAtStartup })
     await widgetWindows.applySettings(settings)
-    if (!settings.widget.enabled) await dashboardWindows.open()
+    if (!settings.widget.enabled || settings.openDashboardAtStartup) await dashboardWindows.open()
   }
 
   async handleSecondInstance(): Promise<void> {

@@ -1,9 +1,37 @@
 import { dashboardRouteQuery, sanitizeDashboardRoute } from '@shared/dashboard'
 import type { DashboardDesktopApi, DesktopApi, WidgetDesktopApi } from '@shared/ipc'
+import { buildUsageHistory, type UsageHistorySample } from '@shared/usageHistory'
 import type { ProviderView } from '@shared/provider'
 import { DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/settings'
 
 const STORAGE_KEY = 'widoken.preview.settings'
+
+function previewUsageSamples(): UsageHistorySample[] {
+  const samples: UsageHistorySample[] = []
+  const at = (daysAgo: number): number => {
+    const date = new Date()
+    date.setHours(12, 0, 0, 0)
+    date.setDate(date.getDate() - daysAgo)
+    return date.getTime()
+  }
+  const push = (providerId: string, limitId: string, daysAgo: number, percent: number, used?: number, limitValue?: number): void => {
+    samples.push({
+      providerId,
+      limitId,
+      capturedAt: at(daysAgo),
+      percent,
+      resetAt: at(0) + 20 * 86_400_000,
+      used: used ?? null,
+      limitValue: limitValue ?? null
+    })
+  }
+  ;[28, 24, 21, 18, 14, 11, 8, 5, 2, 0].forEach((day, index) => {
+    push('claude', 'session', day, 8 + index * 4)
+    push('openai', 'primary', day, 12 + index * 3)
+    push('cursor', 'included', day, (10 + index * 6), 10 + index * 6, 100)
+  })
+  return samples
+}
 
 const previewProviders: Omit<ProviderView, 'snapshot'>[] = [
   { id: 'claude', name: 'Claude' },
@@ -151,6 +179,15 @@ const browserDesktopApi: DesktopApi = {
   themes: {
     syncVsCode: async () => {
       throw new Error('VS Code theme sync is only available in the desktop app.')
+    }
+  },
+  analytics: {
+    history: async () => {
+      const samples = previewUsageSamples()
+      return {
+        ...buildUsageHistory(samples, Date.now()),
+        since: new Date(Math.min(...samples.map((sample) => sample.capturedAt))).toISOString()
+      }
     }
   },
   app: {

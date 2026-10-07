@@ -1,6 +1,7 @@
 import type { Rectangle } from 'electron'
 import type { DashboardRoute } from './dashboard'
 import type { ProviderView } from './provider'
+import type { UsageHistory } from './usageHistory'
 import type { AppSettings, SettingsPatch } from './settings'
 import type { SyncedVsCodeTheme } from './settings'
 
@@ -20,6 +21,7 @@ export const IPC = {
   dashboardWindowResizeToContent: 'dashboard-window:resize-to-content',
   dashboardWindowState: 'dashboard-window:state',
   dashboardNavigate: 'dashboard:navigate',
+  analyticsHistory: 'analytics:history',
   themeSyncVsCode: 'theme:sync-vscode',
   appQuit: 'app:quit'
 } as const
@@ -61,6 +63,9 @@ export interface DashboardDesktopApi {
   }
   themes: {
     syncVsCode(): Promise<SyncedVsCodeTheme>
+  }
+  analytics: {
+    history(): Promise<UsageHistory>
   }
   app: {
     quit(): Promise<void>

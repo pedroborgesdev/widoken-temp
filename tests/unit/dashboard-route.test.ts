@@ -14,8 +14,9 @@ describe('dashboard route', () => {
     expect(sanitizeDashboardRoute({ page: 'settings' })).toEqual(DEFAULT_DASHBOARD_ROUTE)
   })
 
-  it('drops sections from the dashboard page', () => {
+  it('drops sections from pages without a secondary sidebar', () => {
     expect(sanitizeDashboardRoute({ page: 'dashboard', section: 'usage' })).toEqual({ page: 'dashboard' })
+    expect(sanitizeDashboardRoute({ page: 'general', section: 'behavior' })).toEqual({ page: 'general' })
   })
 
   it('always resolves a valid widget section', () => {

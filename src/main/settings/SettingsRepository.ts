@@ -139,7 +139,9 @@ function sanitizeSettings(value: unknown): AppSettings {
     },
     providers: sanitizeProviders(candidate.providers),
     refreshIntervalSeconds: Number.isFinite(refresh) ? Math.min(3600, Math.max(30, refresh)) : 45,
-    launchAtStartup: candidate.launchAtStartup === true
+    launchAtStartup: candidate.launchAtStartup === true,
+    openDashboardAtStartup: candidate.openDashboardAtStartup === true,
+    dashboardFollowsWidgetTheme: candidate.dashboardFollowsWidgetTheme === true
   }
 }
 

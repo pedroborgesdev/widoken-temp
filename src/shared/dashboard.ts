@@ -1,4 +1,4 @@
-export const DASHBOARD_PAGES = ['dashboard', 'widget'] as const
+export const DASHBOARD_PAGES = ['dashboard', 'widget', 'general'] as const
 export type DashboardPage = (typeof DASHBOARD_PAGES)[number]
 
 export const WIDGET_SETTINGS_SECTIONS = ['providers', 'usage', 'appearance', 'behavior'] as const
@@ -20,7 +20,7 @@ export function sanitizeDashboardRoute(value: unknown): DashboardRoute {
   if (!value || typeof value !== 'object') return DEFAULT_DASHBOARD_ROUTE
   const { page, section } = value as Partial<Record<keyof DashboardRoute, unknown>>
   if (!isOneOf(DASHBOARD_PAGES, page)) return DEFAULT_DASHBOARD_ROUTE
-  if (page === 'dashboard') return { page }
+  if (page !== 'widget') return { page }
   return { page, section: isOneOf(WIDGET_SETTINGS_SECTIONS, section) ? section : DEFAULT_WIDGET_SECTION }
 }
 

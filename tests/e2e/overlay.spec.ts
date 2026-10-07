@@ -54,15 +54,16 @@ async function closeSettingsWindow(): Promise<void> {
 
 async function selectSettingsPage(
   settings: Page,
-  name: 'Dashboard' | 'Providers' | 'Usage ring' | 'Appearance' | 'Behavior'
+  name: 'Dashboard' | 'General' | 'Providers' | 'Usage ring' | 'Appearance' | 'Behavior'
 ): Promise<void> {
   const pages = settings.getByRole('navigation', { name: 'Dashboard sections' })
-  const pageButton = pages.getByRole('button', { name: name === 'Dashboard' ? 'Dashboard' : 'Widget', exact: true })
+  const topLevel = name === 'Dashboard' || name === 'General'
+  const pageButton = pages.getByRole('button', { name: topLevel ? name : 'Widget', exact: true })
   if (await pageButton.getAttribute('aria-current') !== 'page') {
     await pageButton.click()
     await expect(pageButton).toHaveAttribute('aria-current', 'page')
   }
-  if (name === 'Dashboard') return
+  if (topLevel) return
   const button = settings.getByRole('navigation', { name: 'Widget settings' }).getByRole('button', { name, exact: true })
   if (await button.getAttribute('aria-current') === 'page') return
   await button.click()
@@ -319,8 +320,8 @@ test('opens the dashboard in a separate native window with an isolated preload',
   await expect(sectionContents.first()).toHaveCSS('overflow-y', 'auto')
   await expect.poll(async () => sectionContents.first().evaluate((element) => getComputedStyle(element).scrollbarColor)).not.toBe('auto')
   const navigation = settingsWindow.getByRole('navigation', { name: 'Dashboard sections' })
-  await expect(navigation.getByRole('button')).toHaveCount(2)
-  await expect(navigation.locator('svg')).toHaveCount(2)
+  await expect(navigation.getByRole('button')).toHaveText(['Dashboard', 'Widget', 'General'])
+  await expect(navigation.locator('svg')).toHaveCount(3)
   await expect(navigation.getByRole('button', { name: 'Widget' })).toHaveAttribute('aria-current', 'page')
   await expect(navigation.getByRole('button', { name: 'Widget' })).toHaveAttribute('aria-expanded', 'true')
   const widgetNavigation = settingsWindow.getByRole('navigation', { name: 'Widget settings' })
@@ -445,12 +446,29 @@ test('opens the dashboard in a separate native window with an isolated preload',
   await expect(darkPastelOption).toHaveCSS('background-color', 'rgb(29, 30, 37)')
   await themeControl.getByRole('option', { name: 'Dracula' }).click()
 
-  await selectSettingsPage(settingsWindow, 'Dashboard')
+  await selectSettingsPage(settingsWindow, 'General')
   const startupCheckbox = settingsWindow.getByRole('checkbox', { name: 'Launch at startup' })
   await startupCheckbox.check()
   await expect.poll(async () => switchTrack('Launch at startup').evaluate((element) =>
     getComputedStyle(element, '::after').backgroundColor
   )).toBe('rgb(15, 15, 19)')
+  const dashboardWindow = settingsWindow.locator('.settings-window')
+  const darkPastelBackground = await dashboardWindow.evaluate((element) => getComputedStyle(element).backgroundColor)
+  const followThemeCheckbox = settingsWindow.getByRole('checkbox', { name: 'Use the widget theme for the whole interface' })
+  await expect(followThemeCheckbox).not.toBeChecked()
+  await followThemeCheckbox.check()
+  await expect(dashboardWindow).toHaveClass(/overlay-root--theme-dracula/)
+  await expect.poll(async () => dashboardWindow.evaluate((element) => getComputedStyle(element).backgroundColor))
+    .not.toBe(darkPastelBackground)
+  await followThemeCheckbox.uncheck()
+  await expect(dashboardWindow).toHaveClass(/overlay-root--theme-dark-pastel/)
+  const openDashboardCheckbox = settingsWindow.getByRole('checkbox', { name: 'Open the dashboard at startup' })
+  await expect(openDashboardCheckbox).not.toBeChecked()
+  await openDashboardCheckbox.check()
+  await expect.poll(async () => settingsWindow.evaluate(() =>
+    (window as unknown as { dashboardDesktop: { settings: { get: () => Promise<{ openDashboardAtStartup: boolean }> } } }).dashboardDesktop.settings.get()
+  ).then((settings) => settings.openDashboardAtStartup)).toBe(true)
+  await openDashboardCheckbox.uncheck()
   const localAnalyticsCheckbox = settingsWindow.getByRole('checkbox', { name: 'Local analytics' })
   await expect(localAnalyticsCheckbox).not.toBeChecked()
   await localAnalyticsCheckbox.check()
@@ -869,7 +887,48 @@ test('navigates the dashboard from the widoken icon and the widget gear', async 
   await expect(collapsedWidgetNavigation).toHaveAttribute('aria-hidden', 'true')
   await expect.poll(async () => (await collapsedWidgetNavigation.boundingBox())?.width ?? 0).toBeLessThan(1)
   await expect(dashboard.locator('.dashboard-provider-card')).not.toHaveCount(0)
-  await expect(dashboard.getByRole('checkbox', { name: 'Launch at startup' })).toBeVisible()
+  const history = dashboard.locator('.usage-history')
+  await expect(history).toBeVisible()
+  await expect(history.getByText(/after Widoken was installed/)).toBeVisible()
+  const historyBox = await history.boundingBox()
+  const cardBox = await dashboard.locator('.dashboard-provider-card').first().boundingBox()
+  expect(historyBox && cardBox && historyBox.y < cardBox.y).toBe(true)
+  const days = await history.locator('[data-day]').evaluateAll((columns) =>
+    columns.map((column) => column.getAttribute('data-day') ?? '')
+  )
+  expect(days).toHaveLength(31)
+  for (let index = 1; index < days.length; index += 1) {
+    const [year, month, day] = days[index - 1].split('-').map(Number)
+    const next = new Date(year, month - 1, day)
+    next.setDate(next.getDate() + 1)
+    const monthText = String(next.getMonth() + 1).padStart(2, '0')
+    const dayText = String(next.getDate()).padStart(2, '0')
+    expect(days[index]).toBe(`${next.getFullYear()}-${monthText}-${dayText}`)
+  }
+  const labels = (await history.locator('.usage-history__labels span').allTextContents())
+    .map((label) => label.trim())
+    .filter(Boolean)
+  expect(labels.length).toBeGreaterThan(10)
+  for (const label of labels) expect(label).toMatch(/^[A-Z][a-z]{2} \d{1,2}$/)
+  const metrics = dashboard.getByLabel('Usage metrics')
+  await expect(metrics.getByRole('group')).toHaveText([
+    /^Connected/, /^Highest usage/, /^Next reset/, /^Working now/, /^Today/, /^Busiest day/, /^Tracking since/, /^Plans/
+  ])
+  const metricsBox = await metrics.boundingBox()
+  expect(historyBox && metricsBox && historyBox.y < metricsBox.y && metricsBox.y < (cardBox?.y ?? 0)).toBe(true)
+  const savedProviders = await dashboard.evaluate(() =>
+    (window as unknown as { dashboardDesktop: { settings: { get: () => Promise<{ providers: Array<{ id: string; enabled: boolean }> }> } } }).dashboardDesktop.settings.get()
+  ).then((settings) => settings.providers)
+  await expect(dashboard.locator('.dashboard-provider-card')).toHaveCount(savedProviders.length)
+  const offProvider = savedProviders.find((provider) => !provider.enabled)
+  expect(offProvider).toBeDefined()
+  const offCard = dashboard.locator(`.dashboard-provider-card[data-provider-id="${offProvider?.id}"]`)
+  await expect(offCard.locator('.dashboard-provider-card__status')).toHaveText('Off')
+  await expect(dashboard.getByRole('checkbox', { name: 'Launch at startup' })).toHaveCount(0)
+  await offCard.getByRole('button', { name: 'Manage' }).click()
+  await expect(widgetNavigation.getByRole('button', { name: 'Providers' })).toHaveAttribute('aria-current', 'page')
+  await selectSettingsPage(dashboard, 'Behavior')
+  await selectSettingsPage(dashboard, 'Dashboard')
 
   await pages.getByRole('button', { name: 'Widget' }).click()
   await expect(widgetNavigation.getByRole('button', { name: 'Behavior' })).toHaveAttribute('aria-current', 'page')

@@ -26,6 +26,30 @@ describe('widget lifecycle settings', () => {
   })
 })
 
+describe('general settings', () => {
+  it('keeps the dashboard closed and on its own theme by default', () => {
+    expect(DEFAULT_SETTINGS.openDashboardAtStartup).toBe(false)
+    expect(DEFAULT_SETTINGS.dashboardFollowsWidgetTheme).toBe(false)
+  })
+
+  it('persists the general options and rejects non-boolean values', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'widoken-settings-'))
+    temporaryDirectories.push(directory)
+    const path = join(directory, 'settings.json')
+    const repository = new SettingsRepository(path)
+
+    const updated = await repository.update({ openDashboardAtStartup: true, dashboardFollowsWidgetTheme: true })
+    expect(updated.openDashboardAtStartup).toBe(true)
+    expect(updated.dashboardFollowsWidgetTheme).toBe(true)
+    expect((await new SettingsRepository(path).get()).dashboardFollowsWidgetTheme).toBe(true)
+
+    await writeFile(path, JSON.stringify({ openDashboardAtStartup: 'yes', dashboardFollowsWidgetTheme: 1 }))
+    const sanitized = await new SettingsRepository(path).get()
+    expect(sanitized.openDashboardAtStartup).toBe(false)
+    expect(sanitized.dashboardFollowsWidgetTheme).toBe(false)
+  })
+})
+
 describe('provider usage settings', () => {
   it('adds predefined usage displays to settings saved before split rings existed', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'widoken-settings-'))

@@ -1,8 +1,8 @@
 import { forwardRef } from 'react'
-import type { ProviderListPrice, ProviderView, UsageTrend } from '@shared/provider'
+import type { ProviderView, UsageTrend } from '@shared/provider'
 import { displayedUsageLimits } from '@shared/providerUsage'
 import type { DockSide, ProviderUsageDisplay } from '@shared/settings'
-import { percentDescription, readableName, resetDescription } from '../../utils/usageFormat'
+import { listPriceDescription, percentDescription, readableName, relativeFuture, resetDescription } from '../../utils/usageFormat'
 import { UnavailablePopover } from './UnavailablePopover'
 import { UsageBar } from './UsageBar'
 
@@ -25,23 +25,6 @@ function updateDescription(value: string): string {
     second: '2-digit'
   }).format(updated)
   return `Updated at ${formatted}`
-}
-
-function listPriceDescription(price: ProviderListPrice): string {
-  if (price.amount === 0) return 'Free list price'
-  return `${new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency: price.currency,
-    maximumFractionDigits: 0
-  }).format(price.amount)}/mo list`
-}
-
-function relativeFuture(value: string): string {
-  const difference = Date.parse(value) - Date.now()
-  if (!Number.isFinite(difference) || difference <= 0) return 'soon'
-  const hours = Math.round(difference / 3_600_000)
-  if (hours < 24) return `in ${Math.max(1, hours)}h`
-  return `in ${Math.round(hours / 24)}d`
 }
 
 function TrendDetails({ trend }: { trend?: UsageTrend }): React.JSX.Element {

@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { AnalyticsService } from '../../src/main/analytics/AnalyticsService'
 import type { ProviderSnapshot } from '../../src/shared/provider'
+import { usageHistoryDay } from '../../src/shared/usageHistory'
 
 const temporaryDirectories: string[] = []
 
@@ -43,6 +44,42 @@ describe('AnalyticsService', () => {
       projectedPercentAtReset: 80
     })
     expect(enriched.analytics?.trends[0].estimatedExhaustionAt).toBe(new Date(start + 64 * 60 * 60 * 1000).toISOString())
+    service.close()
+  })
+
+  it('reads a daily history that prefers the stored provider amount', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'widoken-analytics-history-'))
+    temporaryDirectories.push(directory)
+    const service = new AnalyticsService(join(directory, 'analytics.sqlite'), directory)
+    const first = Date.UTC(2026, 9, 5, 15)
+    const second = Date.UTC(2026, 9, 6, 15)
+    const resetAt = Date.UTC(2026, 9, 20)
+
+    await service.enhance({
+      providerId: 'cursor',
+      status: 'connected',
+      limits: [{ id: 'included', label: 'Included usage', percent: 10, used: 10, limit: 100, resetsAt: new Date(resetAt).toISOString() }],
+      lastUpdatedAt: new Date(first).toISOString()
+    }, first)
+    await service.enhance({
+      providerId: 'cursor',
+      status: 'connected',
+      limits: [{ id: 'included', label: 'Included usage', percent: 90, used: 18, limit: 100, resetsAt: new Date(resetAt).toISOString() }],
+      lastUpdatedAt: new Date(second).toISOString()
+    }, second)
+
+    const now = Date.UTC(2026, 9, 7, 18)
+    const history = service.usageHistory(now)
+    expect(history.days).toHaveLength(31)
+    expect(history.since).toBe(new Date(first).toISOString())
+    expect(history.days.at(-1)).toBe(usageHistoryDay(now))
+    expect(history.series).toEqual([expect.objectContaining({
+      providerId: 'cursor',
+      limitId: 'included',
+      unit: 'count',
+      total: 8,
+      points: [expect.objectContaining({ day: usageHistoryDay(second), amount: 8 })]
+    })])
     service.close()
   })
 

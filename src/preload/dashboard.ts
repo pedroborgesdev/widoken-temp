@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { DashboardRoute } from '@shared/dashboard'
 import type { DashboardDesktopApi } from '@shared/ipc'
+import type { UsageHistory } from '@shared/usageHistory'
 import type { ProviderView } from '@shared/provider'
 import type { AppSettings, SettingsPatch } from '@shared/settings'
 
@@ -17,6 +18,7 @@ const IPC = {
   dashboardWindowMinimize: 'dashboard-window:minimize',
   dashboardWindowResizeToContent: 'dashboard-window:resize-to-content',
   dashboardNavigate: 'dashboard:navigate',
+  analyticsHistory: 'analytics:history',
   themeSyncVsCode: 'theme:sync-vscode',
   appQuit: 'app:quit'
 } as const
@@ -52,6 +54,9 @@ const dashboardDesktopApi: DashboardDesktopApi = {
   },
   themes: {
     syncVsCode: () => ipcRenderer.invoke(IPC.themeSyncVsCode)
+  },
+  analytics: {
+    history: (): Promise<UsageHistory> => ipcRenderer.invoke(IPC.analyticsHistory)
   },
   app: {
     quit: () => ipcRenderer.invoke(IPC.appQuit)

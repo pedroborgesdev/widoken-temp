@@ -10,6 +10,7 @@ import type {
   UsageLimit,
   UsageTrend
 } from '@shared/provider'
+import { buildUsageHistory, type UsageHistory, type UsageHistorySample } from '@shared/usageHistory'
 import { cursorStateDatabasePath } from '../providers/cursorStorage'
 
 const DAY_MS = 86_400_000
@@ -188,6 +189,44 @@ export class AnalyticsService {
     }
     const hasAnalytics = analytics.trends.length > 0 || analytics.listPrice || analytics.localMetrics?.length
     return hasAnalytics ? { ...snapshot, analytics } : snapshot
+  }
+
+  usageHistory(now = Date.now()): UsageHistory {
+    const empty = buildUsageHistory([], now)
+    if (!this.database) return empty
+    try {
+      const rows = this.database.prepare(`
+        SELECT provider_id, limit_id, captured_at, percent, reset_at, used, limit_value
+        FROM usage_samples
+        WHERE captured_at >= ?
+        ORDER BY captured_at ASC
+      `).all(now - 40 * DAY_MS) as Array<{
+        provider_id: string
+        limit_id: string
+        captured_at: number
+        percent: number
+        reset_at: number | null
+        used: number | null
+        limit_value: number | null
+      }>
+      const samples: UsageHistorySample[] = rows.map((row) => ({
+        providerId: row.provider_id,
+        limitId: row.limit_id,
+        capturedAt: row.captured_at,
+        percent: row.percent,
+        resetAt: row.reset_at,
+        used: row.used,
+        limitValue: row.limit_value
+      }))
+      const first = this.database.prepare('SELECT MIN(captured_at) AS since FROM usage_samples').get() as { since: number | null }
+      return {
+        ...buildUsageHistory(samples, now),
+        since: first.since === null ? undefined : new Date(first.since).toISOString()
+      }
+    } catch (error) {
+      this.warnOnce('Unable to read usage history; the dashboard chart will stay empty.', error)
+      return empty
+    }
   }
 
   close(): void {
