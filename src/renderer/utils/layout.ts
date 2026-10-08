@@ -293,6 +293,7 @@ function widgetCoordinate(position: number, viewportSize: number, widgetSize: nu
 
 export interface DraggedWidgetPosition {
   candidateSide?: DockSide
+  pulled?: boolean
   left: number
   side: DockSide
   top: number
@@ -406,6 +407,25 @@ export function resolveHorizontalPopoverPosition(
   return { left, placement, top }
 }
 
+export function edgesSharedWithAnotherDisplay(
+  displays: Array<{ id: number, x: number, y: number, width: number, height: number }>,
+  stage: { id: number, x: number, y: number, width: number, height: number }
+): DockSide[] {
+  const edges = new Set<DockSide>()
+  const overlaps = (start: number, end: number, otherStart: number, otherEnd: number): boolean =>
+    Math.min(end, otherEnd) - Math.max(start, otherStart) > 8
+  for (const other of displays) {
+    if (other.id === stage.id) continue
+    const vertical = overlaps(stage.y, stage.y + stage.height, other.y, other.y + other.height)
+    const horizontal = overlaps(stage.x, stage.x + stage.width, other.x, other.x + other.width)
+    if (horizontal && Math.abs(stage.y + stage.height - other.y) <= 8) edges.add('bottom')
+    if (horizontal && Math.abs(other.y + other.height - stage.y) <= 8) edges.add('top')
+    if (vertical && Math.abs(stage.x + stage.width - other.x) <= 8) edges.add('right')
+    if (vertical && Math.abs(other.x + other.width - stage.x) <= 8) edges.add('left')
+  }
+  return [...edges]
+}
+
 export function resolveDraggedWidgetPosition(
   pointerX: number,
   pointerY: number,
@@ -415,8 +435,10 @@ export function resolveDraggedWidgetPosition(
   viewportHeight: number,
   widgetHeight: number,
   widgetWidth = WIDGET_WIDTH,
-  dockingEnabled = true
+  dockingEnabled = true,
+  looseSides: readonly DockSide[] = []
 ): DraggedWidgetPosition {
+  const loose = new Set(looseSides)
   const minimumLeft = WIDGET_MARGIN
   const maximumLeft = Math.max(minimumLeft, viewportWidth - widgetWidth - WIDGET_MARGIN)
   const minimumTop = WIDGET_MARGIN
@@ -433,11 +455,27 @@ export function resolveDraggedWidgetPosition(
         widgetHeight
       )
     : undefined
-  const left = candidateSide === 'left' ? minimumLeft : candidateSide === 'right' ? maximumLeft : freeLeft
-  let top = candidateSide === 'top' ? minimumTop : candidateSide === 'bottom' ? maximumTop : freeTop
+  const holds = (side: DockSide | undefined): boolean => side != null && !loose.has(side)
+  let pulled = false
+  let left = freeLeft
+  let top = freeTop
+  if (holds(candidateSide) && candidateSide === 'left') {
+    left = minimumLeft
+    pulled = true
+  } else if (holds(candidateSide) && candidateSide === 'right') {
+    left = maximumLeft
+    pulled = true
+  } else if (holds(candidateSide) && candidateSide === 'top') {
+    top = minimumTop
+    pulled = true
+  } else if (holds(candidateSide) && candidateSide === 'bottom') {
+    top = maximumTop
+    pulled = true
+  }
   // A side lane used to win the whole gesture, so the widget never got pulled into the
   // top or bottom bar. Crossing that bar seats it on the bar's outer edge, and aiming
-  // inside the bar makes that bar the dock target.
+  // inside the bar makes that bar the dock target. An edge shared with another monitor
+  // stays highlighted, but the widget keeps following the cursor across it.
   if (dockingEnabled && candidateSide !== 'top' && candidateSide !== 'bottom') {
     const laneInnerEdge = WIDGET_MARGIN + SNAP_ZONE_WIDTH
     const bottomLaneTop = viewportHeight - WIDGET_MARGIN - SNAP_ZONE_WIDTH
@@ -446,14 +484,20 @@ export function resolveDraggedWidgetPosition(
     const pointerInTop = pointerY <= laneInnerEdge
     const pointerInBottom = pointerY >= bottomLaneTop && pointerY <= viewportHeight - WIDGET_MARGIN
     if (enteredBottom && !enteredTop) {
-      top = maximumTop
+      if (!loose.has('bottom')) {
+        top = maximumTop
+        pulled = true
+      }
       if (pointerInBottom && !candidateSide) candidateSide = 'bottom'
     } else if (enteredTop && !enteredBottom) {
-      top = minimumTop
+      if (!loose.has('top')) {
+        top = minimumTop
+        pulled = true
+      }
       if (pointerInTop && !candidateSide) candidateSide = 'top'
     }
   }
   const side = candidateSide ?? (left + widgetWidth / 2 <= viewportWidth / 2 ? 'left' : 'right')
 
-  return { candidateSide, left, side, top }
+  return { candidateSide, left, pulled, side, top }
 }

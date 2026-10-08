@@ -11,6 +11,7 @@ import {
   collapsedWidgetRectangle,
   tuckInteractionRectangle,
   edgeCollapseOffset,
+  edgesSharedWithAnotherDisplay,
   keepHorizontalPopoverOutsideTurnedThumb,
   keepVerticalPopoverOutsideTurnedThumb,
   normalizeWidgetCoordinate,
@@ -125,12 +126,14 @@ describe('widget layout', () => {
     expect(resolveDraggedWidgetPosition(600, 125, 18, 75, 1200, 1000, 234, 54, false)).toEqual({
       candidateSide: undefined,
       left: 582,
+      pulled: false,
       side: 'right',
       top: 50
     })
     expect(resolveDraggedWidgetPosition(1110, 500, 18, 75, 1200, 1000, 234, 54, false)).toEqual({
       candidateSide: undefined,
       left: 1092,
+      pulled: false,
       side: 'right',
       top: 425
     })
@@ -264,18 +267,21 @@ describe('widget layout', () => {
     expect(resolveDraggedWidgetPosition(600, 500, 18, 75, 1200, 1000, 234)).toEqual({
       candidateSide: undefined,
       left: 582,
+      pulled: false,
       side: 'right',
       top: 425
     })
     expect(resolveDraggedWidgetPosition(40, 2, 18, 75, 1200, 1000, 234)).toEqual({
       candidateSide: 'top',
       left: 22,
+      pulled: true,
       side: 'top',
       top: 8
     })
     expect(resolveDraggedWidgetPosition(1170, 999, 18, 75, 1200, 1000, 234)).toEqual({
       candidateSide: 'right',
       left: 1138,
+      pulled: true,
       side: 'right',
       top: 758
     })
@@ -285,6 +291,7 @@ describe('widget layout', () => {
     expect(resolveDraggedWidgetPosition(600, 960, 18, 75, 1200, 1000, 234)).toEqual({
       candidateSide: 'bottom',
       left: 582,
+      pulled: true,
       side: 'bottom',
       top: 758
     })
@@ -294,15 +301,28 @@ describe('widget layout', () => {
     expect(resolveDraggedWidgetPosition(26, 800, 18, 75, 1200, 1000, 234)).toEqual({
       candidateSide: 'left',
       left: 8,
+      pulled: true,
       side: 'left',
       top: 758
     })
     expect(resolveDraggedWidgetPosition(1190, 990, 18, 75, 1200, 1000, 234)).toEqual({
       candidateSide: 'right',
       left: 1138,
+      pulled: true,
       side: 'right',
       top: 758
     })
+  })
+
+  it('keeps following the cursor across an edge shared with another monitor', () => {
+    const top = { id: 1, x: 10, y: 0, width: 1920, height: 1080 }
+    const bottom = { id: 2, x: 0, y: 1080, width: 1920, height: 1080 }
+    expect(edgesSharedWithAnotherDisplay([top, bottom], top)).toEqual(['bottom'])
+    expect(edgesSharedWithAnotherDisplay([top, bottom], bottom)).toEqual(['top'])
+    const crossing = resolveDraggedWidgetPosition(960, 820, 18, 20, 1920, 1080, 234, 54, true, ['bottom'])
+    expect(crossing.candidateSide).toBe('bottom')
+    expect(crossing.pulled).toBe(false)
+    expect(crossing.top).toBe(800)
   })
 
   it('detects points inside interaction regions', () => {

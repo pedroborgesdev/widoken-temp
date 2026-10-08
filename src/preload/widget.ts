@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type Rectangle } from 'electron'
 import type { DashboardRoute } from '@shared/dashboard'
-import type { WidgetDesktopApi } from '@shared/ipc'
+import type { OverlayDragRelay, WidgetDesktopApi } from '@shared/ipc'
+import type { DisplayRect } from '@shared/overlayDisplay'
 import type { ProviderView } from '@shared/provider'
 import type { AppSettings, SettingsPatch } from '@shared/settings'
 
@@ -10,6 +11,10 @@ const IPC = {
   overlayStartDragging: 'overlay:start-dragging',
   overlayEndDragging: 'overlay:end-dragging',
   overlaySetRegions: 'overlay:set-regions',
+  overlayDragPointerUp: 'overlay:drag-pointer-up',
+  overlayDragMove: 'overlay:drag-move',
+  overlayDragEnd: 'overlay:drag-end',
+  overlayDisplays: 'overlay:displays',
   providersList: 'providers:list',
   providersRefresh: 'providers:refresh',
   providersUpdated: 'providers:updated',
@@ -22,14 +27,33 @@ const IPC = {
 
 const widgetDesktopApi: WidgetDesktopApi = {
   overlay: {
-    startDragging: () => {
-      ipcRenderer.sendSync(IPC.overlayStartDragging)
+    startDragging: (offsetX: number, offsetY: number) => {
+      ipcRenderer.sendSync(IPC.overlayStartDragging, { offsetX, offsetY })
       return Promise.resolve()
     },
     endDragging: (regions: Rectangle[], paintOutset?: number) =>
       ipcRenderer.invoke(IPC.overlayEndDragging, regions, paintOutset),
     setInteractionRegions: (regions: Rectangle[], paintOutset?: number) =>
-      ipcRenderer.invoke(IPC.overlaySetRegions, regions, paintOutset)
+      ipcRenderer.invoke(IPC.overlaySetRegions, regions, paintOutset),
+    dragPointerUp: () => {
+      ipcRenderer.sendSync(IPC.overlayDragPointerUp)
+      return Promise.resolve()
+    },
+    onDragMove: (callback: (relay: OverlayDragRelay) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, relay: OverlayDragRelay): void => callback(relay)
+      ipcRenderer.on(IPC.overlayDragMove, listener)
+      return () => ipcRenderer.removeListener(IPC.overlayDragMove, listener)
+    },
+    onDragEnd: (callback: (relay: OverlayDragRelay) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, relay: OverlayDragRelay): void => callback(relay)
+      ipcRenderer.on(IPC.overlayDragEnd, listener)
+      return () => ipcRenderer.removeListener(IPC.overlayDragEnd, listener)
+    },
+    onDisplays: (callback: (displays: DisplayRect[]) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, displays: DisplayRect[]): void => callback(displays)
+      ipcRenderer.on(IPC.overlayDisplays, listener)
+      return () => ipcRenderer.removeListener(IPC.overlayDisplays, listener)
+    }
   },
   providers: {
     list: () => ipcRenderer.invoke(IPC.providersList),

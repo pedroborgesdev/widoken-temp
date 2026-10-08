@@ -122,7 +122,11 @@ const browserDesktopApi: DesktopApi = {
   overlay: {
     startDragging: async () => undefined,
     endDragging: async () => undefined,
-    setInteractionRegions: async () => undefined
+    setInteractionRegions: async () => undefined,
+    dragPointerUp: async () => undefined,
+    onDragMove: () => () => undefined,
+    onDragEnd: () => () => undefined,
+    onDisplays: () => () => undefined
   },
   providers: {
     list: async () => previewProviderViews(),

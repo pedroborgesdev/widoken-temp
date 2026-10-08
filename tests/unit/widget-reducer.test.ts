@@ -51,3 +51,17 @@ describe('widget startup readiness', () => {
     expect(refreshing.providersReady).toBe(true)
   })
 })
+
+describe('cross-display drag', () => {
+  it('drops a drag that left this display without saving a new position', () => {
+    const dragging = widgetReducer(initialWidgetState, {
+      type: 'drag-started',
+      drag: { left: 12, top: 24, side: 'left' }
+    })
+    const released = widgetReducer(dragging, { type: 'drag-released' })
+
+    expect(released.mode).toBe('passive')
+    expect(released.drag).toBeUndefined()
+    expect(released.settings).toBe(initialWidgetState.settings)
+  })
+})

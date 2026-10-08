@@ -137,7 +137,12 @@ class LinuxX11InteractionRegionAdapter implements InteractionRegionAdapter {
   updateWindowBounds(): void {}
 
   applyRegions(window: InteractionWindow, regions: Rectangle[]): void {
-    // Keep the proven Linux/X11 behavior unchanged.
+    // An empty shape restores a full rectangle on X11, which would swallow
+    // clicks on monitors that are not hosting the widget.
+    if (regions.length === 0) {
+      window.setIgnoreMouseEvents(true)
+      return
+    }
     window.setIgnoreMouseEvents(false)
     window.setShape(regions)
   }

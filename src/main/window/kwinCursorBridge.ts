@@ -1,6 +1,7 @@
 import { app, type Point, type Rectangle } from 'electron'
 import * as dbus from 'dbus-native'
 import { join } from 'node:path'
+import { serializeOverlayLayouts, type OverlayLayout } from '@shared/overlayDisplay'
 
 const SERVICE_NAME = 'dev.widoken.Cursor'
 const OBJECT_PATH = '/dev/widoken/Cursor'
@@ -8,7 +9,7 @@ const INTERFACE_NAME = 'dev.widoken.Cursor'
 const PLUGIN_NAME = 'widoken-cursor-bridge'
 
 export interface KWinCursorBridge {
-  refreshTargetBounds: (bounds: Rectangle, force?: boolean) => Promise<void>
+  refreshLayouts: (layouts: OverlayLayout[], force?: boolean) => Promise<void>
   stop: () => Promise<void>
 }
 
@@ -20,14 +21,15 @@ function scriptPath(): string {
 
 export async function startKWinCursorBridge(
   onCursor: (point: Point) => void,
-  onWindowConfigured: (bounds: Rectangle) => void,
-  initialTargetBounds: Rectangle
+  onWindowConfigured: (caption: string, bounds: Rectangle) => void,
+  initialLayouts: OverlayLayout[]
 ): Promise<KWinCursorBridge> {
   const bus = dbus.sessionBus({ timeout: 3_000 })
   bus.on('error', (error) => console.warn('KWin cursor bridge D-Bus error:', error))
 
   let kwinOwner = await bus.getNameOwner('org.kde.KWin')
-  let targetBounds = { ...initialTargetBounds }
+  let layoutPayload = serializeOverlayLayouts(initialLayouts)
+  const firstLayout = initialLayouts[0]
   const cursorInterface = dbus.defineInterface({
     name: INTERFACE_NAME,
     methods: {
@@ -37,7 +39,11 @@ export async function startKWinCursorBridge(
       },
       GetTargetGeometry: {
         out: { x: 'i', y: 'i', width: 'i', height: 'i' },
-        handler: () => targetBounds
+        handler: () => firstLayout ?? { x: 0, y: 0, width: 0, height: 0 }
+      },
+      GetOverlayLayout: {
+        out: { payload: 's' },
+        handler: () => layoutPayload
       },
       UpdateCursor: {
         in: { x: 'i', y: 'i' },
@@ -51,22 +57,29 @@ export async function startKWinCursorBridge(
         }
       },
       WindowConfigured: {
-        in: { pid: 'i', keepAbove: 'b', x: 'i', y: 'i', width: 'i', height: 'i' },
+        in: { pid: 'i', keepAbove: 'b', x: 'i', y: 'i', width: 'i', height: 'i', caption: 's' },
         handler: (args, context) => {
           if (context.sender !== kwinOwner) return
-          const { pid, keepAbove, x, y, width, height } = args as {
+          const { pid, keepAbove, x, y, width, height, caption } = args as {
             pid: number
             keepAbove: boolean
             x: number
             y: number
             width: number
             height: number
+            caption: string
           }
-          if (pid !== process.pid || ![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return
-          onWindowConfigured({ x, y, width, height })
+          if (
+            pid !== process.pid ||
+            typeof caption !== 'string' ||
+            ![x, y, width, height].every(Number.isFinite) ||
+            width <= 0 ||
+            height <= 0
+          ) return
+          onWindowConfigured(caption, { x, y, width, height })
           if (process.env.WIDOKEN_DEBUG_CURSOR === '1') {
             console.log(
-              `KWin window configured: pid=${pid}, keepAbove=${keepAbove}, bounds=${x},${y} ${width}x${height}`
+              `KWin window configured: pid=${pid}, keepAbove=${keepAbove}, caption=${caption}, bounds=${x},${y} ${width}x${height}`
             )
           }
         }
@@ -136,12 +149,10 @@ export async function startKWinCursorBridge(
 
   await loadScript()
 
-  const refreshTargetBounds = async (bounds: Rectangle, force = false): Promise<void> => {
-    const changed = bounds.x !== targetBounds.x ||
-      bounds.y !== targetBounds.y ||
-      bounds.width !== targetBounds.width ||
-      bounds.height !== targetBounds.height
-    targetBounds = { ...bounds }
+  const refreshLayouts = async (layouts: OverlayLayout[], force = false): Promise<void> => {
+    const next = serializeOverlayLayouts(layouts)
+    const changed = next !== layoutPayload
+    layoutPayload = next
     if (stopped || (!changed && !force)) return
 
     await enqueue(async () => {
@@ -161,5 +172,5 @@ export async function startKWinCursorBridge(
     await bus.close()
   }
 
-  return { refreshTargetBounds, stop }
+  return { refreshLayouts, stop }
 }

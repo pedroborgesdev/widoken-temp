@@ -15,73 +15,153 @@ $order = @(
 )
 
 $canvasW = 1680
-$canvasH = 980
-$contentH = 680
-$gap = 58
-$pad = 84
+$canvasH = 945
+$gap = 6
+$labelGap = 14
+$chipH = 40
+$sideMargin = 72
+
+function Measure-Shot([System.Drawing.Bitmap]$source) {
+  $minX = $source.Width
+  $minY = $source.Height
+  $maxX = 0
+  $maxY = 0
+  $solidMinY = $source.Height
+  $solidMaxY = 0
+  for ($y = 0; $y -lt $source.Height; $y += 2) {
+    for ($x = 0; $x -lt $source.Width; $x += 2) {
+      $alpha = $source.GetPixel($x, $y).A
+      if ($alpha -gt 12) {
+        if ($x -lt $minX) { $minX = $x }
+        if ($y -lt $minY) { $minY = $y }
+        if ($x -gt $maxX) { $maxX = $x }
+        if ($y -gt $maxY) { $maxY = $y }
+      }
+      if ($alpha -gt 210) {
+        if ($y -lt $solidMinY) { $solidMinY = $y }
+        if ($y -gt $solidMaxY) { $solidMaxY = $y }
+      }
+    }
+  }
+  $minX = [Math]::Max(0, $minX - 2)
+  $minY = [Math]::Max(0, $minY - 2)
+  $maxX = [Math]::Min($source.Width - 1, $maxX + 2)
+  $maxY = [Math]::Min($source.Height - 1, $maxY + 2)
+  $rect = New-Object System.Drawing.Rectangle $minX, $minY, ($maxX - $minX + 1), ($maxY - $minY + 1)
+  return @{
+    Bitmap = $source.Clone($rect, $source.PixelFormat)
+    SolidTop = [Math]::Max(0, $solidMinY - $minY)
+    SolidBottom = [Math]::Min($rect.Height, ($solidMaxY - $minY + 1))
+  }
+}
+
+function Add-RoundRect([System.Drawing.Drawing2D.GraphicsPath]$path, [single]$x, [single]$y, [single]$w, [single]$h, [single]$r) {
+  $d = [Math]::Min($r, [Math]::Min($w, $h))
+  $path.AddArc($x, $y, $d, $d, 180, 90)
+  $path.AddArc(($x + $w - $d), $y, $d, $d, 270, 90)
+  $path.AddArc(($x + $w - $d), ($y + $h - $d), $d, $d, 0, 90)
+  $path.AddArc($x, ($y + $h - $d), $d, $d, 90, 90)
+  $path.CloseFigure()
+}
 
 $wallpaper = [System.Drawing.Image]::FromFile((Join-Path $root 'wallpaper.jpg'))
 $canvas = New-Object System.Drawing.Bitmap $canvasW, $canvasH
-$canvas.SetResolution(144, 144)
 $g = [System.Drawing.Graphics]::FromImage($canvas)
 $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-$g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+$g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
 $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
 $g.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
-
-$scale = [Math]::Max($canvasW / $wallpaper.Width, $canvasH / $wallpaper.Height)
-$dw = $wallpaper.Width * $scale
-$dh = $wallpaper.Height * $scale
-$g.DrawImage($wallpaper, [single](($canvasW - $dw) / 2), [single](($canvasH - $dh) / 2 - 20), [single]$dw, [single]$dh)
+$g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::ClearTypeGridFit
+$g.Clear([System.Drawing.Color]::FromArgb(255, 196, 142, 78))
+$g.DrawImage($wallpaper, 0, 0, $canvasW, $canvasH)
 
 $shots = @()
 foreach ($item in $order) {
   $path = Join-Path $root "assets\readme\.theme-shots\$($item.File)"
   $img = [System.Drawing.Image]::FromFile($path)
-  $bmp = New-Object System.Drawing.Bitmap $img
+  $full = New-Object System.Drawing.Bitmap $img
   $img.Dispose()
-  $shots += @{ Bitmap = $bmp; Label = $item.Label }
+  $measured = Measure-Shot $full
+  $full.Dispose()
+  $shots += @{ Bitmap = $measured.Bitmap; Label = $item.Label; SolidTop = $measured.SolidTop; SolidBottom = $measured.SolidBottom }
 }
 
 $sample = $shots[0].Bitmap
-$contentScale = $contentH / ($sample.Height - ($pad * 2))
-$drawW = $sample.Width * $contentScale
-$drawH = $sample.Height * $contentScale
-$contentW = ($sample.Width - ($pad * 2)) * $contentScale
-$insetX = $pad * $contentScale
-$insetY = $pad * $contentScale
+$labelRoom = $chipH + $labelGap
+$contentH = $canvasH - ($labelRoom * 2) - 28
+$contentScale = $contentH / $sample.Height
 $count = $shots.Count
-$rowW = ($count * $contentW) + (($count - 1) * $gap)
+$drawWidths = @()
+$rowW = 0
+foreach ($shot in $shots) {
+  $drawW = $shot.Bitmap.Width * $contentScale
+  $drawWidths += $drawW
+  $rowW += $drawW
+}
+$rowW += $gap * ($count - 1)
+$maxRow = $canvasW - ($sideMargin * 2)
+if ($rowW -gt $maxRow) {
+  $contentScale = $contentScale * ($maxRow / $rowW)
+  $contentH = $sample.Height * $contentScale
+  $drawWidths = @()
+  $rowW = 0
+  foreach ($shot in $shots) {
+    $drawW = $shot.Bitmap.Width * $contentScale
+    $drawWidths += $drawW
+    $rowW += $drawW
+  }
+  $rowW += $gap * ($count - 1)
+}
+
 $originX = ($canvasW - $rowW) / 2
-$originY = 92
+$originY = [Math]::Round(($canvasH - $contentH) / 2 + 18)
 
 $font = New-Object System.Drawing.Font('Segoe UI', 26, [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Pixel)
+$chipWidths = @()
+foreach ($shot in $shots) {
+  $chipWidths += $g.MeasureString($shot.Label, $font).Width + 28
+}
+$chipLeft = $canvasW
+$chipRight = 0
+$cursor = $originX
+for ($i = 0; $i -lt $count; $i++) {
+  $chipX = $cursor + ($drawWidths[$i] - $chipWidths[$i]) / 2
+  if ($chipX -lt $chipLeft) { $chipLeft = $chipX }
+  if (($chipX + $chipWidths[$i]) -gt $chipRight) { $chipRight = $chipX + $chipWidths[$i] }
+  $cursor += $drawWidths[$i] + $gap
+}
+$inset = 20
+$shift = 0
+if ($chipLeft -lt $inset) { $shift = $inset - $chipLeft }
+if (($chipRight + $shift) -gt ($canvasW - $inset)) { $shift -= ($chipRight + $shift) - ($canvasW - $inset) }
+$originX += $shift
+
 $fill = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 248, 250, 252))
 $chip = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(168, 10, 14, 22))
 $format = New-Object System.Drawing.StringFormat
 $format.Alignment = [System.Drawing.StringAlignment]::Center
 $format.LineAlignment = [System.Drawing.StringAlignment]::Center
 
+$cursor = $originX
 for ($i = 0; $i -lt $count; $i++) {
-  $contentX = $originX + ($i * ($contentW + $gap))
-  $g.DrawImage($shots[$i].Bitmap, [single]($contentX - $insetX), [single]($originY - $insetY), [single]$drawW, [single]$drawH)
-  $label = $shots[$i].Label
-  $textSize = $g.MeasureString($label, $font)
+  $drawW = $drawWidths[$i]
+  $drawH = $shots[$i].Bitmap.Height * $contentScale
+  $g.DrawImage($shots[$i].Bitmap, [single]$cursor, [single]$originY, [single]$drawW, [single]$drawH)
+
+  $bodyTop = $originY + ($shots[$i].SolidTop * $contentScale)
+  $bodyBottom = $originY + ($shots[$i].SolidBottom * $contentScale)
+  $textSize = $g.MeasureString($shots[$i].Label, $font)
   $chipW = [single]($textSize.Width + 28)
-  $chipH = [single]40
-  $chipX = [single]($contentX + ($contentW - $chipW) / 2)
-  $chipY = [single]($originY + $contentH + 22)
+  $chipX = [single]($cursor + ($drawW - $chipW) / 2)
+  $chipY = if ($i % 2 -eq 0) { [single]($bodyBottom + $labelGap) } else { [single]($bodyTop - $labelGap - $chipH) }
   $path = New-Object System.Drawing.Drawing2D.GraphicsPath
-  $radius = $chipH
-  $path.AddArc($chipX, $chipY, $radius, $radius, 180, 90)
-  $path.AddArc(($chipX + $chipW - $radius), $chipY, $radius, $radius, 270, 90)
-  $path.AddArc(($chipX + $chipW - $radius), ($chipY + $chipH - $radius), $radius, $radius, 0, 90)
-  $path.AddArc($chipX, ($chipY + $chipH - $radius), $radius, $radius, 90, 90)
-  $path.CloseFigure()
+  Add-RoundRect $path $chipX $chipY $chipW $chipH $chipH
   $g.FillPath($chip, $path)
   $path.Dispose()
   $labelRect = New-Object System.Drawing.RectangleF $chipX, $chipY, $chipW, $chipH
-  $g.DrawString($label, $font, $fill, $labelRect, $format)
+  $g.DrawString($shots[$i].Label, $font, $fill, $labelRect, $format)
+
+  $cursor += $drawW + $gap
 }
 
 $out = Join-Path $root 'assets\readme\widget-themes.png'

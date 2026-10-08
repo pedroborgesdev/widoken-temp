@@ -407,6 +407,72 @@ function color(colors: JsonObject, keys: string[], fallback: string): string {
   return fallback
 }
 
+function rgbChannels(hex: string): [number, number, number, number] {
+  let value = hex.slice(1)
+  if (value.length === 3 || value.length === 4) value = [...value].map((channel) => channel + channel).join('')
+  return [
+    Number.parseInt(value.slice(0, 2), 16),
+    Number.parseInt(value.slice(2, 4), 16),
+    Number.parseInt(value.slice(4, 6), 16),
+    value.length >= 8 ? Number.parseInt(value.slice(6, 8), 16) / 255 : 1
+  ]
+}
+
+function channelLuminance(channel: number): number {
+  const value = channel / 255
+  return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+}
+
+function contrastRatio(first: string, second: string): number {
+  const [red, green, blue, alpha] = rgbChannels(first)
+  const [baseRed, baseGreen, baseBlue] = rgbChannels(second)
+  const luminance = (channels: [number, number, number]) =>
+    0.2126 * channelLuminance(channels[0])
+    + 0.7152 * channelLuminance(channels[1])
+    + 0.0722 * channelLuminance(channels[2])
+  const painted: [number, number, number] = [
+    red * alpha + baseRed * (1 - alpha),
+    green * alpha + baseGreen * (1 - alpha),
+    blue * alpha + baseBlue * (1 - alpha)
+  ]
+  const [lighter, darker] = [luminance(painted), luminance([baseRed, baseGreen, baseBlue])].sort((left, right) => right - left)
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
+function mixHex(base: string, target: string, amount: number): string {
+  const [red, green, blue] = rgbChannels(base)
+  const [targetRed, targetGreen, targetBlue] = rgbChannels(target)
+  const mix = (from: number, to: number) => Math.round(from + (to - from) * amount).toString(16).padStart(2, '0')
+  return `#${mix(red, targetRed)}${mix(green, targetGreen)}${mix(blue, targetBlue)}`
+}
+
+function readableAgainst(candidate: string, surfaces: string[]): boolean {
+  return surfaces.every((surface) => contrastRatio(candidate, surface) >= 1.35)
+}
+
+const TRACK_KEYS = [
+  'editorGroup.border',
+  'sideBar.border',
+  'panel.border',
+  'editorWidget.border',
+  'input.border',
+  'tree.indentGuidesStroke',
+  'contrastBorder'
+]
+
+function trackColor(colors: JsonObject, surface: string, background: string, text: string, dark: boolean): string {
+  const surfaces = [...new Set([surface, background].map((value) => value.toLowerCase()))]
+  for (const key of TRACK_KEYS) {
+    const value = colors[key]
+    if (typeof value === 'string' && HEX_COLOR.test(value) && readableAgainst(value, surfaces)) return value
+  }
+  const fallback = dark ? '#454545' : '#cecece'
+  if (readableAgainst(fallback, surfaces)) return fallback
+  const towardText = mixHex(surface, text, dark ? 0.34 : 0.28)
+  if (readableAgainst(towardText, surfaces)) return towardText
+  return mixHex(surface, dark ? '#ffffff' : '#000000', 0.4)
+}
+
 function toPalette(colors: JsonObject, dark: boolean): SyncedThemeColors {
   const background = color(colors, ['editor.background'], dark ? '#1e1e1e' : '#ffffff')
   const surface = color(colors, ['sideBar.background', 'panel.background'], background)
@@ -426,7 +492,7 @@ function toPalette(colors: JsonObject, dark: boolean): SyncedThemeColors {
     surface,
     text,
     thumb: surface,
-    track: color(colors, ['contrastBorder', 'panel.border', 'input.border'], dark ? '#454545' : '#cecece'),
+    track: trackColor(colors, surface, background, text, dark),
     warning: color(colors, ['terminal.ansiYellow', 'editorWarning.foreground'], '#cca700')
   }
 }

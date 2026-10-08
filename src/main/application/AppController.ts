@@ -42,7 +42,7 @@ export class AppController {
     this.dashboardWindows = dashboardWindows
     this.providerManager = providerManager
 
-    registerOverlayIpc(() => widgetWindows.window)
+    registerOverlayIpc(widgetWindows)
     registerAnalyticsIpc(analyticsService)
     registerProvidersIpc(providerManager)
     registerSettingsIpc(
@@ -78,12 +78,12 @@ export class AppController {
     this.analyticsService = undefined
   }
 
-  private async applySettings(settings: AppSettings): Promise<void> {
-    await this.widgetWindows?.applySettings(settings)
+  private async applySettings(settings: AppSettings): Promise<AppSettings> {
+    return (await this.widgetWindows?.applySettings(settings)) ?? settings
   }
 
   private publishProviders(providers: ProviderView[]): void {
-    const windows = [this.widgetWindows?.window, this.dashboardWindows?.window]
+    const windows = [...(this.widgetWindows?.overlayWindows() ?? []), this.dashboardWindows?.window]
     for (const window of windows) {
       if (window && !window.isDestroyed()) window.webContents.send(IPC.providersUpdated, providers)
     }

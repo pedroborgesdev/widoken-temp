@@ -17,19 +17,19 @@ export function registerSettingsIpc(
   repository: SettingsRepository,
   providers: ProviderManager,
   dashboardWindow: DashboardWindowActions,
-  onSettingsUpdated: (settings: AppSettings) => void | Promise<void>
+  onSettingsUpdated: (settings: AppSettings) => AppSettings | void | Promise<AppSettings | void>
 ): void {
   ipcMain.handle(IPC.settingsGet, () => repository.get())
   ipcMain.handle(IPC.settingsUpdate, async (_event, patch: SettingsPatch) => {
     const settings = await repository.update(patch && typeof patch === 'object' ? patch : {})
     providers.configure(settings.providers, settings.refreshIntervalSeconds, settings.analytics.localInsights)
     app.setLoginItemSettings({ openAtLogin: settings.launchAtStartup })
-    await onSettingsUpdated(settings)
+    const published = (await onSettingsUpdated(settings)) ?? settings
     for (const window of BrowserWindow.getAllWindows()) {
-      if (!window.isDestroyed()) window.webContents.send(IPC.settingsUpdated, settings)
+      if (!window.isDestroyed()) window.webContents.send(IPC.settingsUpdated, published)
     }
     void providers.refresh()
-    return settings
+    return published
   })
   ipcMain.handle(IPC.dashboardWindowOpen, (_event, route?: unknown) =>
     dashboardWindow.open(route === undefined ? undefined : sanitizeDashboardRoute(route))

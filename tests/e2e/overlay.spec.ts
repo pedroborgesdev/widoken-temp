@@ -87,7 +87,15 @@ test.beforeAll(async () => {
     args: ['.', `--user-data-dir=${userDataDirectory}`],
     env: { ...environment, NODE_ENV: 'test', WIDOKEN_OZONE_PLATFORM: 'x11' }
   })
-  page = await electronApp.firstWindow()
+  await expect.poll(() => electronApp.windows().some(
+    (window) => !window.isClosed() && window.url().includes('widget.html') && window.url().includes('home=1')
+  )).toBe(true)
+  const host = electronApp.windows().find(
+    (window) => !window.isClosed() && window.url().includes('widget.html') && window.url().includes('home=1')
+  )
+  if (!host) throw new Error('Widget window did not open')
+  page = host
+  await page.waitForLoadState('domcontentloaded')
 })
 
 test.afterAll(async () => {
@@ -210,8 +218,8 @@ test('renders a spinning dashed contour while a provider request is active', asy
 
   await electronApp.evaluate(({ BrowserWindow }, payload) => {
     BrowserWindow.getAllWindows()
-      .find((candidate) => candidate.getTitle() === 'widoken overlay')
-      ?.webContents.send('providers:updated', payload)
+      .filter((candidate) => candidate.getTitle().startsWith('widoken overlay'))
+      .forEach((candidate) => candidate.webContents.send('providers:updated', payload))
   }, activeProviders)
 
   const ring = page.locator('[data-provider-id="claude"] .usage-ring')
@@ -233,8 +241,8 @@ test('renders a spinning dashed contour while a provider request is active', asy
 
   await electronApp.evaluate(({ BrowserWindow }, payload) => {
     BrowserWindow.getAllWindows()
-      .find((candidate) => candidate.getTitle() === 'widoken overlay')
-      ?.webContents.send('providers:updated', payload)
+      .filter((candidate) => candidate.getTitle().startsWith('widoken overlay'))
+      .forEach((candidate) => candidate.webContents.send('providers:updated', payload))
   }, providers)
   await expect(activeRing).toHaveCount(0)
   await expect(activityRing).toHaveCSS('opacity', '0')
@@ -251,7 +259,7 @@ test('renders a spinning dashed contour while a provider request is active', asy
 test('covers the whole display, including the taskbar area', async () => {
   test.skip(process.platform !== 'win32', 'Windows is the platform that clamps topmost windows to the work area')
   const geometry = await electronApp.evaluate(({ BrowserWindow, screen }) => {
-    const overlay = BrowserWindow.getAllWindows().find((candidate) => candidate.getTitle() === 'widoken overlay')
+    const overlay = BrowserWindow.getAllWindows().find((candidate) => candidate.getTitle().startsWith('widoken overlay'))
     if (!overlay) return undefined
     const display = screen.getDisplayMatching(overlay.getBounds())
     return { bounds: overlay.getBounds(), display: display.bounds }
@@ -265,7 +273,7 @@ test('covers the whole display, including the taskbar area', async () => {
 
 test('does not expose native resize handles on the overlay', async () => {
   const resizable = await electronApp.evaluate(({ BrowserWindow }) => {
-    const overlay = BrowserWindow.getAllWindows().find((candidate) => candidate.getTitle() === 'widoken overlay')
+    const overlay = BrowserWindow.getAllWindows().find((candidate) => candidate.getTitle().startsWith('widoken overlay'))
     return overlay?.isResizable()
   })
 
@@ -357,7 +365,7 @@ test('opens the dashboard in a separate native window with an isolated preload',
   await expect(settingsWindow.locator('.settings-panel__app-icon')).toBeVisible()
   await expect(settingsWindow.locator('.settings-panel__mark')).toHaveCSS('border-top-width', '0px')
   await expect(settingsWindow.locator('.settings-window')).toHaveClass(/overlay-root--theme-monokai-black/)
-  await expect(settingsWindow.locator('.settings-window')).toHaveCSS('background-color', 'rgb(0, 0, 0)')
+  await expect(settingsWindow.locator('.settings-window')).toHaveCSS('background-color', 'rgb(34, 34, 34)')
   await expect.poll(async () => settingsWindow.locator('.settings-window').evaluate((element) =>
     getComputedStyle(element).getPropertyValue('--color-overlay-blue').trim()
   )).toBe('#66d9ef')
@@ -367,7 +375,7 @@ test('opens the dashboard in a separate native window with an isolated preload',
   await expect(appearanceShadowSwitch).toHaveCSS('background-color', 'rgb(102, 217, 239)')
   await expect.poll(async () => appearanceShadowSwitch.evaluate((element) =>
     getComputedStyle(element, '::after').backgroundColor
-  )).toBe('rgb(0, 0, 0)')
+  )).toBe('rgb(34, 34, 34)')
 
   const themeControl = settingsWindow.locator('.settings-control').filter({ hasText: 'Theme' })
   await expect(settingsWindow.getByRole('button', { name: 'Sync with VS Code' })).toBeVisible()
@@ -406,17 +414,17 @@ test('opens the dashboard in a separate native window with an isolated preload',
   await expect(page.locator('.widget__thumb-segment').first()).toHaveCSS('background-color', 'rgb(17, 34, 51)')
   await themeControl.locator('.settings-select__trigger').click()
   await themeControl.getByRole('option', { name: 'Monokai Black', exact: true }).click()
-  await expect(page.locator('.widget__board')).toHaveCSS('background-color', 'rgb(0, 0, 0)')
-  await expect(page.locator('.widget__thumb-segment').first()).toHaveCSS('background-color', 'rgb(0, 0, 0)')
+  await expect(page.locator('.widget__board')).toHaveCSS('background-color', 'rgb(34, 34, 34)')
+  await expect(page.locator('.widget__thumb-segment').first()).toHaveCSS('background-color', 'rgb(34, 34, 34)')
   await themeControl.locator('.settings-select__trigger').click()
   await expect(themeControl.getByRole('option')).toHaveCount(11)
   await expect(themeControl.locator('.settings-select__menu')).not.toHaveCSS('box-shadow', 'none')
   const selectedOption = themeControl.locator('.settings-select__option--selected')
   const hoverOption = themeControl.locator('.settings-select__option:not(.settings-select__option--selected)').first()
   await expect(selectedOption).toHaveCSS('background-color', 'rgb(102, 217, 239)')
-  await expect(selectedOption).toHaveCSS('color', 'rgb(0, 0, 0)')
+  await expect(selectedOption).toHaveCSS('color', 'rgb(34, 34, 34)')
   await hoverOption.hover()
-  await expect(hoverOption).toHaveCSS('background-color', 'rgb(36, 37, 31)')
+  await expect(hoverOption).toHaveCSS('background-color', 'rgb(60, 60, 56)')
   await expect(hoverOption).toHaveCSS('color', 'rgb(255, 255, 255)')
   await themeControl.getByRole('option', { name: 'Dracula' }).click()
   await expect(page.locator('.overlay-root')).toHaveClass(/overlay-root--theme-dracula/)
@@ -433,18 +441,18 @@ test('opens the dashboard in a separate native window with an isolated preload',
     }
     return brightness(dimmed) < brightness(board)
   })).toBe(true)
-  await expect(settingsWindow.locator('.settings-window')).toHaveCSS('background-color', 'rgb(0, 0, 0)')
+  await expect(settingsWindow.locator('.settings-window')).toHaveCSS('background-color', 'rgb(34, 34, 34)')
   await expect(appearanceShadowSwitch).toHaveCSS('background-color', 'rgb(102, 217, 239)')
   await expect.poll(async () => appearanceShadowSwitch.evaluate((element) =>
     getComputedStyle(element, '::after').backgroundColor
-  )).toBe('rgb(0, 0, 0)')
+  )).toBe('rgb(34, 34, 34)')
   await themeControl.locator('.settings-select__trigger').click()
   const selectedDraculaOption = themeControl.getByRole('option', { name: 'Dracula' })
   await selectedDraculaOption.hover()
   await expect(selectedDraculaOption).toHaveCSS('background-color', 'rgb(102, 217, 239)')
   const monokaiBlackOption = themeControl.getByRole('option', { name: 'Monokai Black', exact: true })
   await monokaiBlackOption.hover()
-  await expect(monokaiBlackOption).toHaveCSS('background-color', 'rgb(36, 37, 31)')
+  await expect(monokaiBlackOption).toHaveCSS('background-color', 'rgb(60, 60, 56)')
   await themeControl.getByRole('option', { name: 'Dracula' }).click()
 
   await selectSettingsPage(settingsWindow, 'General')
@@ -452,7 +460,7 @@ test('opens the dashboard in a separate native window with an isolated preload',
   await startupCheckbox.check()
   await expect.poll(async () => switchTrack('Launch at startup').evaluate((element) =>
     getComputedStyle(element, '::after').backgroundColor
-  )).toBe('rgb(0, 0, 0)')
+  )).toBe('rgb(34, 34, 34)')
   const dashboardWindow = settingsWindow.locator('.settings-window')
   const monokaiBlackBackground = await dashboardWindow.evaluate((element) => getComputedStyle(element).backgroundColor)
   const followThemeCheckbox = settingsWindow.getByRole('checkbox', { name: 'Use the widget theme for the whole interface' })
@@ -1136,7 +1144,7 @@ test('turns the widget off and back on without closing the dashboard', async () 
     (window) => !window.isClosed() && window.url().includes('widget.html')
   )).toBe(true)
   const restartedWidget = electronApp.windows().find(
-    (window) => !window.isClosed() && window.url().includes('widget.html')
+    (window) => !window.isClosed() && window.url().includes('widget.html') && window.url().includes('home=1')
   )
   if (!restartedWidget) throw new Error('Widget window did not restart')
   page = restartedWidget

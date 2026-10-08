@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import type { Rectangle } from 'electron'
 import { DEFAULT_WIDGET_SECTION } from '@shared/dashboard'
+import type { OverlayDragRelay } from '@shared/ipc'
 import { shadowPaintOutset } from '@shared/overlay'
 import { activeSyncedTheme, syncedThemeStyle } from './utils/theme'
 import { SelectionGrid } from './components/SelectionGrid/SelectionGrid'
 import { AppMenuPopover } from './components/UsagePopover/AppMenuPopover'
 import { UsagePopover } from './components/UsagePopover/UsagePopover'
 import { Widget } from './components/Widget/Widget'
+import { widgetLivesOnDisplay, type DisplayRect } from '@shared/overlayDisplay'
 import { widgetDesktop as desktop } from './services/desktop'
+import { readOverlayQuery } from './utils/overlayQuery'
 import { useWidget } from './widget/state/useWidget'
 import {
   type ControlTurnDirection,
@@ -28,6 +31,7 @@ import {
   POPOVER_WIDTH,
   resolveHorizontalPopoverPosition,
   resolveVerticalPopoverTop,
+  edgesSharedWithAnotherDisplay,
   resolveDraggedWidgetPosition,
   resolveCornerControlLayout,
   WIDGET_MARGIN,
@@ -88,6 +92,8 @@ export default function App(): React.JSX.Element {
   const [collapseSettled, setCollapseSettled] = useState(false)
   const [expandSettled, setExpandSettled] = useState(true)
   const [initialLayoutReady, setInitialLayoutReady] = useState(false)
+  const [playEntrance, setPlayEntrance] = useState(false)
+  const entrancePlayed = useRef(false)
   const wasCollapsed = useRef(false)
   const expandSettledRef = useRef(true)
   const [resolvedPopoverHeight, setResolvedPopoverHeight] = useState<{ height: number, id: string } | undefined>(undefined)
@@ -95,8 +101,18 @@ export default function App(): React.JSX.Element {
   const popoverRef = useRef<HTMLDivElement>(null)
   const hoverTimer = useRef<number | undefined>(undefined)
   const dragSession = useRef<
-    { pointerId: number; offsetX: number; offsetY: number } | undefined
+    { pointerId: number; offsetX: number; offsetY: number; native?: boolean } | undefined
   >(undefined)
+  const nativeDragActive = useRef(false)
+  const dragVisitRef = useRef<'here' | 'away' | null>(null)
+  const draggingHere = useRef(false)
+  const placement = useMemo(() => readOverlayQuery(), [])
+  const [displays, setDisplays] = useState<DisplayRect[]>(placement.displays)
+  const [dragStage, setDragStage] = useState<DisplayRect | undefined>()
+  const layoutStageRef = useRef({ x: 0, y: 0, width: window.innerWidth, height: window.innerHeight })
+  const displaysRef = useRef(displays)
+  const [dragVisit, setDragVisit] = useState<'here' | 'away' | null>(null)
+  const [yielded, setYielded] = useState(false)
 
   const providerSettings = useMemo(
     () => [...state.settings.providers].filter((provider) => provider.enabled).sort((a, b) => a.order - b.order),
@@ -122,9 +138,19 @@ export default function App(): React.JSX.Element {
   const baseWidgetHeight = widgetOrientation === 'vertical' ? boardLength : getWidgetHeight(1, 'horizontal', itemGap)
   const widgetWidth = baseWidgetWidth * widgetScale
   const widgetHeight = baseWidgetHeight * widgetScale
-  const freeTop = getWidgetTop(state.settings.widget.verticalPosition, viewport.height, baseWidgetHeight)
-  const maxTop = Math.max(WIDGET_MARGIN, viewport.height - widgetHeight - WIDGET_MARGIN)
-  const freeLeft = getWidgetLeft(state.settings.widget.horizontalPosition, viewport.width, baseWidgetWidth)
+  const restingDisplay = displays.find((display) => display.id === state.settings.display?.id)
+    ?? displays.find((display) => display.id === placement.displayId)
+    ?? displays[0]
+  const stage = state.mode === 'dragging' && dragStage ? dragStage : restingDisplay
+  const stageX = stage?.x ?? 0
+  const stageY = stage?.y ?? 0
+  const stageWidth = stage?.width ?? viewport.width
+  const stageHeight = stage?.height ?? viewport.height
+  layoutStageRef.current = { x: stageX, y: stageY, width: stageWidth, height: stageHeight }
+  displaysRef.current = displays
+  const freeTop = getWidgetTop(state.settings.widget.verticalPosition, stageHeight, baseWidgetHeight)
+  const maxTop = Math.max(WIDGET_MARGIN, stageHeight - widgetHeight - WIDGET_MARGIN)
+  const freeLeft = getWidgetLeft(state.settings.widget.horizontalPosition, stageWidth, baseWidgetWidth)
   const persistedTop = state.settings.widget.docked && (state.settings.widget.side === 'top' || state.settings.widget.side === 'bottom')
     ? state.settings.widget.side === 'top'
       ? WIDGET_MARGIN
@@ -133,8 +159,8 @@ export default function App(): React.JSX.Element {
   const persistedLeft = state.settings.widget.docked && (state.settings.widget.side === 'left' || state.settings.widget.side === 'right')
     ? state.settings.widget.side === 'left'
       ? WIDGET_MARGIN
-      : Math.max(WIDGET_MARGIN, viewport.width - widgetWidth - WIDGET_MARGIN)
-    : Math.min(Math.max(WIDGET_MARGIN, freeLeft), Math.max(WIDGET_MARGIN, viewport.width - widgetWidth - WIDGET_MARGIN))
+      : Math.max(WIDGET_MARGIN, stageWidth - widgetWidth - WIDGET_MARGIN)
+    : Math.min(Math.max(WIDGET_MARGIN, freeLeft), Math.max(WIDGET_MARGIN, stageWidth - widgetWidth - WIDGET_MARGIN))
   const effectiveTop = state.mode === 'dragging' && state.drag ? state.drag.top : persistedTop
   const effectiveLeft = state.mode === 'dragging' && state.drag ? state.drag.left : persistedLeft
   const effectiveSide = state.mode === 'dragging' && state.drag ? state.drag.side : state.settings.widget.side
@@ -145,8 +171,8 @@ export default function App(): React.JSX.Element {
         effectiveTop,
         widgetWidth,
         widgetHeight,
-        viewport.width,
-        viewport.height
+        stageWidth,
+        stageHeight
       )
     : undefined
   const holdWidgetOpen = widgetHovered
@@ -166,10 +192,10 @@ export default function App(): React.JSX.Element {
     : edgeCollapse === 'left'
       ? effectiveLeft
       : edgeCollapse === 'right'
-        ? viewport.width - effectiveLeft - widgetWidth
+        ? stageWidth - effectiveLeft - widgetWidth
         : edgeCollapse === 'top'
           ? effectiveTop
-          : viewport.height - effectiveTop - widgetHeight
+          : stageHeight - effectiveTop - widgetHeight
   const collapseOffset = edgeCollapse
     ? edgeCollapseOffset(
         edgeCollapse,
@@ -177,8 +203,8 @@ export default function App(): React.JSX.Element {
         effectiveTop,
         widgetWidth,
         widgetHeight,
-        viewport.width,
-        viewport.height,
+        stageWidth,
+        stageHeight,
         widgetScale
       )
     : { x: 0, y: 0 }
@@ -187,13 +213,13 @@ export default function App(): React.JSX.Element {
     effectiveTop,
     widgetWidth,
     widgetHeight,
-    viewport.width,
-    viewport.height,
+    stageWidth,
+    stageHeight,
     widgetOrientation
   )
   const effectivePopoverSide = effectiveSide === 'left' || effectiveSide === 'right'
     ? effectiveSide
-    : effectiveLeft + widgetWidth / 2 <= viewport.width / 2 ? 'left' : 'right'
+    : effectiveLeft + widgetWidth / 2 <= stageWidth / 2 ? 'left' : 'right'
   const hoveredIndex = providers.findIndex((provider) => provider.id === state.hoveredProviderId)
   const hoveredProvider = hoveredIndex >= 0 ? providers[hoveredIndex] : undefined
   const hoveredProviderSetting = providerSettings.find((setting) => setting.id === hoveredProvider?.id)
@@ -235,12 +261,12 @@ export default function App(): React.JSX.Element {
     widgetHeight,
     cornerControls.gearTurn,
     cornerControls.grabTurn,
-    viewport.height,
+    stageHeight,
     widgetScale
   )
   const verticalPopoverLeft = Math.min(
     Math.max(WIDGET_MARGIN, effectivePopoverSide === 'left' ? effectiveLeft + widgetWidth : effectiveLeft - POPOVER_WIDTH),
-    Math.max(WIDGET_MARGIN, viewport.width - POPOVER_WIDTH - WIDGET_MARGIN)
+    Math.max(WIDGET_MARGIN, stageWidth - POPOVER_WIDTH - WIDGET_MARGIN)
   )
   const horizontalPopover = keepHorizontalPopoverOutsideTurnedThumb(
     resolveHorizontalPopoverPosition(
@@ -249,8 +275,8 @@ export default function App(): React.JSX.Element {
       widgetHeight,
       popoverIndex,
       popoverHeight,
-      viewport.width,
-      viewport.height,
+      stageWidth,
+      stageHeight,
       providerPitch,
       widgetScale
     ),
@@ -258,7 +284,7 @@ export default function App(): React.JSX.Element {
     widgetWidth,
     cornerControls.gearTurn,
     cornerControls.grabTurn,
-    viewport.width,
+    stageWidth,
     widgetScale
   )
   const popoverPlacement = widgetOrientation === 'horizontal' ? horizontalPopover.placement : effectivePopoverSide
@@ -268,7 +294,7 @@ export default function App(): React.JSX.Element {
       : undefined
     : verticalPopover.top
   const popoverBottom = widgetOrientation === 'horizontal' && horizontalPopover.placement === 'top'
-    ? viewport.height - effectiveTop
+    ? stageHeight - effectiveTop
     : undefined
   const popoverLeft = widgetOrientation === 'horizontal' ? horizontalPopover.left : verticalPopoverLeft
   const popoverMaxHeight = widgetOrientation === 'vertical' ? verticalPopover.maxHeight : undefined
@@ -398,33 +424,54 @@ export default function App(): React.JSX.Element {
     }
   }, [])
 
+  const hostsWidget = widgetLivesOnDisplay(state.settings, placement)
+  const widgetIsHere = true
+  const liveDisplayId = useRef(placement.displayId)
+  const showDockGrid = state.settings.widget.showDockGuides && dragVisit !== null
   useEffect(() => {
-    if (!initialLayoutReady || state.mode === 'dragging') return
+    if (yielded && !hostsWidget) setYielded(false)
+  }, [hostsWidget, yielded])
+  useLayoutEffect(() => {
+    if (entrancePlayed.current || !initialLayoutReady || !hostsWidget) return
+    entrancePlayed.current = true
+    setPlayEntrance(true)
+    const timer = window.setTimeout(() => setPlayEntrance(false), 320)
+    return () => window.clearTimeout(timer)
+  }, [hostsWidget, initialLayoutReady])
+
+  useEffect(() => {
+    if (!initialLayoutReady || state.mode === 'dragging' || nativeDragActive.current) return
     const updateInteractionRegions = (): void => {
+      if (nativeDragActive.current) return
+      if (!widgetIsHere) {
+        void desktop.overlay.setInteractionRegions([])
+        return
+      }
       // The OS region clips painting. Keep the full footprint until the slide finishes,
       // otherwise the exit is cut down to the peek on the first frame.
-      const regions = [
-        tuckInteractionRectangle(
-          widgetInteractionRectangle(
-            effectiveLeft,
-            effectiveTop,
-            widgetWidth,
-            widgetHeight,
-            widgetOrientation,
-            widgetHovered ? cornerControls.gearTurn : undefined,
-            widgetHovered ? cornerControls.grabTurn : undefined,
-            widgetScale
-          ),
-          edgeCollapse,
-          collapseSettled,
+      const footprint = tuckInteractionRectangle(
+        widgetInteractionRectangle(
           effectiveLeft,
           effectiveTop,
           widgetWidth,
           widgetHeight,
-          viewport.width,
-          viewport.height,
+          widgetOrientation,
+          widgetHovered ? cornerControls.gearTurn : undefined,
+          widgetHovered ? cornerControls.grabTurn : undefined,
           widgetScale
         ),
+        edgeCollapse,
+        collapseSettled,
+        effectiveLeft,
+        effectiveTop,
+        widgetWidth,
+        widgetHeight,
+        stageWidth,
+        stageHeight,
+        widgetScale
+      )
+      const regions = [
+        { ...footprint, x: footprint.x + stageX, y: footprint.y + stageY },
         state.mode === 'provider-hover' || appMenuOpen ? elementRectangle(popoverRef.current) : undefined
       ].filter((region): region is Rectangle => Boolean(region))
       void desktop.overlay.setInteractionRegions(regions, paintOutset)
@@ -451,14 +498,17 @@ export default function App(): React.JSX.Element {
     collapsed,
     collapseSettled,
     edgeCollapse,
-    viewport.height,
-    viewport.width,
+    stageHeight,
+    stageWidth,
+    stageX,
+    stageY,
     widgetHeight,
     widgetHovered,
     widgetOrientation,
     paintOutset,
     widgetScale,
-    widgetWidth
+    widgetWidth,
+    widgetIsHere
   ])
 
   const cancelHoverClose = (): void => {
@@ -492,18 +542,15 @@ export default function App(): React.JSX.Element {
   }
 
   const finishDrag = useCallback(
-    async (event: PointerEvent): Promise<void> => {
-      const session = dragSession.current
-      if (!session || event.pointerId !== session.pointerId) return
-      dragSession.current = undefined
-
+    async (pointerX: number, pointerY: number, offsetX: number, offsetY: number): Promise<void> => {
+      const frame = layoutStageRef.current
       const position = resolveDraggedWidgetPosition(
-        event.clientX,
-        event.clientY,
-        session.offsetX,
-        session.offsetY,
-        viewport.width,
-        viewport.height,
+        pointerX - frame.x,
+        pointerY - frame.y,
+        offsetX,
+        offsetY,
+        frame.width,
+        frame.height,
         widgetHeight,
         widgetWidth,
         state.settings.widget.showDockGuides
@@ -513,14 +560,14 @@ export default function App(): React.JSX.Element {
         position.top,
         widgetWidth,
         widgetHeight,
-        viewport.width,
-        viewport.height,
+        frame.width,
+        frame.height,
         widgetOrientation
       )
       await desktop.overlay.endDragging([
         widgetInteractionRectangle(
-          position.left,
-          position.top,
+          position.left + frame.x,
+          position.top + frame.y,
           widgetWidth,
           widgetHeight,
           widgetOrientation,
@@ -530,40 +577,155 @@ export default function App(): React.JSX.Element {
         )
       ], paintOutset)
       const settings = await desktop.settings.update({
+        ...((liveDisplayId.current ?? placement.displayId) == null
+          ? {}
+          : { display: { id: (liveDisplayId.current ?? placement.displayId)! } }),
         widget: {
           docked: Boolean(position.candidateSide),
-          horizontalPosition: normalizeWidgetCoordinate(position.left, viewport.width, baseWidgetWidth),
+          horizontalPosition: normalizeWidgetCoordinate(position.left, frame.width, baseWidgetWidth),
           side: position.side,
-          verticalPosition: normalizeWidgetCoordinate(position.top, viewport.height, baseWidgetHeight)
+          verticalPosition: normalizeWidgetCoordinate(position.top, frame.height, baseWidgetHeight)
         }
       })
       dispatch({ type: 'drag-ended', settings })
     },
-    [baseWidgetHeight, baseWidgetWidth, dispatch, paintOutset, state.settings.widget.showDockGuides, viewport.height, viewport.width, widgetHeight, widgetHovered, widgetOrientation, widgetScale, widgetWidth]
+    [baseWidgetHeight, baseWidgetWidth, dispatch, paintOutset, placement.displayId, state.settings.widget.showDockGuides, widgetHeight, widgetHovered, widgetOrientation, widgetScale, widgetWidth]
   )
+
+  const finishDragRef = useRef(finishDrag)
+  finishDragRef.current = finishDrag
+  const crossDrag = useRef<(phase: 'move' | 'end', relay: OverlayDragRelay) => void>(() => undefined)
+  crossDrag.current = (phase, relay): void => {
+    if (relay.displayId != null) liveDisplayId.current = relay.displayId
+    if (relay.stage) {
+      layoutStageRef.current = {
+        x: relay.stage.x,
+        y: relay.stage.y,
+        width: relay.stage.width,
+        height: relay.stage.height
+      }
+      setDragStage(relay.stage)
+    }
+    const frame = relay.stage ?? layoutStageRef.current
+    if (phase === 'end') {
+      nativeDragActive.current = false
+      dragSession.current = undefined
+      if (!relay.hosting) {
+        dragVisitRef.current = null
+        setDragVisit(null)
+        draggingHere.current = false
+        setYielded(true)
+        dispatch({ type: 'drag-released' })
+        void desktop.overlay.setInteractionRegions([])
+        return
+      }
+      dragVisitRef.current = null
+      setDragVisit(null)
+      draggingHere.current = false
+      void finishDragRef.current(relay.x, relay.y, relay.offsetX, relay.offsetY)
+      return
+    }
+
+    nativeDragActive.current = true
+    if (!relay.hosting) {
+      if (dragVisitRef.current !== 'away') {
+        dragVisitRef.current = 'away'
+        setDragVisit('away')
+      }
+      if (draggingHere.current) {
+        draggingHere.current = false
+        dispatch({ type: 'drag-released' })
+      }
+      return
+    }
+
+    draggingHere.current = true
+    if (dragVisitRef.current !== 'here') {
+      dragVisitRef.current = 'here'
+      setDragVisit('here')
+    }
+    const loose = relay.stage ? edgesSharedWithAnotherDisplay(displaysRef.current, relay.stage) : []
+    const drag = resolveDraggedWidgetPosition(
+      relay.x - frame.x,
+      relay.y - frame.y,
+      relay.offsetX,
+      relay.offsetY,
+      frame.width,
+      frame.height,
+      widgetHeight,
+      widgetWidth,
+      state.settings.widget.showDockGuides,
+      loose
+    )
+    if (!drag.pulled && relay.stage) {
+      const minimumLeft = WIDGET_MARGIN
+      const minimumTop = WIDGET_MARGIN
+      const maximumLeft = Math.max(minimumLeft, viewport.width - widgetWidth - WIDGET_MARGIN)
+      const maximumTop = Math.max(minimumTop, viewport.height - widgetHeight - WIDGET_MARGIN)
+      drag.left = Math.min(maximumLeft, Math.max(minimumLeft, relay.x - relay.offsetX)) - frame.x
+      drag.top = Math.min(maximumTop, Math.max(minimumTop, relay.y - relay.offsetY)) - frame.y
+    }
+    dispatch({ type: 'drag-moved', drag })
+  }
+
+  useEffect(() => {
+    if (!window.widgetDesktop) return
+    const offMove = desktop.overlay.onDragMove((relay) => crossDrag.current('move', relay))
+    const offEnd = desktop.overlay.onDragEnd((relay) => crossDrag.current('end', relay))
+    const offDisplays = desktop.overlay.onDisplays(setDisplays)
+    const endNativeDrag = (): void => {
+      if (!nativeDragActive.current) return
+      void desktop.overlay.dragPointerUp()
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') endNativeDrag()
+    }
+    window.addEventListener('pointerup', endNativeDrag)
+    window.addEventListener('pointercancel', endNativeDrag)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      offMove()
+      offEnd()
+      offDisplays()
+      window.removeEventListener('pointerup', endNativeDrag)
+      window.removeEventListener('pointercancel', endNativeDrag)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [dispatch])
 
   useEffect(() => {
     if (state.mode !== 'dragging') return
 
     const onMove = (event: PointerEvent): void => {
       const session = dragSession.current
-      if (!session || event.pointerId !== session.pointerId) return
+      if (!session || session.native || event.pointerId !== session.pointerId) return
       dispatch({
         type: 'drag-moved',
         drag: resolveDraggedWidgetPosition(
-          event.clientX,
-          event.clientY,
+          event.clientX - layoutStageRef.current.x,
+          event.clientY - layoutStageRef.current.y,
           session.offsetX,
           session.offsetY,
-          viewport.width,
-          viewport.height,
+          layoutStageRef.current.width,
+          layoutStageRef.current.height,
           widgetHeight,
           widgetWidth,
-          state.settings.widget.showDockGuides
+          state.settings.widget.showDockGuides,
+          edgesSharedWithAnotherDisplay(displaysRef.current, {
+            id: -1,
+            ...layoutStageRef.current
+          })
         )
       })
     }
-    const onUp = (event: PointerEvent): void => void finishDrag(event)
+    const onUp = (event: PointerEvent): void => {
+      const session = dragSession.current
+      if (!session || session.native || event.pointerId !== session.pointerId) return
+      dragSession.current = undefined
+      dragVisitRef.current = null
+      setDragVisit(null)
+      void finishDrag(event.clientX, event.clientY, session.offsetX, session.offsetY)
+    }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
     window.addEventListener('pointercancel', onUp)
@@ -580,27 +742,35 @@ export default function App(): React.JSX.Element {
     // Expand the native hit target before the pointer can leave the widget.
     // On Windows this IPC is synchronous, so a cursor sample cannot turn
     // click-through back on in the middle of the gesture.
-    void desktop.overlay.startDragging()
-    event.currentTarget.setPointerCapture(event.pointerId)
-    const offsetX = Math.min(widgetWidth, Math.max(0, event.clientX - effectiveLeft))
-    const offsetY = Math.min(widgetHeight, Math.max(0, event.clientY - effectiveTop))
-    dragSession.current = {
-      pointerId: event.pointerId,
-      offsetX,
-      offsetY
+    const offsetX = Math.min(widgetWidth, Math.max(0, event.clientX - (effectiveLeft + stageX)))
+    const offsetY = Math.min(widgetHeight, Math.max(0, event.clientY - (effectiveTop + stageY)))
+    setAppMenuOpen(false)
+    if (window.widgetDesktop) {
+      nativeDragActive.current = true
+      draggingHere.current = true
+      dragVisitRef.current = 'here'
+      setDragVisit('here')
+      setYielded(false)
+      dragSession.current = { pointerId: event.pointerId, offsetX, offsetY, native: true }
+      void desktop.overlay.startDragging(offsetX, offsetY)
+      return
     }
+    dragVisitRef.current = 'here'
+    setDragVisit('here')
+    void desktop.overlay.startDragging(offsetX, offsetY)
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragSession.current = { pointerId: event.pointerId, offsetX, offsetY }
     const drag = resolveDraggedWidgetPosition(
-      event.clientX,
-      event.clientY,
+      event.clientX - stageX,
+      event.clientY - stageY,
       offsetX,
       offsetY,
-      viewport.width,
-      viewport.height,
+      stageWidth,
+      stageHeight,
       widgetHeight,
       widgetWidth,
       state.settings.widget.showDockGuides
     )
-    setAppMenuOpen(false)
     dispatch({
       type: 'drag-started',
       drag
@@ -609,24 +779,30 @@ export default function App(): React.JSX.Element {
 
   return (
     <main
-      className={`overlay-root ${initialLayoutReady ? 'overlay-root--ready' : 'overlay-root--initializing'} overlay-root--theme-${state.settings.widget.theme} overlay-root--unavailable-${state.settings.widget.unavailableStyle} overlay-root--shadows-${state.settings.widget.shadows ? 'enabled' : 'disabled'}`}
+      className={`overlay-root ${initialLayoutReady || dragVisit !== null ? 'overlay-root--ready' : 'overlay-root--initializing'}${playEntrance ? ' overlay-root--enter' : ''} overlay-root--theme-${state.settings.widget.theme} overlay-root--unavailable-${state.settings.widget.unavailableStyle} overlay-root--shadows-${state.settings.widget.shadows ? 'enabled' : 'disabled'}`}
       style={{
         ...syncedThemeStyle(activeSyncedTheme(state.settings)),
         '--shadow-opacity': `${state.settings.widget.shadowOpacity}%`
       } as CSSProperties}
     >
-      {state.mode === 'dragging' && state.settings.widget.showDockGuides && (
-        <SelectionGrid candidateSide={state.drag?.candidateSide} />
-      )}
-      <Widget
+      {showDockGrid && (displays.length > 0 ? displays : [{ id: -1, x: 0, y: 0, width: viewport.width, height: viewport.height }]).map((display) => (
+        <div
+          key={display.id}
+          className="selection-grid-frame"
+          style={{ left: display.x, top: display.y, width: display.width, height: display.height }}
+        >
+          <SelectionGrid candidateSide={display.id === (stage?.id ?? -1) && dragVisit !== 'away' ? state.drag?.candidateSide : undefined} />
+        </div>
+      ))}
+      {widgetIsHere && <Widget
         ref={widgetRef}
         providers={providers}
         providerSettings={providerSettings}
         side={effectiveSide}
-        left={effectiveLeft}
-        top={effectiveTop}
+        left={effectiveLeft + stageX}
+        top={effectiveTop + stageY}
         dragging={state.mode === 'dragging'}
-        snapped={Boolean(state.drag?.candidateSide)}
+        snapped={Boolean(state.drag?.pulled)}
         settingsOpen={state.dashboardWindowOpen}
         hot={showCornerChrome}
         orientation={widgetOrientation}
@@ -641,7 +817,7 @@ export default function App(): React.JSX.Element {
         collapseX={collapseOffset.x / widgetScale}
         collapseY={collapseOffset.y / widgetScale}
         edgeGap={edgeGap / widgetScale}
-        appTurn={appIconTurn(effectiveLeft, widgetWidth, viewport.width)}
+        appTurn={appIconTurn(effectiveLeft, widgetWidth, stageWidth)}
         appTurned={appPointing}
         onProviderEnter={openProvider}
         onProviderLeave={closeProviderSoon}
@@ -657,27 +833,31 @@ export default function App(): React.JSX.Element {
           void desktop.dashboard.open({ page: 'widget', section: DEFAULT_WIDGET_SECTION })
         }}
         onGrabPointerDown={startDrag}
-      />
-      {expandSettled && state.mode === 'provider-hover' && hoveredProvider && (
+      />}
+      {widgetIsHere && expandSettled && state.mode === 'provider-hover' && hoveredProvider && (
         <UsagePopover
           key={hoveredProvider.id}
           ref={popoverRef}
           provider={hoveredProvider}
           usageDisplay={hoveredProviderSetting?.usageDisplay}
           placement={popoverPlacement}
-          left={popoverLeft}
-          top={popoverTop}
-          bottom={popoverBottom}
+          left={popoverLeft + stageX}
+          top={popoverTop == null ? undefined : popoverTop + stageY}
+          bottom={popoverBottom == null ? undefined : viewport.height - stageY - effectiveTop}
           maxHeight={popoverMaxHeight}
           onEnter={cancelHoverClose}
           onLeave={closeProviderSoon}
         />
       )}
-      {expandSettled && appMenuOpen && state.mode !== 'dragging' && !hoveredProvider && (
+      {widgetIsHere && expandSettled && appMenuOpen && state.mode !== 'dragging' && !hoveredProvider && (
         <div
           ref={popoverRef}
           className={`usage-popover-anchor usage-popover-anchor--${popoverPlacement}`}
-          style={{ top: popoverTop, bottom: popoverBottom, left: popoverLeft }}
+          style={{
+            top: popoverTop == null ? undefined : popoverTop + stageY,
+            bottom: popoverBottom == null ? undefined : viewport.height - stageY - effectiveTop,
+            left: popoverLeft + stageX
+          }}
           onPointerEnter={cancelHoverClose}
           onPointerLeave={closeAppMenuSoon}
         >

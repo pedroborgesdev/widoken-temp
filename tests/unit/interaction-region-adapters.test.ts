@@ -146,4 +146,13 @@ describe('interaction region adapters', () => {
       { name: 'shape', value: regions }
     ])
   })
+
+  it('lets clicks pass through an X11 overlay that is not hosting the widget', () => {
+    const adapter = createInteractionRegionAdapter('linux', false)
+    const { calls, window } = createWindow()
+
+    adapter.applyRegions(window, [])
+
+    expect(calls).toEqual([{ name: 'ignore', value: true, forward: undefined }])
+  })
 })

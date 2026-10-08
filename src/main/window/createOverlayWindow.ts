@@ -1,6 +1,7 @@
 import { BrowserWindow, screen, type Display, type Rectangle } from 'electron'
 import { join } from 'node:path'
 import { shadowPaintOutset } from '@shared/overlay'
+import { WIDGET_OVERLAY_TITLE, overlayWindowTitle, serializeDisplayRects, type DisplayRect } from '@shared/overlayDisplay'
 import type { AppSettings } from '@shared/settings'
 import { applyInteractionRegions, registerInteractionDisplay, updateInteractionCursor, updateInteractionWindowBounds } from './interactionRegions'
 import { isNativeWayland } from './platform'
@@ -31,10 +32,17 @@ export function applyOverlayDisplayBounds(window: BrowserWindow, bounds: Rectang
   window.setBounds(bounds, false)
 }
 
-export function createOverlayWindow(settings: AppSettings, configuredDisplay?: Display): BrowserWindow {
+export function createOverlayWindow(
+  settings: AppSettings,
+  configuredDisplay?: Display,
+  options?: { home?: boolean; role?: 'widget' | 'guides'; bounds?: Rectangle; displays?: DisplayRect[] }
+): BrowserWindow {
   const wayland = isNativeWayland()
   const display = configuredDisplay ?? resolveTargetDisplay(settings)
+  const windowBounds = options?.bounds ?? display.bounds
   const { x, y, width, height } = display.bounds
+  const originX = x - windowBounds.x
+  const originY = y - windowBounds.y
   const enabledProviders = settings.providers.filter((provider) => provider.enabled).length
   const scale = settings.widget.scale / 100
   const boardItems = enabledProviders + 1
@@ -59,10 +67,10 @@ export function createOverlayWindow(settings: AppSettings, configuredDisplay?: D
       )
 
   const window = new BrowserWindow({
-    x,
-    y,
-    width,
-    height,
+    x: windowBounds.x,
+    y: windowBounds.y,
+    width: windowBounds.width,
+    height: windowBounds.height,
     frame: false,
     transparent: true,
     // The overlay fills the display. If it remains resizable on Wayland, the
@@ -82,7 +90,7 @@ export function createOverlayWindow(settings: AppSettings, configuredDisplay?: D
     hasShadow: false,
     backgroundColor: '#00000000',
     icon: appIconPath(),
-    title: 'widoken overlay',
+    title: options?.role === 'guides' ? overlayWindowTitle(display.id) : WIDGET_OVERLAY_TITLE,
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/widget.cjs'),
@@ -95,11 +103,15 @@ export function createOverlayWindow(settings: AppSettings, configuredDisplay?: D
     }
   })
 
-  registerInteractionDisplay(window, display.bounds)
+  registerInteractionDisplay(window, windowBounds)
   window.on('page-title-updated', (event) => event.preventDefault())
   window.setMenuBarVisibility(false)
   window.setAlwaysOnTop(true, process.platform === 'win32' ? 'screen-saver' : 'floating')
-  const initialRegions = [{ x: widgetX, y: widgetY, width: widgetWidth, height: widgetHeight }]
+  const guides = options?.role === 'guides'
+  const home = !guides && (options?.home ?? (settings.display?.id == null || settings.display.id === display.id))
+  const initialRegions = home
+    ? [{ x: widgetX + originX, y: widgetY + originY, width: widgetWidth, height: widgetHeight }]
+    : []
   let hasShown = false
 
   const showOverlay = (): void => {
@@ -111,13 +123,13 @@ export function createOverlayWindow(settings: AppSettings, configuredDisplay?: D
       window.showInactive()
     }
     if (process.platform === 'win32') {
-      applyOverlayDisplayBounds(window, display.bounds)
-      updateInteractionWindowBounds(window, display.bounds)
+      applyOverlayDisplayBounds(window, windowBounds)
+      updateInteractionWindowBounds(window, windowBounds)
       updateInteractionCursor(window, screen.getCursorScreenPoint())
       setTimeout(() => {
         if (window.isDestroyed()) return
-        applyOverlayDisplayBounds(window, display.bounds)
-        updateInteractionWindowBounds(window, display.bounds)
+        applyOverlayDisplayBounds(window, windowBounds)
+        updateInteractionWindowBounds(window, windowBounds)
       }, 0)
     }
     applyInteractionRegions(window, initialRegions, shadowPaintOutset(settings.widget.shadows, scale))
@@ -126,13 +138,26 @@ export function createOverlayWindow(settings: AppSettings, configuredDisplay?: D
   window.once('ready-to-show', showOverlay)
   window.webContents.once('did-finish-load', showOverlay)
 
+  const query = {
+    displayId: String(display.id),
+    home: home ? '1' : '0',
+    role: guides ? 'guides' : 'widget'
+  }
   if (process.env.ELECTRON_RENDERER_URL) {
     const url = new URL(process.env.ELECTRON_RENDERER_URL)
     url.pathname = '/widget.html'
     url.search = ''
+    url.searchParams.set('displayId', query.displayId)
+    url.searchParams.set('home', query.home)
+    url.searchParams.set('role', query.role)
+    if (options?.displays?.length) url.searchParams.set('displays', serializeDisplayRects(options.displays))
     void window.loadURL(url.toString())
   } else {
-    void window.loadFile(join(__dirname, '../renderer/widget.html'))
+    void window.loadFile(join(__dirname, '../renderer/widget.html'), {
+      query: options?.displays?.length
+        ? { ...query, displays: serializeDisplayRects(options.displays) }
+        : query
+    })
   }
 
   return window

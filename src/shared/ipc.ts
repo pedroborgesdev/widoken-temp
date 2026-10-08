@@ -1,5 +1,6 @@
 import type { Rectangle } from 'electron'
 import type { DashboardRoute } from './dashboard'
+import type { DisplayRect } from './overlayDisplay'
 import type { ProviderView } from './provider'
 import type { UsageHistory } from './usageHistory'
 import type { AppSettings, SettingsPatch } from './settings'
@@ -9,6 +10,10 @@ export const IPC = {
   overlayStartDragging: 'overlay:start-dragging',
   overlayEndDragging: 'overlay:end-dragging',
   overlaySetRegions: 'overlay:set-regions',
+  overlayDragPointerUp: 'overlay:drag-pointer-up',
+  overlayDragMove: 'overlay:drag-move',
+  overlayDragEnd: 'overlay:drag-end',
+  overlayDisplays: 'overlay:displays',
   providersList: 'providers:list',
   providersRefresh: 'providers:refresh',
   providersUpdated: 'providers:updated',
@@ -38,11 +43,26 @@ interface SettingsApi {
   onUpdated(callback: (settings: AppSettings) => void): () => void
 }
 
+export interface OverlayDragRelay {
+  hosting: boolean
+  x: number
+  y: number
+  offsetX: number
+  offsetY: number
+  displayId?: number
+  showGrid?: boolean
+  stage?: DisplayRect
+}
+
 export interface WidgetDesktopApi {
   overlay: {
-    startDragging(): Promise<void>
+    startDragging(offsetX: number, offsetY: number): Promise<void>
     endDragging(regions: Rectangle[], paintOutset?: number): Promise<void>
     setInteractionRegions(regions: Rectangle[], paintOutset?: number): Promise<void>
+    dragPointerUp(): Promise<void>
+    onDragMove(callback: (relay: OverlayDragRelay) => void): () => void
+    onDragEnd(callback: (relay: OverlayDragRelay) => void): () => void
+    onDisplays(callback: (displays: DisplayRect[]) => void): () => void
   }
   providers: ProvidersApi
   settings: SettingsApi

@@ -1,46 +1,25 @@
-import { powerMonitor, screen, type BrowserWindow, type Rectangle } from 'electron'
-import type { AppSettings } from '@shared/settings'
-import { applyOverlayDisplayBounds, resolveTargetDisplay } from './createOverlayWindow'
-import { updateInteractionWindowBounds } from './interactionRegions'
+import { powerMonitor, screen } from 'electron'
 
 const DISPLAY_SETTLE_DELAY_MS = 500
 const RESUME_SETTLE_DELAY_MS = 1_000
 
-type TargetBoundsChanged = (bounds: Rectangle, force: boolean) => void | Promise<void>
-
-export function watchTargetDisplay(
-  window: BrowserWindow,
-  getSettings: () => Promise<AppSettings>,
-  onTargetBoundsChanged?: TargetBoundsChanged
-): () => void {
+export function watchDisplays(onChange: () => void): () => void {
   let timer: ReturnType<typeof setTimeout> | undefined
   let revision = 0
   let stopped = false
 
-  const reconcileBounds = async (expectedRevision: number, force: boolean): Promise<void> => {
-    try {
-      const settings = await getSettings()
-      if (stopped || expectedRevision !== revision || window.isDestroyed()) return
-
-      const display = resolveTargetDisplay(settings)
-      const bounds = { ...display.bounds }
-      applyOverlayDisplayBounds(window, bounds)
-      updateInteractionWindowBounds(window, bounds)
-      await onTargetBoundsChanged?.(bounds, force)
-    } catch (error) {
-      console.warn('Could not reconcile overlay display bounds:', error)
-    }
-  }
-
-  const scheduleReconciliation = (delay: number): void => {
+  const schedule = (delay: number): void => {
     revision += 1
     const expectedRevision = revision
     if (timer) clearTimeout(timer)
-    timer = setTimeout(() => void reconcileBounds(expectedRevision, true), delay)
+    timer = setTimeout(() => {
+      if (stopped || expectedRevision !== revision) return
+      onChange()
+    }, delay)
   }
 
-  const onDisplayChanged = (): void => scheduleReconciliation(DISPLAY_SETTLE_DELAY_MS)
-  const onResume = (): void => scheduleReconciliation(RESUME_SETTLE_DELAY_MS)
+  const onDisplayChanged = (): void => schedule(DISPLAY_SETTLE_DELAY_MS)
+  const onResume = (): void => schedule(RESUME_SETTLE_DELAY_MS)
   screen.on('display-added', onDisplayChanged)
   screen.on('display-removed', onDisplayChanged)
   screen.on('display-metrics-changed', onDisplayChanged)

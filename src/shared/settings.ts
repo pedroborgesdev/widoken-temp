@@ -126,6 +126,7 @@ export type SettingsPatch = Partial<Pick<
   widget?: Partial<AppSettings['widget']>
   analytics?: Partial<AppSettings['analytics']>
   providers?: ProviderSetting[]
+  display?: { id: number }
 }
 
 export function clampVerticalPosition(value: number): number {

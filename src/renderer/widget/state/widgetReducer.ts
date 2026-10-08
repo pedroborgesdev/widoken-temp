@@ -8,6 +8,7 @@ export interface DragState {
   top: number
   side: DockSide
   candidateSide?: DockSide
+  pulled?: boolean
 }
 
 export interface WidgetState {
@@ -30,6 +31,7 @@ export type WidgetAction =
   | { type: 'dashboard-window-changed'; open: boolean }
   | { type: 'drag-started'; drag: DragState }
   | { type: 'drag-moved'; drag: DragState }
+  | { type: 'drag-released' }
   | { type: 'drag-ended'; settings: AppSettings }
 
 export const initialWidgetState: WidgetState = {
@@ -66,6 +68,10 @@ export function widgetReducer(state: WidgetState, action: WidgetAction): WidgetS
     case 'drag-started':
     case 'drag-moved':
       return { ...state, mode: 'dragging', hoveredProviderId: undefined, drag: action.drag }
+    case 'drag-released':
+      return state.mode === 'dragging'
+        ? { ...state, mode: 'passive', drag: undefined }
+        : state
     case 'drag-ended':
       return { ...state, mode: 'passive', settings: action.settings, drag: undefined }
   }

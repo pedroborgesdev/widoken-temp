@@ -36,6 +36,17 @@ describe('widget lifecycle settings', () => {
   it('starts with the widget enabled', () => {
     expect(DEFAULT_SETTINGS.widget.enabled).toBe(true)
   })
+
+  it('remembers the display the widget was dropped on', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'widoken-settings-'))
+    temporaryDirectories.push(directory)
+    const path = join(directory, 'settings.json')
+    const updated = await new SettingsRepository(path).update({ display: { id: 42 } })
+    const reloaded = await new SettingsRepository(path).get()
+
+    expect(updated.display).toEqual({ id: 42 })
+    expect(reloaded.display).toEqual({ id: 42 })
+  })
 })
 
 describe('general settings', () => {

@@ -96,6 +96,81 @@ describe('VS Code theme discovery', () => {
       }
     })
     expect(theme.colors.thumb).toBe('#303132')
+    expect(theme.colors.track).toBe('#454545')
+  })
+
+  it('keeps borders and the usage track visible when the theme border matches the background', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'widoken-vscode-flat-theme-'))
+    temporaryDirectories.push(root)
+    const configurationRoot = join(root, 'Code')
+    const extensionRoot = join(root, 'extensions')
+    const extension = join(extensionRoot, 'flat.theme-1.0.0')
+    await mkdir(join(configurationRoot, 'User'), { recursive: true })
+    await mkdir(join(extension, 'themes'), { recursive: true })
+    await writeFile(join(configurationRoot, 'User', 'settings.json'), JSON.stringify({
+      'workbench.colorTheme': 'Flat Theme'
+    }))
+    await writeFile(join(extension, 'package.json'), JSON.stringify({
+      contributes: {
+        themes: [{ label: 'Flat Theme', path: './themes/flat.json', uiTheme: 'vs-dark' }]
+      }
+    }))
+    await writeFile(join(extension, 'themes', 'flat.json'), JSON.stringify({
+      colors: {
+        'editor.background': '#1e1e1e',
+        'editor.foreground': '#d4d4d4',
+        'sideBar.background': '#1e1e1e',
+        'contrastBorder': '#1e1e1e',
+        'panel.border': '#1e1e1e',
+        'input.border': '#1e1e1e80',
+        'sideBar.border': '#3c3c3c'
+      }
+    }))
+
+    const theme = await syncVsCodeTheme({
+      configurationRoots: [configurationRoot],
+      extensionRoots: [extensionRoot]
+    })
+
+    expect(theme.colors.surface).toBe('#1e1e1e')
+    expect(theme.colors.track.toLowerCase()).toBe('#3c3c3c')
+  })
+
+  it('derives a track color when every theme border matches the board', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'widoken-vscode-same-border-'))
+    temporaryDirectories.push(root)
+    const configurationRoot = join(root, 'Code')
+    const extensionRoot = join(root, 'extensions')
+    const extension = join(extensionRoot, 'same.theme-1.0.0')
+    await mkdir(join(configurationRoot, 'User'), { recursive: true })
+    await mkdir(join(extension, 'themes'), { recursive: true })
+    await writeFile(join(configurationRoot, 'User', 'settings.json'), JSON.stringify({
+      'workbench.colorTheme': 'Same Border Theme'
+    }))
+    await writeFile(join(extension, 'package.json'), JSON.stringify({
+      contributes: {
+        themes: [{ label: 'Same Border Theme', path: './themes/same.json', uiTheme: 'vs-dark' }]
+      }
+    }))
+    await writeFile(join(extension, 'themes', 'same.json'), JSON.stringify({
+      colors: {
+        'editor.background': '#1e1e1e',
+        'editor.foreground': '#d4d4d4',
+        'sideBar.background': '#1e1e1e',
+        'contrastBorder': '#1e1e1e',
+        'panel.border': '#1e1e1e',
+        'input.border': '#1e1e1e',
+        'sideBar.border': '#1e1e1e'
+      }
+    }))
+
+    const theme = await syncVsCodeTheme({
+      configurationRoots: [configurationRoot],
+      extensionRoots: [extensionRoot]
+    })
+
+    expect(theme.colors.surface).toBe('#1e1e1e')
+    expect(theme.colors.track.toLowerCase()).not.toBe('#1e1e1e')
   })
 
   it('reports when the selected theme package cannot be located', async () => {

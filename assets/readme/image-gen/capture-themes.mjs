@@ -23,7 +23,7 @@ const outDir = 'assets/readme/.theme-shots'
 
 await mkdir(outDir, { recursive: true })
 
-const browser = await chromium.launch({ headless: true })
+const browser = await chromium.launch({ channel: 'msedge', headless: true })
 const page = await browser.newPage({
   viewport: { width: 420, height: 640 },
   deviceScaleFactor: 3
@@ -35,7 +35,7 @@ await page.addInitScript(() => {
       enabled: true,
       theme: 'monokai-black',
       themeMode: 'preset',
-      shadows: true,
+      shadows: false,
       showDockGuides: false,
       edgeTuck: false,
       shadowOpacity: 45,
@@ -61,6 +61,7 @@ await page.addStyleTag({
       opacity: 1 !important;
       transform: none !important;
     }
+    .widget { filter: none !important; }
   `
 })
 await page.waitForSelector('.provider-item')
