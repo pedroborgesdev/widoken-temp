@@ -3,6 +3,7 @@ import { CursorProviderAdapter } from './CursorProviderAdapter'
 import { CodexProviderAdapter } from './CodexProviderAdapter'
 import { ClaudeProviderAdapter } from './ClaudeProviderAdapter'
 import { GitHubCopilotProviderAdapter } from './GitHubCopilotProviderAdapter'
+import { AntigravityProviderAdapter } from './AntigravityProviderAdapter'
 import type { ProviderAdapter } from './ProviderAdapter'
 
 const inMinutes = (minutes: number): string => new Date(Date.now() + minutes * 60_000).toISOString()
@@ -36,8 +37,11 @@ function createTestRegistry(): Map<string, ProviderAdapter> {
     new MockProviderAdapter({
       id: 'antigravity',
       name: 'Antigravity',
-      status: 'unavailable',
-      error: 'Failed to get token usage. Connect at the provider and try again.'
+      plan: 'Pro',
+      limits: [
+        { id: 'gemini', label: 'Gemini models', percent: 12, resetsAt: inDays(7) },
+        { id: 'partner', label: 'Partner models', percent: 20, resetsAt: inDays(7) }
+      ]
     }),
     new MockProviderAdapter({
       id: 'copilot',
@@ -57,12 +61,7 @@ export function createProviderRegistry(): Map<string, ProviderAdapter> {
     new CodexProviderAdapter(),
     new CursorProviderAdapter(),
     new GitHubCopilotProviderAdapter(),
-    new MockProviderAdapter({
-      id: 'antigravity',
-      name: 'Antigravity',
-      status: 'unavailable',
-      error: 'Failed to get token usage. Connect at the provider and try again.'
-    })
+    new AntigravityProviderAdapter()
   ]
 
   return new Map(adapters.map((adapter) => [adapter.id, adapter]))

@@ -39,7 +39,7 @@ The role-specific preloads deliberately expose different capabilities:
 
 `AppController` composes shared application services and registers IPC once. `WidgetWindowManager` owns every native resource associated with the overlay, including display watching, Windows cursor tracking, and the KDE/Wayland bridge. `DashboardWindowManager` independently owns the normal dashboard window.
 
-`widget.enabled` is persisted in `settings.json`. Changing it in the dashboard causes the main process to create or destroy the widget window and all of its native resources. Closing the dashboard does not close an enabled widget, and disabling the widget does not close the dashboard. If Widoken starts with the widget disabled, or `openDashboardAtStartup` is on, the dashboard opens at startup. The dashboard uses the Dark Pastel theme unless `dashboardFollowsWidgetTheme` is on, in which case it uses the widget theme, including a synced VS Code theme.
+`widget.enabled` is persisted in `settings.json`. Changing it in the dashboard causes the main process to create or destroy the widget window and all of its native resources. Closing the dashboard does not close an enabled widget, and disabling the widget does not close the dashboard. If Widoken starts with the widget disabled, or `openDashboardAtStartup` is on, the dashboard opens at startup. The dashboard uses the Monokai Black theme unless `dashboardFollowsWidgetTheme` is on, in which case it uses the widget theme, including a synced VS Code theme.
 
 `ProviderManager`, analytics, and settings are application services rather than widget services. Provider polling therefore has one source of truth and can serve both renderers without duplicated sessions or polling.
 

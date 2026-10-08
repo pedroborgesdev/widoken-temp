@@ -5,6 +5,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { chromium } from 'playwright'
 
 const themes = [
+  ['monokai-black', 'Monokai Black'],
   ['dark', 'Dark'],
   ['slate', 'Slate'],
   ['dracula', 'Dracula'],
@@ -14,8 +15,7 @@ const themes = [
   ['gruvbox', 'Gruvbox'],
   ['one-dark', 'One Dark'],
   ['solarized-dark', 'Solarized'],
-  ['monokai', 'Monokai'],
-  ['dark-pastel', 'Pastel']
+  ['monokai', 'Monokai']
 ]
 
 const base = 'http://127.0.0.1:5213/widget.html'
@@ -23,7 +23,7 @@ const outDir = 'assets/readme/.theme-shots'
 
 await mkdir(outDir, { recursive: true })
 
-const browser = await chromium.launch({ channel: 'msedge' })
+const browser = await chromium.launch({ headless: true })
 const page = await browser.newPage({
   viewport: { width: 420, height: 640 },
   deviceScaleFactor: 3
@@ -33,7 +33,7 @@ await page.addInitScript(() => {
   const saved = {
     widget: {
       enabled: true,
-      theme: 'dark',
+      theme: 'monokai-black',
       themeMode: 'preset',
       shadows: true,
       showDockGuides: false,
@@ -53,6 +53,16 @@ await page.addInitScript(() => {
 })
 
 await page.goto(base, { waitUntil: 'networkidle' })
+await page.addStyleTag({
+  content: `
+    .overlay-root--ready .widget__visual,
+    .provider-item--entering {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  `
+})
 await page.waitForSelector('.provider-item')
 await page.waitForTimeout(400)
 

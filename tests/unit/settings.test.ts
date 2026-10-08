@@ -12,11 +12,23 @@ afterEach(async () => {
 })
 
 describe('application themes', () => {
-  it('offers eleven supported themes and keeps the default valid', () => {
+  it('offers eleven supported themes and uses Monokai Black by default', () => {
     expect(APP_THEMES).toHaveLength(11)
     expect(new Set(APP_THEMES).size).toBe(APP_THEMES.length)
     expect(APP_THEMES).toContain(DEFAULT_SETTINGS.widget.theme)
-    expect(APP_THEMES).toContain('dark-pastel')
+    expect(APP_THEMES[0]).toBe('monokai-black')
+    expect(DEFAULT_SETTINGS.widget.theme).toBe('monokai-black')
+  })
+
+  it('migrates a saved unsupported theme to Monokai Black', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'widoken-settings-'))
+    temporaryDirectories.push(directory)
+    const path = join(directory, 'settings.json')
+    await writeFile(path, JSON.stringify({ widget: { theme: 'removed-theme' } }))
+
+    const settings = await new SettingsRepository(path).get()
+
+    expect(settings.widget.theme).toBe('monokai-black')
   })
 })
 

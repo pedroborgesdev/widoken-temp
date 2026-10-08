@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faCircleNotch,
-  faGauge,
   faGear,
   faLayerGroup,
   faPalette,
   faPuzzlePiece,
-  faSliders
+  faSliders,
+  faTableCellsLarge
 } from '@fortawesome/free-solid-svg-icons'
 import { DEFAULT_WIDGET_SECTION, type DashboardPage, type DashboardRoute, type WidgetSettingsSection } from '@shared/dashboard'
 import type { ProviderView } from '@shared/provider'
@@ -19,7 +19,7 @@ import { OverviewPage } from './pages/OverviewPage'
 import { WidgetSettingsPage } from './pages/WidgetSettingsPage'
 
 const pageItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: faGauge },
+  { id: 'dashboard', label: 'Dashboard', icon: faTableCellsLarge },
   { id: 'widget', label: 'Widget', icon: faLayerGroup },
   { id: 'general', label: 'General', icon: faGear }
 ] as const satisfies ReadonlyArray<{ id: DashboardPage; label: string; icon: unknown }>
@@ -68,8 +68,8 @@ export function DashboardPanel({
     <aside className="settings-panel settings-panel--window relative flex h-full w-full max-h-none flex-col overflow-hidden rounded-none border-0 bg-overlay-surface text-[13px] text-overlay-text shadow-none animate-none [&_button]:[-webkit-app-region:no-drag] [&_input]:[-webkit-app-region:no-drag] [&_select]:[-webkit-app-region:no-drag]" aria-label="Dashboard">
       <header className="settings-panel__header relative z-[4] flex h-[50px] min-h-[50px] flex-[0_0_50px] items-center justify-between border-b border-overlay-track bg-overlay-thumb pr-2.5 pl-4 [-webkit-app-region:drag]">
         <div className="flex items-center gap-2.5">
-          <span className="settings-panel__mark grid size-6 shrink-0 place-items-center overflow-hidden rounded-full border-0 bg-transparent" aria-hidden="true">
-            <img className="settings-panel__app-icon block size-6 object-contain" src={appIcon} alt="" />
+          <span className="settings-panel__mark grid size-8 shrink-0 place-items-center overflow-hidden rounded-full border-0 bg-transparent" aria-hidden="true">
+            <img className="settings-panel__app-icon block size-8 object-contain" src={appIcon} alt="" />
           </span>
           <strong className="text-sm font-semibold text-overlay-strong">widoken</strong>
         </div>

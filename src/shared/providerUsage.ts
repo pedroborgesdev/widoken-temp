@@ -27,7 +27,12 @@ export const PROVIDER_USAGE_LIMITS: Record<string, UsageLimitOption[]> = {
     { id: 'chat', label: 'Chat requests' },
     { id: 'completions', label: 'Completions' }
   ],
-  antigravity: []
+  antigravity: [
+    { id: 'gemini', label: 'Gemini models', aliases: ['models'] },
+    { id: 'partner', label: 'Partner models' },
+    { id: 'prompt-credits', label: 'Prompt credits' },
+    { id: 'flow-credits', label: 'Flow credits' }
+  ]
 }
 
 export interface DisplayedUsageLimit {

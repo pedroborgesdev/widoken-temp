@@ -44,5 +44,6 @@ describe('provider usage display', () => {
     expect(PROVIDER_USAGE_LIMITS.openai.map(({ id }) => id)).toEqual(['primary', 'secondary'])
     expect(PROVIDER_USAGE_LIMITS.cursor.map(({ id }) => id)).toEqual(['auto', 'api', 'on-demand', 'included'])
     expect(PROVIDER_USAGE_LIMITS.claude.map(({ id }) => id)).toEqual(['session', 'weekly'])
+    expect(PROVIDER_USAGE_LIMITS.antigravity.map(({ id }) => id)).toEqual(['gemini', 'partner', 'prompt-credits', 'flow-credits'])
   })
 })

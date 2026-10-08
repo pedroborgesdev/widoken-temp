@@ -3,9 +3,9 @@
 | Platform | V1 status | Notes |
 | --- | --- | --- |
 | Windows | Supported target | Uses `BrowserWindow.setShape()` plus cursor tracking. Outside the widget, popovers, and settings rectangles the overlay sets `setIgnoreMouseEvents(true)` without mouse forwarding, so clicks and hover reach native apps and other Chromium windows after a drag. |
-| Linux X11 | Supported target | Uses `BrowserWindow.setShape()`. |
+| Linux X11 | Supported target | Uses `BrowserWindow.setShape()` and a toolbar window-manager hint so the widget stays out of the taskbar. |
 | Linux XWayland | Compatibility target | Available with `WIDOKEN_OZONE_PLATFORM=x11`; driver support varies. |
-| KDE/Wayland | Supported target | Uses native Ozone Wayland plus a session-scoped KWin bridge for regional click-through and `keepAbove`. |
+| KDE/Wayland | Supported target | Uses native Ozone Wayland plus a session-scoped KWin bridge for regional click-through, `keepAbove`, and `skipTaskbar`. |
 | Other Wayland compositors | Experimental | The widget renders, but regional click-through needs a compositor-specific cursor bridge. |
 | macOS | Planned | Current fallback is not considered feature-complete for regional click-through. |
 

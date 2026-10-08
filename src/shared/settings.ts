@@ -1,5 +1,6 @@
 export type DockSide = 'left' | 'right' | 'top' | 'bottom'
 export const APP_THEMES = [
+  'monokai-black',
   'dark',
   'slate',
   'dracula',
@@ -9,8 +10,7 @@ export const APP_THEMES = [
   'gruvbox',
   'one-dark',
   'solarized-dark',
-  'monokai',
-  'dark-pastel'
+  'monokai'
 ] as const
 export type AppTheme = typeof APP_THEMES[number]
 export type ThemeMode = 'preset' | 'vscode'
@@ -88,7 +88,7 @@ export interface AppSettings {
 export const DEFAULT_SETTINGS: AppSettings = {
   widget: {
     enabled: true,
-    theme: 'dark',
+    theme: 'monokai-black',
     themeMode: 'preset',
     shadows: true,
     showDockGuides: true,
@@ -110,7 +110,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     { id: 'claude', enabled: true, order: 0, usageDisplay: { split: true, primaryLimitId: 'session', secondaryLimitId: 'weekly' } },
     { id: 'openai', enabled: true, order: 1, usageDisplay: { split: true, primaryLimitId: 'primary', secondaryLimitId: 'secondary' } },
     { id: 'cursor', enabled: true, order: 2, usageDisplay: { split: true, primaryLimitId: 'auto', secondaryLimitId: 'api' } },
-    { id: 'antigravity', enabled: true, order: 3, usageDisplay: { split: false } },
+    { id: 'antigravity', enabled: true, order: 3, usageDisplay: { split: true, primaryLimitId: 'gemini', secondaryLimitId: 'partner' } },
     { id: 'copilot', enabled: false, order: 4, usageDisplay: { split: true, primaryLimitId: 'premium_interactions', secondaryLimitId: 'chat' } }
   ],
   refreshIntervalSeconds: 45,

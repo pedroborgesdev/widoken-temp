@@ -91,6 +91,7 @@ export function WidgetSettingsPage({
             value={settings.widget.themeMode === 'preset' ? settings.widget.theme : ''}
             placeholder="Select theme"
             options={[
+              { value: 'monokai-black', label: 'Monokai Black' },
               { value: 'dark', label: 'Dark' },
               { value: 'slate', label: 'Slate' },
               { value: 'dracula', label: 'Dracula' },
@@ -100,8 +101,7 @@ export function WidgetSettingsPage({
               { value: 'gruvbox', label: 'Gruvbox' },
               { value: 'one-dark', label: 'One Dark' },
               { value: 'solarized-dark', label: 'Solarized Dark' },
-              { value: 'monokai', label: 'Monokai' },
-              { value: 'dark-pastel', label: 'Dark Pastel' }
+              { value: 'monokai', label: 'Monokai' }
             ]}
             onChange={(value) => onUpdate({
               widget: {

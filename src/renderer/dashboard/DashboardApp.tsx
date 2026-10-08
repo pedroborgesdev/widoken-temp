@@ -2,7 +2,7 @@ import { useCallback, type CSSProperties } from 'react'
 import { dashboardDesktop } from '../services/desktop'
 import { activeSyncedTheme, syncedThemeStyle } from '../utils/theme'
 import { DashboardPanel } from './DashboardPanel'
-import { useDashboard } from './state/DashboardContext'
+import { useDashboard } from './state/useDashboard'
 
 export function DashboardApp(): React.JSX.Element {
   const { settings, settingsReady, providers, history, route, navigate, updateSettings } = useDashboard()
@@ -14,7 +14,7 @@ export function DashboardApp(): React.JSX.Element {
   }, [updateSettings])
 
   const followsWidget = settings.dashboardFollowsWidgetTheme
-  const theme = followsWidget ? settings.widget.theme : 'dark-pastel'
+  const theme = followsWidget ? settings.widget.theme : 'monokai-black'
 
   return (
     <main

@@ -14,6 +14,7 @@ export interface WidgetState {
   mode: WidgetMode
   settings: AppSettings
   settingsReady: boolean
+  providersReady: boolean
   dashboardWindowOpen: boolean
   providers: ProviderView[]
   hoveredProviderId?: string
@@ -35,6 +36,7 @@ export const initialWidgetState: WidgetState = {
   mode: 'passive',
   settings: DEFAULT_SETTINGS,
   settingsReady: false,
+  providersReady: false,
   dashboardWindowOpen: false,
   providers: []
 }
@@ -46,7 +48,13 @@ export function widgetReducer(state: WidgetState, action: WidgetAction): WidgetS
     case 'settings-updated':
       return { ...state, settings: action.settings }
     case 'providers-updated':
-      return { ...state, providers: action.providers }
+      return {
+        ...state,
+        providers: action.providers,
+        providersReady: state.providersReady || action.providers.every(
+          (provider) => provider.snapshot.status !== 'loading'
+        )
+      }
     case 'provider-hovered':
       return { ...state, mode: 'provider-hover', hoveredProviderId: action.providerId }
     case 'provider-left':

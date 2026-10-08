@@ -2,7 +2,7 @@ import { dashboardRouteQuery, sanitizeDashboardRoute } from '@shared/dashboard'
 import type { DashboardDesktopApi, DesktopApi, WidgetDesktopApi } from '@shared/ipc'
 import { buildUsageHistory, type UsageHistorySample } from '@shared/usageHistory'
 import type { ProviderView } from '@shared/provider'
-import { DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/settings'
+import { APP_THEMES, DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/settings'
 
 const STORAGE_KEY = 'widoken.preview.settings'
 
@@ -50,10 +50,12 @@ function loadPreviewSettings(): AppSettings {
     if (saved) {
       const parsed = JSON.parse(saved) as Partial<AppSettings>
       const defaults = structuredClone(DEFAULT_SETTINGS)
+      const widget = { ...DEFAULT_SETTINGS.widget, ...parsed.widget }
+      if (!APP_THEMES.includes(widget.theme)) widget.theme = DEFAULT_SETTINGS.widget.theme
       return {
         ...defaults,
         ...parsed,
-        widget: { ...DEFAULT_SETTINGS.widget, ...parsed.widget },
+        widget,
         analytics: { ...DEFAULT_SETTINGS.analytics, ...parsed.analytics },
         providers: defaults.providers.map((fallback) => {
           const provider = parsed.providers?.find((candidate) => candidate.id === fallback.id)

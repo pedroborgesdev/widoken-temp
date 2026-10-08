@@ -11,6 +11,7 @@ import type {
   UsageTrend
 } from '@shared/provider'
 import { buildUsageHistory, type UsageHistory, type UsageHistorySample } from '@shared/usageHistory'
+import { antigravityDataRoot } from '../providers/antigravityStorage'
 import { cursorStateDatabasePath } from '../providers/cursorStorage'
 
 const DAY_MS = 86_400_000
@@ -377,7 +378,7 @@ export class AnalyticsService {
   }
 
   private async antigravityMetrics(): Promise<LocalAnalyticsMetric[]> {
-    const root = join(this.userHome, '.gemini', 'antigravity')
+    const root = antigravityDataRoot(process.platform, this.userHome)
     const conversations = await this.recentFiles(join(root, 'conversations'), '.db', Date.now() - 30 * DAY_MS, 500)
     const recent = await Promise.all(conversations.map(async (file) => (await fs.stat(file)).mtimeMs >= Date.now() - 7 * DAY_MS))
     let model: string | undefined

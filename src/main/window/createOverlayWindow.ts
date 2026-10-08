@@ -73,6 +73,10 @@ export function createOverlayWindow(settings: AppSettings, configuredDisplay?: D
     movable: false,
     alwaysOnTop: true,
     ...(process.platform === 'win32' ? { thickFrame: false } : {}),
+    // Electron removed skipTaskbar support on Linux. A toolbar window carries
+    // the corresponding non-normal window-manager hint on X11; KDE/Wayland is
+    // reinforced by the KWin bridge after the surface is created.
+    ...(process.platform === 'linux' ? { type: 'toolbar' } : {}),
     skipTaskbar: true,
     fullscreenable: false,
     hasShadow: false,

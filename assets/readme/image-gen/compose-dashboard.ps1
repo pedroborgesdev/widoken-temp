@@ -1,8 +1,8 @@
-# Run after capture.mjs. Places dashboard-raw.png on wallpaper.png and writes assets/readme/dashboard.png.
+# Run after capture.mjs. Places dashboard-raw.png on wallpaper.jpg and writes assets/readme/dashboard.png.
 # If the raw shot is already gone, the window is taken from the current dashboard.png.
 Add-Type -AssemblyName System.Drawing
 
-$wallpaperPath = 'C:\Repositorios\widoken-temp\wallpaper.png'
+$wallpaperPath = 'C:\Repositorios\widoken-temp\wallpaper.jpg'
 $dashPath = 'C:\Repositorios\widoken-temp\assets\readme\dashboard-raw.png'
 $outPath = 'C:\Repositorios\widoken-temp\assets\readme\dashboard.png'
 $radius = 28

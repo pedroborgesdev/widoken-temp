@@ -45,7 +45,7 @@ widoken watches the tools you already signed into.
 | **ChatGPT** | The short window and the weekly window |
 | **Cursor** | Cursor Models and Other Models, with the real counts when Cursor sends them |
 | **GitHub Copilot** | Premium requests and chat, only after you turn it on |
-| **Antigravity** | A place on the strip, waiting for the day it can speak |
+| **Antigravity** | Gemini and partner-model quotas from the local Antigravity session |
 
 You choose who appears. A provider that is off is not watched. Turn it on when you want it there; turn it off and widoken stops looking.
 
@@ -119,10 +119,10 @@ Some of that history only exists after Widoken was on the machine. The widget st
 The widget is not stuck in one skin.
 
 <p align="center">
-  <img src="assets/readme/widget-themes.png" alt="The same widget in Dark, Dracula, Nord, Catppuccin, Tokyo Night, Gruvbox, Solarized, and Monokai">
+  <img src="assets/readme/widget-themes.png" alt="The same widget in Monokai Black, Dark, Dracula, Nord, Catppuccin, Tokyo Night, Gruvbox, Solarized, and Monokai">
 </p>
 
-Dark, Slate, Dracula, Nord, Catppuccin, Tokyo Night, Gruvbox, One Dark, Solarized, Monokai, Dark Pastel — or the colors of the VS Code theme you are already living in.
+Monokai Black, Dark, Slate, Dracula, Nord, Catppuccin, Tokyo Night, Gruvbox, One Dark, Solarized, Monokai — or the colors of the VS Code theme you are already living in.
 
 You can let that same theme paint the menu, or leave the menu on its own. You can split a ring or show one limit. You can dim a provider that is away, or leave it bright. You can open the menu when the machine starts, or leave only the widget.
 

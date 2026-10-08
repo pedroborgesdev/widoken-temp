@@ -6,7 +6,7 @@ import { chromium } from '@playwright/test'
 
 const BASE = 'http://localhost:5199'
 const OUT = 'assets/readme'
-const wallpaperDataUrl = `data:image/png;base64,${(await readFile('wallpaper.png')).toString('base64')}`
+const wallpaperDataUrl = `data:image/jpeg;base64,${(await readFile('wallpaper.jpg')).toString('base64')}`
 const only = process.argv.slice(2)
 
 function fakeApi({ settings, providers }) {
@@ -97,7 +97,7 @@ const providerSettings = (overrides = {}) => [
 const baseSettings = (widget = {}, providers = {}) => ({
   widget: {
     enabled: true,
-    theme: 'dark-pastel',
+    theme: 'monokai-black',
     themeMode: 'preset',
     shadows: true,
     showDockGuides: true,
@@ -348,7 +348,7 @@ const shots = {
 }
 
 await mkdir(OUT, { recursive: true })
-const browser = await chromium.launch({ channel: 'msedge', headless: true })
+const browser = await chromium.launch({ headless: true })
 try {
   for (const [name, shot] of Object.entries(shots)) {
     if (only.length > 0 && !only.includes(name)) continue

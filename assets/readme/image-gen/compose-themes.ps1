@@ -1,8 +1,9 @@
-# Run after capture-themes.mjs. Builds assets/readme/widget-themes.png from the theme shots and wallpaper.png.
+# Run after capture-themes.mjs. Builds assets/readme/widget-themes.png from the theme shots and wallpaper.jpg.
 Add-Type -AssemblyName System.Drawing
 
 $root = 'C:\Repositorios\widoken-temp'
 $order = @(
+  @{ File = 'monokai-black.png'; Label = 'Monokai Black' },
   @{ File = 'dark.png'; Label = 'Dark' },
   @{ File = 'dracula.png'; Label = 'Dracula' },
   @{ File = 'nord.png'; Label = 'Nord' },
@@ -19,7 +20,7 @@ $contentH = 680
 $gap = 58
 $pad = 84
 
-$wallpaper = [System.Drawing.Image]::FromFile((Join-Path $root 'wallpaper.png'))
+$wallpaper = [System.Drawing.Image]::FromFile((Join-Path $root 'wallpaper.jpg'))
 $canvas = New-Object System.Drawing.Bitmap $canvasW, $canvasH
 $canvas.SetResolution(144, 144)
 $g = [System.Drawing.Graphics]::FromImage($canvas)

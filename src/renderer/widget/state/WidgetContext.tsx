@@ -1,15 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, type Dispatch, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, type ReactNode } from 'react'
 import type { ProviderView } from '@shared/provider'
 import { useProviders } from '../../hooks/useProviders'
 import { widgetDesktop } from '../../services/desktop'
-import { initialWidgetState, widgetReducer, type WidgetAction, type WidgetState } from './widgetReducer'
-
-interface WidgetContextValue {
-  state: WidgetState
-  dispatch: Dispatch<WidgetAction>
-}
-
-const WidgetContext = createContext<WidgetContextValue | undefined>(undefined)
+import { initialWidgetState, widgetReducer } from './widgetReducer'
+import { WidgetContext } from './useWidget'
 
 export function WidgetProvider({ children }: { children: ReactNode }): React.JSX.Element {
   const [state, dispatch] = useReducer(widgetReducer, initialWidgetState)
@@ -39,10 +33,4 @@ export function WidgetProvider({ children }: { children: ReactNode }): React.JSX
 
   const value = useMemo(() => ({ state, dispatch }), [state])
   return <WidgetContext.Provider value={value}>{children}</WidgetContext.Provider>
-}
-
-export function useWidget(): WidgetContextValue {
-  const value = useContext(WidgetContext)
-  if (!value) throw new Error('useWidget must be used inside WidgetProvider')
-  return value
 }

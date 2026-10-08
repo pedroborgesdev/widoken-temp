@@ -8,7 +8,7 @@ import { AppMenuPopover } from './components/UsagePopover/AppMenuPopover'
 import { UsagePopover } from './components/UsagePopover/UsagePopover'
 import { Widget } from './components/Widget/Widget'
 import { widgetDesktop as desktop } from './services/desktop'
-import { useWidget } from './widget/state/WidgetContext'
+import { useWidget } from './widget/state/useWidget'
 import {
   type ControlTurnDirection,
   boardLongAxis,
@@ -87,6 +87,7 @@ export default function App(): React.JSX.Element {
   const [tucked, setTucked] = useState(false)
   const [collapseSettled, setCollapseSettled] = useState(false)
   const [expandSettled, setExpandSettled] = useState(true)
+  const [initialLayoutReady, setInitialLayoutReady] = useState(false)
   const wasCollapsed = useRef(false)
   const expandSettledRef = useRef(true)
   const [resolvedPopoverHeight, setResolvedPopoverHeight] = useState<{ height: number, id: string } | undefined>(undefined)
@@ -271,6 +272,11 @@ export default function App(): React.JSX.Element {
     : undefined
   const popoverLeft = widgetOrientation === 'horizontal' ? horizontalPopover.left : verticalPopoverLeft
   const popoverMaxHeight = widgetOrientation === 'vertical' ? verticalPopover.maxHeight : undefined
+  const startupDataReady = state.settingsReady && state.providersReady
+  useLayoutEffect(() => {
+    if (!startupDataReady || initialLayoutReady) return
+    setInitialLayoutReady(true)
+  }, [initialLayoutReady, startupDataReady])
   useLayoutEffect(() => {
     if (widgetOrientation !== 'vertical' || !popoverId || (state.mode !== 'provider-hover' && !appMenuOpen)) {
       setResolvedPopoverHeight((current) => (current === undefined ? current : undefined))
@@ -393,7 +399,7 @@ export default function App(): React.JSX.Element {
   }, [])
 
   useEffect(() => {
-    if (!state.settingsReady || state.mode === 'dragging') return
+    if (!initialLayoutReady || state.mode === 'dragging') return
     const updateInteractionRegions = (): void => {
       // The OS region clips painting. Keep the full footprint until the slide finishes,
       // otherwise the exit is cut down to the peek on the first frame.
@@ -436,6 +442,7 @@ export default function App(): React.JSX.Element {
     effectiveLeft,
     effectiveSide,
     effectiveTop,
+    initialLayoutReady,
     providers.length,
     state.mode,
     state.settingsReady,
@@ -602,7 +609,7 @@ export default function App(): React.JSX.Element {
 
   return (
     <main
-      className={`overlay-root overlay-root--theme-${state.settings.widget.theme} overlay-root--unavailable-${state.settings.widget.unavailableStyle} overlay-root--shadows-${state.settings.widget.shadows ? 'enabled' : 'disabled'}`}
+      className={`overlay-root ${initialLayoutReady ? 'overlay-root--ready' : 'overlay-root--initializing'} overlay-root--theme-${state.settings.widget.theme} overlay-root--unavailable-${state.settings.widget.unavailableStyle} overlay-root--shadows-${state.settings.widget.shadows ? 'enabled' : 'disabled'}`}
       style={{
         ...syncedThemeStyle(activeSyncedTheme(state.settings)),
         '--shadow-opacity': `${state.settings.widget.shadowOpacity}%`

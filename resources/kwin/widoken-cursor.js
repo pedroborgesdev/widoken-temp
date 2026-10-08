@@ -32,15 +32,19 @@ function reportWindowState(window) {
   )
 }
 
-function keepWidokenAbove(window) {
+function configureWidokenWindow(window) {
   if (window.pid !== widokenPid || window.caption !== overlayTitle) return
 
   window.keepBelow = false
   window.keepAbove = true
+  window.skipTaskbar = true
   applyTargetGeometry(window)
   window.keepAboveChanged.connect(function () {
     if (!window.keepAbove) window.keepAbove = true
     reportWindowState(window)
+  })
+  window.skipTaskbarChanged.connect(function () {
+    if (!window.skipTaskbar) window.skipTaskbar = true
   })
   window.frameGeometryChanged.connect(function () {
     reportWindowState(window)
@@ -50,7 +54,7 @@ function keepWidokenAbove(window) {
 
 function configureExistingWindows() {
   const windows = workspace.stackingOrder
-  for (let index = 0; index < windows.length; index += 1) keepWidokenAbove(windows[index])
+  for (let index = 0; index < windows.length; index += 1) configureWidokenWindow(windows[index])
 }
 
 function publishCursorPosition() {
@@ -66,7 +70,7 @@ function publishCursorPosition() {
 }
 
 workspace.cursorPosChanged.connect(publishCursorPosition)
-workspace.windowAdded.connect(keepWidokenAbove)
+workspace.windowAdded.connect(configureWidokenWindow)
 callDBus(
   'dev.widoken.Cursor',
   '/dev/widoken/Cursor',

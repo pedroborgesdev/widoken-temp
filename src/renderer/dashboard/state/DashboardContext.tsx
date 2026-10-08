@@ -1,21 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { dashboardRouteFromSearch, sanitizeDashboardRoute, type DashboardRoute } from '@shared/dashboard'
 import type { ProviderView } from '@shared/provider'
 import { DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/settings'
 import { buildUsageHistory, type UsageHistory } from '@shared/usageHistory'
 import { dashboardDesktop } from '../../services/desktop'
-
-interface DashboardContextValue {
-  settings: AppSettings
-  settingsReady: boolean
-  providers: ProviderView[]
-  history: UsageHistory
-  route: DashboardRoute
-  navigate(route: DashboardRoute): void
-  updateSettings(patch: SettingsPatch): Promise<AppSettings>
-}
-
-const DashboardContext = createContext<DashboardContextValue | undefined>(undefined)
+import { DashboardContext } from './useDashboard'
 
 function mergeSettings(settings: AppSettings, patch: SettingsPatch): AppSettings {
   return {
@@ -96,10 +85,4 @@ export function DashboardProvider({ children }: { children: ReactNode }): React.
     [settings, settingsReady, providers, history, route, navigate, updateSettings]
   )
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>
-}
-
-export function useDashboard(): DashboardContextValue {
-  const value = useContext(DashboardContext)
-  if (!value) throw new Error('useDashboard must be used inside DashboardProvider')
-  return value
 }
