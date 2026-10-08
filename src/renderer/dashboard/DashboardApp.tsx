@@ -18,7 +18,7 @@ export function DashboardApp(): React.JSX.Element {
 
   return (
     <main
-      className={`settings-window overlay-root--theme-${theme} overlay-root--shadows-${settings.widget.shadows ? 'enabled' : 'disabled'}`}
+      className={`settings-window overlay-root--theme-${theme} overlay-root--shadows-${settings.widget.shadows ? 'enabled' : 'disabled'} size-full overflow-hidden bg-overlay-surface p-0 font-['Segoe_UI_Variable_Text','Segoe_UI',system-ui,sans-serif] text-overlay-text antialiased [--color-settings-accent-foreground:var(--color-overlay-on-accent)]`}
       style={{
         ...(followsWidget ? syncedThemeStyle(activeSyncedTheme(settings)) : {}),
         '--shadow-opacity': `${settings.widget.shadowOpacity}%`

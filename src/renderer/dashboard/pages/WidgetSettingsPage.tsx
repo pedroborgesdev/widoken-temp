@@ -85,7 +85,7 @@ export function WidgetSettingsPage({
   if (section === 'appearance') {
     return (
       <SettingsSection title="Appearance">
-        <div className="settings-panel__grid">
+        <div className="grid border-t border-overlay-track">
           <SettingsSelect
             label="Theme"
             value={settings.widget.themeMode === 'preset' ? settings.widget.theme : ''}
@@ -110,10 +110,10 @@ export function WidgetSettingsPage({
               }
             })}
           />
-          <div className="settings-theme-sync">
-            <div>
-              <span>VS Code theme</span>
-              <small className={themeSyncMessage && !themeSyncMessage.startsWith('Synced:') ? 'settings-theme-sync__error' : undefined}>
+          <div className="grid min-h-[70px] grid-cols-[minmax(0,1fr)_210px] items-center gap-4 border-b border-overlay-track">
+            <div className="grid gap-[3px]">
+              <span className="text-[13.5px] text-overlay-text">VS Code theme</span>
+              <small className={`truncate text-[11px] leading-[1.35] ${themeSyncMessage && !themeSyncMessage.startsWith('Synced:') ? 'text-overlay-danger' : 'text-overlay-muted'}`}>
                 {themeSyncMessage
                   ?? (settings.widget.themeMode === 'vscode' && settings.widget.vscodeTheme
                     ? `Synced: ${settings.widget.vscodeTheme.name}`
@@ -121,7 +121,7 @@ export function WidgetSettingsPage({
               </small>
             </div>
             <button
-              className="settings-action-button"
+              className="flex h-[34px] w-full min-w-0 cursor-pointer items-center justify-center gap-2 rounded-md border border-overlay-track bg-overlay-elevated px-3 font-[inherit] text-[13px] text-overlay-strong transition-[background-color,border-color,opacity] duration-[120ms] hover:border-overlay-muted hover:bg-overlay-hover disabled:cursor-wait disabled:opacity-60 [&_svg]:size-3 [&_svg]:shrink-0"
               type="button"
               disabled={themeSyncing}
               onClick={() => void syncVsCodeTheme()}
@@ -174,7 +174,7 @@ export function WidgetSettingsPage({
 
   return (
     <SettingsSection title="Behavior">
-      <div className="settings-panel__grid">
+      <div className="grid border-t border-overlay-track">
         <SettingsCheckbox
           checked={settings.widget.enabled}
           label="Widget enabled"

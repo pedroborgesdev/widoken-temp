@@ -10,10 +10,10 @@ interface GeneralPageProps {
 export function GeneralPage({ settings, onUpdate }: GeneralPageProps): React.JSX.Element {
   return (
     <SettingsSection title="General" description="Settings for the whole app.">
-      <div className="settings-panel__groups">
-        <div className="settings-panel__group">
-          <h3>Interface</h3>
-          <div className="settings-panel__grid">
+      <div className="grid gap-[22px]">
+        <div>
+          <h3 className="m-0 mb-2 text-[13px] font-semibold text-overlay-strong">Interface</h3>
+          <div className="grid border-t border-overlay-track">
             <SettingsCheckbox
               checked={settings.dashboardFollowsWidgetTheme}
               label="Use the widget theme for the whole interface"
@@ -21,9 +21,9 @@ export function GeneralPage({ settings, onUpdate }: GeneralPageProps): React.JSX
             />
           </div>
         </div>
-        <div className="settings-panel__group">
-          <h3>Startup</h3>
-          <div className="settings-panel__grid">
+        <div>
+          <h3 className="m-0 mb-2 text-[13px] font-semibold text-overlay-strong">Startup</h3>
+          <div className="grid border-t border-overlay-track">
             <SettingsCheckbox
               checked={settings.launchAtStartup}
               label="Launch at startup"
@@ -36,9 +36,9 @@ export function GeneralPage({ settings, onUpdate }: GeneralPageProps): React.JSX
             />
           </div>
         </div>
-        <div className="settings-panel__group">
-          <h3>Data</h3>
-          <div className="settings-panel__grid">
+        <div>
+          <h3 className="m-0 mb-2 text-[13px] font-semibold text-overlay-strong">Data</h3>
+          <div className="grid border-t border-overlay-track">
             <SettingsSelect
               label="Refresh interval"
               value={settings.refreshIntervalSeconds}

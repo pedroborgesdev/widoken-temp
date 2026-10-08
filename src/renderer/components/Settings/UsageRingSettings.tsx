@@ -3,7 +3,7 @@ import { displayedUsageLimits, PROVIDER_USAGE_LIMITS, type UsageLimitOption } fr
 import type { ProviderSetting, ProviderUsageDisplay } from '@shared/settings'
 import { providerLogos, providerName } from '../../utils/providerBranding'
 import { UsageRing } from '../Widget/UsageRing'
-import { SettingsSection } from './SettingsControls'
+import { SettingsSection, SettingsToggle } from './SettingsControls'
 import { SettingsSelect } from './SettingsSelect'
 
 const PREVIEW_PERCENTS = [64, 32, 48, 20]
@@ -36,7 +36,7 @@ function UsageRingPreview({
 }): React.JSX.Element {
   const usages = displayedUsageLimits(provider.id, previewLimits(options, view), provider.usageDisplay)
   return (
-    <span className="usage-ring-setting__preview" aria-hidden="true">
+    <span className="relative grid size-[42px] shrink-0 place-items-center" aria-hidden="true">
       <UsageRing usages={usages} status="connected" />
       <span className="provider-item__icon-shell">
         <img
@@ -64,7 +64,7 @@ export function UsageRingSettings({ providers, providerViews, onChange }: UsageR
       title="Usage ring"
       description="Choose which limits each provider shows around its icon. A split ring shows one limit on each half."
     >
-      <div className="usage-ring-settings">
+      <div className="grid gap-2.5">
         {configurable.map((provider) => {
           const name = providerName(provider.id)
           const options = PROVIDER_USAGE_LIMITS[provider.id] ?? []
@@ -84,35 +84,31 @@ export function UsageRingSettings({ providers, providerViews, onChange }: UsageR
             : { secondaryLimitId })
 
           return (
-            <div className="usage-ring-setting" key={provider.id} data-provider-id={provider.id}>
-              <div className="usage-ring-setting__header">
+            <div className="grid gap-3 rounded-[10px] border border-overlay-track bg-[color-mix(in_srgb,var(--color-overlay-thumb)_55%,var(--color-overlay-surface))] px-4 py-3.5" key={provider.id} data-provider-id={provider.id}>
+              <div className="flex items-center gap-3.5">
                 <UsageRingPreview
                   provider={provider}
                   options={options}
                   view={providerViews.find((view) => view.id === provider.id)}
                 />
-                <span className="provider-setting__identity">
-                  <strong>{name}</strong>
-                  <span>{summary}</span>
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <strong className="truncate text-sm font-medium text-overlay-strong">{name}</strong>
+                  <span className="text-[12.5px] text-overlay-muted">{summary}</span>
                 </span>
                 {canSplit && (
-                  <label className="usage-ring-setting__split">
+                  <label className="flex cursor-pointer items-center gap-2.5 text-[12.5px] text-overlay-muted">
                     <span>Split ring</span>
-                    <span className="settings-switch">
-                      <input
-                        className="settings-switch__input"
-                        type="checkbox"
-                        checked={split}
-                        onChange={(event) => onChange(provider.id, { split: event.target.checked })}
-                        aria-label={`Split ${name} usage ring`}
-                      />
-                      <span aria-hidden="true" />
-                    </span>
+                    <SettingsToggle
+                      checked={split}
+                      label={`Split ${name} usage ring`}
+                      onChange={(next) => onChange(provider.id, { split: next })}
+                    />
                   </label>
                 )}
               </div>
-              <div className={`usage-ring-setting__limits${split ? ' usage-ring-setting__limits--split' : ''}`}>
+              <div className={`grid gap-3 pl-14 ${split ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <SettingsSelect
+                  stacked
                   label={split ? 'Left side' : 'Usage ring'}
                   value={primaryId ?? ''}
                   options={selectOptions}
@@ -120,6 +116,7 @@ export function UsageRingSettings({ providers, providerViews, onChange }: UsageR
                 />
                 {split && (
                   <SettingsSelect
+                    stacked
                     label="Right side"
                     value={secondaryId ?? ''}
                     options={selectOptions}

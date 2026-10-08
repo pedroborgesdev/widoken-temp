@@ -32,10 +32,10 @@ interface MetricProps {
 
 function Metric({ label, value, detail, tone }: MetricProps): React.JSX.Element {
   return (
-    <div className={`dashboard-metric${tone ? ` dashboard-metric--${tone}` : ''}`} role="group" aria-label={label}>
-      <span className="dashboard-metric__label">{label}</span>
-      <strong className="dashboard-metric__value">{value}</strong>
-      <span className="dashboard-metric__detail" title={detail}>{detail}</span>
+    <div className="grid min-w-0 gap-px rounded-lg border border-overlay-track bg-[color-mix(in_srgb,var(--color-overlay-thumb)_55%,var(--color-overlay-surface))] px-3 py-2" role="group" aria-label={label}>
+      <span className="text-[11px] font-medium text-overlay-muted">{label}</span>
+      <strong className={`text-lg leading-[1.3] font-semibold tabular-nums ${tone === 'success' ? 'text-overlay-success' : tone === 'warning' ? 'text-overlay-warning' : tone === 'danger' ? 'text-overlay-danger' : 'text-overlay-strong'}`}>{value}</strong>
+      <span className="truncate text-[11px] text-overlay-muted" title={detail}>{detail}</span>
     </div>
   )
 }
@@ -70,50 +70,50 @@ function ProviderUsageCard({ setting, view, onChooseProviders }: ProviderUsageCa
     : view?.snapshot.error ?? 'Usage is not available for this provider right now.'
 
   return (
-    <article className={`dashboard-provider-card dashboard-provider-card--${status}`} data-provider-id={setting.id} aria-label={name}>
-      <header className="dashboard-provider-card__header">
-        <span className="provider-setting__icon-shell" aria-hidden="true">
-          <img src={providerLogos[setting.id]} alt="" draggable={false} />
+    <article className={`dashboard-provider-card flex min-w-0 flex-col gap-2 rounded-lg border px-3 py-2.5 ${status === 'off' ? 'border-dashed border-overlay-track bg-transparent' : 'border-overlay-track bg-[color-mix(in_srgb,var(--color-overlay-thumb)_55%,var(--color-overlay-surface))]'}`} data-provider-id={setting.id} aria-label={name}>
+      <header className="flex items-center gap-2.5">
+        <span className={`grid size-[26px] shrink-0 basis-[26px] place-items-center overflow-hidden rounded-md bg-overlay-elevated ${status === 'off' ? 'opacity-55' : ''}`} aria-hidden="true">
+          <img className="block size-[18px] object-contain" src={providerLogos[setting.id]} alt="" draggable={false} />
         </span>
-        <span className="provider-setting__identity">
-          <strong>{name}</strong>
-          {subtitle && <span>{subtitle}</span>}
+        <span className="flex min-w-0 flex-1 flex-col">
+          <strong className="truncate text-[13px] font-medium text-overlay-strong">{name}</strong>
+          {subtitle && <span className="truncate text-[11.5px] text-overlay-muted">{subtitle}</span>}
         </span>
-        {status !== 'off' && view?.activity === 'active' && <span className="dashboard-provider-card__activity">Working</span>}
-        <span className={`dashboard-provider-card__status dashboard-provider-card__status--${status}`}>
+        {status !== 'off' && view?.activity === 'active' && <span className="shrink-0 rounded-full border border-dashed border-overlay-strong px-[7px] py-0.5 text-[10.5px] font-medium text-overlay-strong">Working</span>}
+        <span className={`shrink-0 rounded-full px-[7px] py-0.5 text-[10.5px] font-medium ${status === 'connected' ? 'bg-[color-mix(in_srgb,var(--color-overlay-success)_16%,transparent)] text-overlay-success' : status === 'error' ? 'bg-[color-mix(in_srgb,var(--color-overlay-danger)_16%,transparent)] text-overlay-danger' : 'bg-overlay-hover text-overlay-muted'}`}>
           {statusLabels[status]}
         </span>
       </header>
       {status === 'off' ? (
-        <div className="dashboard-provider-card__off">
-          <p className="dashboard-provider-card__message">Hidden from the widget, so Widoken is not checking its usage.</p>
-          <button className="dashboard-provider-card__action" type="button" onClick={onChooseProviders}>Manage</button>
+        <div className="flex items-center justify-between gap-2.5">
+          <p className="m-0 text-[11px] leading-[1.35] text-overlay-muted">Hidden from the widget, so Widoken is not checking its usage.</p>
+          <button className="h-6 shrink-0 cursor-pointer rounded-md border border-overlay-track bg-overlay-elevated px-2.5 font-[inherit] text-[11.5px] text-overlay-text hover:bg-overlay-hover hover:text-overlay-strong" type="button" onClick={onChooseProviders}>Manage</button>
         </div>
       ) : status === 'connected' && limits.length > 0 ? (
-        <div className="dashboard-provider-card__limits">
+        <div className="grid gap-2">
           {limits.map((limit) => {
             const details = limitDetails(limit, analytics?.trends.find((trend) => trend.limitId === limit.id))
             return (
-              <div className="dashboard-provider-card__limit" key={limit.id}>
-                <div className="dashboard-provider-card__limit-heading">
+              <div className="grid gap-[3px]" key={limit.id}>
+                <div className="flex items-baseline justify-between gap-3 text-xs text-overlay-text">
                   <span>{limit.label}</span>
-                  <strong>{limit.unlimited ? 'Unlimited' : percentDescription(limit.percent)}</strong>
+                  <strong className="font-semibold text-overlay-strong tabular-nums">{limit.unlimited ? 'Unlimited' : percentDescription(limit.percent)}</strong>
                 </div>
                 {!limit.unlimited && <UsageBar percent={limit.percent} />}
-                {details && <small>{details}</small>}
+                {details && <small className="text-[11px] leading-[1.35] text-overlay-muted">{details}</small>}
               </div>
             )
           })}
         </div>
       ) : (
-        <p className="dashboard-provider-card__message">{message}</p>
+        <p className="m-0 text-[11px] leading-[1.35] text-overlay-muted">{message}</p>
       )}
       {status === 'connected' && analytics?.localMetrics && analytics.localMetrics.length > 0 && (
-        <dl className="dashboard-provider-card__local">
+        <dl className="m-0 flex flex-wrap gap-x-3 gap-y-1 border-t border-overlay-track pt-1.5 text-[11px]">
           {analytics.localMetrics.map((metric) => (
-            <div key={metric.label}>
-              <dt>{metric.label}</dt>
-              <dd>{metric.value}</dd>
+            <div className="flex gap-1" key={metric.label}>
+              <dt className="text-overlay-muted">{metric.label}</dt>
+              <dd className="m-0 text-overlay-strong tabular-nums">{metric.value}</dd>
             </div>
           ))}
         </dl>
@@ -145,10 +145,10 @@ export function OverviewPage({ settings, providers, history, onChooseProviders }
 
   return (
     <SettingsSection title="Dashboard" description="Usage across every provider Widoken supports.">
-      <div className="dashboard-overview">
+      <div className="grid gap-2.5">
         <UsageHistoryChart history={history} series={series} providers={providers} filter={filter} onFilterChange={setFilter} />
 
-        <div className="dashboard-metrics" aria-label="Usage metrics">
+        <div className="grid grid-cols-4 gap-2" aria-label="Usage metrics">
           <Metric
             label="Connected"
             value={`${counts.connected}/${counts.total}`}
@@ -198,7 +198,7 @@ export function OverviewPage({ settings, providers, history, onChooseProviders }
           />
         </div>
 
-        <div className="dashboard-overview__providers" aria-label="Providers">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-2" aria-label="Providers">
           {ordered.map((setting) => (
             <ProviderUsageCard
               key={setting.id}
