@@ -216,17 +216,19 @@ body {
   user-select: none;
 }
 
-button,
-select,
-input {
-  font: inherit;
-}
+@layer base {
+  button,
+  select,
+  input {
+    font: inherit;
+  }
 
-button {
-  margin: 0;
-  border: 0;
-  color: inherit;
-  background: none;
+  button {
+    margin: 0;
+    border: 0;
+    color: inherit;
+    background: none;
+  }
 }
 
 .overlay-root {
@@ -692,8 +694,7 @@ button {
   transition: transform 220ms ease;
 }
 
-.board-app:hover .board-app__logo,
-.board-app:focus-visible .board-app__logo {
+.board-app--turned .board-app__logo {
   transform: scale(var(--board-app-fit)) rotate(var(--board-app-turn));
 }
 

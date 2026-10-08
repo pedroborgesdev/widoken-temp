@@ -83,6 +83,7 @@ export default function App(): React.JSX.Element {
   const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight })
   const [widgetHovered, setWidgetHovered] = useState(false)
   const [appMenuOpen, setAppMenuOpen] = useState(false)
+  const [appPointing, setAppPointing] = useState(false)
   const [tucked, setTucked] = useState(false)
   const [collapseSettled, setCollapseSettled] = useState(false)
   const [expandSettled, setExpandSettled] = useState(true)
@@ -360,6 +361,20 @@ export default function App(): React.JSX.Element {
     if (widgetRef.current?.querySelector('.board-app:hover')) setAppMenuOpen(true)
   }, [dispatch, expandSettled, state.mode])
   useEffect(() => {
+    const onBlur = (): void => {
+      if (state.mode === 'dragging') return
+      const pointerStillOver = widgetRef.current?.matches(':hover') || popoverRef.current?.matches(':hover')
+      if (pointerStillOver) return
+      setWidgetHovered(false)
+      setAppMenuOpen(false)
+      setAppPointing(false)
+      dispatch({ type: 'provider-left' })
+    }
+    window.addEventListener('blur', onBlur)
+    return () => window.removeEventListener('blur', onBlur)
+  }, [dispatch, state.mode])
+
+  useEffect(() => {
     const onResize = (): void => setViewport((current) =>
       current.width === window.innerWidth && current.height === window.innerHeight
         ? current
@@ -452,6 +467,7 @@ export default function App(): React.JSX.Element {
 
   const openAppMenu = (): void => {
     cancelHoverClose()
+    setAppPointing(true)
     if (state.mode === 'dragging' || !expandSettled) return
     if (state.mode === 'provider-hover') dispatch({ type: 'provider-left' })
     setAppMenuOpen(true)
@@ -459,6 +475,7 @@ export default function App(): React.JSX.Element {
 
   const closeAppMenuSoon = (): void => {
     cancelHoverClose()
+    setAppPointing(false)
     hoverTimer.current = window.setTimeout(() => setAppMenuOpen(false), 90)
   }
 
@@ -618,6 +635,7 @@ export default function App(): React.JSX.Element {
         collapseY={collapseOffset.y / widgetScale}
         edgeGap={edgeGap / widgetScale}
         appTurn={appIconTurn(effectiveLeft, widgetWidth, viewport.width)}
+        appTurned={appPointing}
         onProviderEnter={openProvider}
         onProviderLeave={closeProviderSoon}
         onHoverChange={setWidgetHovered}

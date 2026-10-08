@@ -33,6 +33,7 @@ interface WidgetProps {
   onProviderEnter: (id: string) => void
   onProviderLeave: () => void
   onHoverChange: (hovered: boolean) => void
+  appTurned: boolean
   onAppEnter: () => void
   onAppLeave: () => void
   onDashboard: () => void
@@ -67,6 +68,7 @@ export const Widget = forwardRef<HTMLDivElement, WidgetProps>(function Widget(
     onProviderEnter,
     onProviderLeave,
     onHoverChange,
+    appTurned,
     onAppEnter,
     onAppLeave,
     onDashboard,
@@ -198,7 +200,7 @@ export const Widget = forwardRef<HTMLDivElement, WidgetProps>(function Widget(
                 onLeave={onProviderLeave}
               />
             ))}
-            <BoardAppButton onClick={onDashboard} onEnter={onAppEnter} onLeave={onAppLeave} />
+            <BoardAppButton turned={appTurned} onClick={onDashboard} onEnter={onAppEnter} onLeave={onAppLeave} />
           </div>
           <div className="widget__controls">
             <GearButton onClick={onSettings} />
