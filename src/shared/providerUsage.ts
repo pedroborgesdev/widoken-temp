@@ -1,5 +1,5 @@
 import type { UsageLimit } from './provider'
-import type { ProviderSetting, ProviderUsageDisplay } from './settings'
+import type { ProviderUsageDisplay } from './settings'
 
 export interface UsageLimitOption {
   id: string
@@ -69,8 +69,4 @@ export function displayedUsageLimits(
     { limit: primary, side: 'left' },
     { limit: secondary, side: 'right' }
   ]
-}
-
-export function providerUsageDisplay(provider: ProviderSetting | undefined): ProviderUsageDisplay | undefined {
-  return provider?.usageDisplay
 }

@@ -1,10 +1,10 @@
-// Run after capture.mjs. Places dashboard-raw.png on wallpaper.jpg and writes dashboard.png.
+// Run after capture.mjs. Places source/dashboard-raw.png on source/wallpaper.jpg and writes dashboard.png.
 // node assets/readme/image-gen/compose-dashboard.mjs
 import { readFile } from 'node:fs/promises'
 import { chromium } from '@playwright/test'
 
-const wallpaper = `data:image/jpeg;base64,${(await readFile('wallpaper.jpg')).toString('base64')}`
-const dashboard = `data:image/png;base64,${(await readFile('assets/readme/dashboard-raw.png')).toString('base64')}`
+const wallpaper = `data:image/jpeg;base64,${(await readFile('assets/readme/source/wallpaper.jpg')).toString('base64')}`
+const dashboard = `data:image/png;base64,${(await readFile('assets/readme/source/dashboard-raw.png')).toString('base64')}`
 const browser = await chromium.launch({ headless: true })
 
 try {

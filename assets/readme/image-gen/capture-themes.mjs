@@ -1,6 +1,6 @@
 // Run from the repository root, with `vite --config vite.web.config.ts --port 5213` already up.
 // node assets/readme/image-gen/capture-themes.mjs
-// Writes one transparent widget shot per theme into assets/readme/.theme-shots.
+// Writes one transparent widget shot per theme into assets/readme/source/theme-shots.
 import { mkdir, writeFile } from 'node:fs/promises'
 import { chromium } from 'playwright'
 
@@ -18,12 +18,12 @@ const themes = [
   ['monokai', 'Monokai']
 ]
 
-const base = 'http://127.0.0.1:5213/widget.html'
-const outDir = 'assets/readme/.theme-shots'
+const base = 'http://localhost:5213/widget.html'
+const outDir = 'assets/readme/source/theme-shots'
 
 await mkdir(outDir, { recursive: true })
 
-const browser = await chromium.launch({ channel: 'msedge', headless: true })
+const browser = await chromium.launch({ headless: true })
 const page = await browser.newPage({
   viewport: { width: 420, height: 640 },
   deviceScaleFactor: 3

@@ -1,7 +1,7 @@
-# Run after capture-themes.mjs. Builds assets/readme/widget-themes.png from the theme shots and wallpaper.jpg.
+# Run after capture-themes.mjs. Builds assets/readme/widget-themes.png from source/theme-shots and source/wallpaper.jpg.
 Add-Type -AssemblyName System.Drawing
 
-$root = 'C:\Repositorios\widoken-temp'
+$root = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $order = @(
   @{ File = 'monokai-black.png'; Label = 'Monokai Black' },
   @{ File = 'dark.png'; Label = 'Dark' },
@@ -64,7 +64,7 @@ function Add-RoundRect([System.Drawing.Drawing2D.GraphicsPath]$path, [single]$x,
   $path.CloseFigure()
 }
 
-$wallpaper = [System.Drawing.Image]::FromFile((Join-Path $root 'wallpaper.jpg'))
+$wallpaper = [System.Drawing.Image]::FromFile((Join-Path $root 'assets\readme\source\wallpaper.jpg'))
 $canvas = New-Object System.Drawing.Bitmap $canvasW, $canvasH
 $g = [System.Drawing.Graphics]::FromImage($canvas)
 $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
@@ -77,7 +77,7 @@ $g.DrawImage($wallpaper, 0, 0, $canvasW, $canvasH)
 
 $shots = @()
 foreach ($item in $order) {
-  $path = Join-Path $root "assets\readme\.theme-shots\$($item.File)"
+  $path = Join-Path $root "assets\readme\source\theme-shots\$($item.File)"
   $img = [System.Drawing.Image]::FromFile($path)
   $full = New-Object System.Drawing.Bitmap $img
   $img.Dispose()

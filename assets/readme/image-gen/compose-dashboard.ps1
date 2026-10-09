@@ -1,10 +1,11 @@
-# Run after capture.mjs. Places dashboard-raw.png on wallpaper.jpg and writes assets/readme/dashboard.png.
+# Run after capture.mjs. Places source/dashboard-raw.png on source/wallpaper.jpg and writes assets/readme/dashboard.png.
 # If the raw shot is already gone, the window is taken from the current dashboard.png.
 Add-Type -AssemblyName System.Drawing
 
-$wallpaperPath = 'C:\Repositorios\widoken-temp\wallpaper.jpg'
-$dashPath = 'C:\Repositorios\widoken-temp\assets\readme\dashboard-raw.png'
-$outPath = 'C:\Repositorios\widoken-temp\assets\readme\dashboard.png'
+$root = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+$wallpaperPath = Join-Path $root 'assets\readme\source\wallpaper.jpg'
+$dashPath = Join-Path $root 'assets\readme\source\dashboard-raw.png'
+$outPath = Join-Path $root 'assets\readme\dashboard.png'
 $radius = 28
 $canvasW = 1680
 $canvasH = 1000

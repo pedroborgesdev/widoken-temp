@@ -52,10 +52,10 @@ describe('overlay displays', () => {
 
   it('round-trips a per-display overlay title and layout list', () => {
     expect(displayIdFromOverlayTitle(overlayWindowTitle(7))).toBe(7)
-    expect(displayIdFromOverlayTitle('widoken overlay')).toBeUndefined()
+    expect(displayIdFromOverlayTitle('Widoken Widget')).toBeUndefined()
     expect(serializeOverlayLayouts([
       { caption: overlayWindowTitle(1), x: 0, y: 0, width: 1920, height: 1080 },
       { caption: overlayWindowTitle(2), x: 1920, y: 0, width: 1280, height: 720 }
-    ])).toBe('widoken overlay 1|0|0|1920|1080;widoken overlay 2|1920|0|1280|720')
+    ])).toBe('Widoken Widget 1|0|0|1920|1080;Widoken Widget 2|1920|0|1280|720')
   })
 })

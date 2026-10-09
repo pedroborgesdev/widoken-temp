@@ -104,10 +104,13 @@ function previewProviderViews(): ProviderView[] {
     },
     antigravity: {
       providerId: 'antigravity',
-      status: 'unavailable',
-      limits: [],
-      lastUpdatedAt: new Date().toISOString(),
-      error: 'Failed to get token usage. Connect at the provider and try again.'
+      status: 'connected',
+      plan: 'pro',
+      limits: [
+        { id: 'gemini', label: 'Gemini models', percent: 44, resetsAt: futureDate(2860) },
+        { id: 'partner', label: 'Partner models', percent: 27, resetsAt: futureDate(2860) }
+      ],
+      lastUpdatedAt: new Date().toISOString()
     }
   }
 

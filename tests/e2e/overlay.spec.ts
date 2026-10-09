@@ -201,6 +201,50 @@ test('renders the dynamic widget and provider usage states', async () => {
   await expectAnimationRestarted()
 })
 
+test('keeps the cursor-following axis immediate inside docking lanes', async () => {
+  const transitions = await page.locator('.widget').evaluate((element) => {
+    const widget = element as HTMLElement
+    const originalClassName = widget.className
+    const sides = ['left', 'right', 'top', 'bottom'] as const
+    const result = Object.fromEntries(sides.map((side) => {
+      widget.className = originalClassName
+        .replace(/\bwidget--(?:left|right|top|bottom)\b/g, '')
+        .concat(` widget--dragging widget--snapped widget--${side}`)
+      return [side, getComputedStyle(widget).transitionProperty]
+    }))
+    widget.className = originalClassName
+    return result
+  })
+
+  expect(transitions).toEqual({ left: 'left', right: 'left', top: 'top', bottom: 'top' })
+})
+
+test('clips tucked widget paint to the active display', async () => {
+  const stage = page.locator('.widget-stage')
+  const widget = page.locator('.widget')
+  await expect(stage).toHaveCSS('overflow', 'hidden')
+  await expect(stage).toHaveCSS('pointer-events', 'none')
+  await expect(widget).toHaveCSS('position', 'absolute')
+  await expect(widget).toHaveCSS('pointer-events', 'auto')
+
+  const paintsBeyondStage = await stage.evaluate((element) => {
+    const stageElement = element as HTMLElement
+    const widgetElement = stageElement.querySelector<HTMLElement>('.widget')!
+    const previousStageStyle = stageElement.getAttribute('style')
+    const previousWidgetStyle = widgetElement.getAttribute('style')
+    stageElement.style.cssText = 'left: 0; top: 0; width: 100px; height: 500px;'
+    widgetElement.style.left = '90px'
+    widgetElement.style.top = '80px'
+    const painted = widgetElement.contains(document.elementFromPoint(110, 100))
+    if (previousStageStyle == null) stageElement.removeAttribute('style')
+    else stageElement.setAttribute('style', previousStageStyle)
+    if (previousWidgetStyle == null) widgetElement.removeAttribute('style')
+    else widgetElement.setAttribute('style', previousWidgetStyle)
+    return painted
+  })
+  expect(paintsBeyondStage).toBe(false)
+})
+
 test('renders a spinning dashed contour while a provider request is active', async () => {
   await revealWidget()
   const providers = await page.evaluate(() =>
@@ -218,7 +262,7 @@ test('renders a spinning dashed contour while a provider request is active', asy
 
   await electronApp.evaluate(({ BrowserWindow }, payload) => {
     BrowserWindow.getAllWindows()
-      .filter((candidate) => candidate.getTitle().startsWith('widoken overlay'))
+      .filter((candidate) => candidate.getTitle().startsWith('Widoken Widget') || candidate.getTitle().startsWith('widoken overlay'))
       .forEach((candidate) => candidate.webContents.send('providers:updated', payload))
   }, activeProviders)
 
@@ -241,7 +285,7 @@ test('renders a spinning dashed contour while a provider request is active', asy
 
   await electronApp.evaluate(({ BrowserWindow }, payload) => {
     BrowserWindow.getAllWindows()
-      .filter((candidate) => candidate.getTitle().startsWith('widoken overlay'))
+      .filter((candidate) => candidate.getTitle().startsWith('Widoken Widget') || candidate.getTitle().startsWith('widoken overlay'))
       .forEach((candidate) => candidate.webContents.send('providers:updated', payload))
   }, providers)
   await expect(activeRing).toHaveCount(0)
@@ -259,7 +303,7 @@ test('renders a spinning dashed contour while a provider request is active', asy
 test('covers the whole display, including the taskbar area', async () => {
   test.skip(process.platform !== 'win32', 'Windows is the platform that clamps topmost windows to the work area')
   const geometry = await electronApp.evaluate(({ BrowserWindow, screen }) => {
-    const overlay = BrowserWindow.getAllWindows().find((candidate) => candidate.getTitle().startsWith('widoken overlay'))
+    const overlay = BrowserWindow.getAllWindows().find((candidate) => candidate.getTitle().startsWith('Widoken Widget') || candidate.getTitle().startsWith('widoken overlay'))
     if (!overlay) return undefined
     const display = screen.getDisplayMatching(overlay.getBounds())
     return { bounds: overlay.getBounds(), display: display.bounds }
@@ -273,7 +317,7 @@ test('covers the whole display, including the taskbar area', async () => {
 
 test('does not expose native resize handles on the overlay', async () => {
   const resizable = await electronApp.evaluate(({ BrowserWindow }) => {
-    const overlay = BrowserWindow.getAllWindows().find((candidate) => candidate.getTitle().startsWith('widoken overlay'))
+    const overlay = BrowserWindow.getAllWindows().find((candidate) => candidate.getTitle().startsWith('Widoken Widget') || candidate.getTitle().startsWith('widoken overlay'))
     return overlay?.isResizable()
   })
 
@@ -456,9 +500,9 @@ test('opens the dashboard in a separate native window with an isolated preload',
   await themeControl.getByRole('option', { name: 'Dracula' }).click()
 
   await selectSettingsPage(settingsWindow, 'General')
-  const startupCheckbox = settingsWindow.getByRole('checkbox', { name: 'Launch at startup' })
+  const startupCheckbox = settingsWindow.getByRole('checkbox', { name: 'Launch Widget at startup' })
   await startupCheckbox.check()
-  await expect.poll(async () => switchTrack('Launch at startup').evaluate((element) =>
+  await expect.poll(async () => switchTrack('Launch Widget at startup').evaluate((element) =>
     getComputedStyle(element, '::after').backgroundColor
   )).toBe('rgb(34, 34, 34)')
   const dashboardWindow = settingsWindow.locator('.settings-window')
@@ -933,7 +977,7 @@ test('navigates the dashboard from the widoken icon and the widget gear', async 
   expect(offProvider).toBeDefined()
   const offCard = dashboard.locator(`.dashboard-provider-card[data-provider-id="${offProvider?.id}"]`)
   await expect(offCard.locator('.dashboard-provider-card__status')).toHaveText('Off')
-  await expect(dashboard.getByRole('checkbox', { name: 'Launch at startup' })).toHaveCount(0)
+  await expect(dashboard.getByRole('checkbox', { name: 'Launch Widget at startup' })).toHaveCount(0)
   await offCard.getByRole('button', { name: 'Manage' }).click()
   await expect(widgetNavigation.getByRole('button', { name: 'Providers' })).toHaveAttribute('aria-current', 'page')
   await selectSettingsPage(dashboard, 'Behavior')

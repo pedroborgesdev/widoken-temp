@@ -1,13 +1,85 @@
 // Run from the repository root, with `vite --config vite.web.config.ts --port 5199` already up.
 // node assets/readme/image-gen/capture.mjs
-// Writes hero, widget-closeup, widget-working, widget-menu, widget-horizontal, and dashboard-raw.
+// Writes the final widget captures plus source/dashboard-raw.png for dashboard composition.
 import { mkdir, readFile } from 'node:fs/promises'
 import { chromium } from '@playwright/test'
 
 const BASE = 'http://localhost:5199'
 const OUT = 'assets/readme'
-const wallpaperDataUrl = `data:image/jpeg;base64,${(await readFile('wallpaper.jpg')).toString('base64')}`
+const SOURCE = `${OUT}/source`
+const wallpaperDataUrl = `data:image/jpeg;base64,${(await readFile(`${SOURCE}/wallpaper.jpg`)).toString('base64')}`
 const only = process.argv.slice(2)
+
+function cursorVisual(source) {
+  const imageOffset = source.readUInt32LE(18)
+  const width = source.readInt32LE(imageOffset + 4)
+  const height = Math.abs(source.readInt32LE(imageOffset + 8)) / 2
+  const bitsPerPixel = source.readUInt16LE(imageOffset + 14)
+  if (width <= 0 || height <= 0 || bitsPerPixel !== 1) throw new Error('Expected a 1-bit Windows cursor')
+
+  const hotspotX = source.readUInt16LE(10)
+  const hotspotY = source.readUInt16LE(12)
+  const rowBytes = Math.ceil(width / 32) * 4
+  const paletteOffset = imageOffset + source.readUInt32LE(imageOffset)
+  const xorOffset = paletteOffset + 8
+  const andOffset = xorOffset + rowBytes * height
+  const colors = [0, 1].map((index) => {
+    const offset = paletteOffset + index * 4
+    return `rgb(${source[offset + 2]},${source[offset + 1]},${source[offset]})`
+  })
+  const paths = ['', '']
+
+  for (let y = 0; y < height; y += 1) {
+    const sourceY = height - 1 - y
+    for (let x = 0; x < width; x += 1) {
+      const shift = 7 - (x % 8)
+      const byte = sourceY * rowBytes + Math.floor(x / 8)
+      const xor = (source[xorOffset + byte] >> shift) & 1
+      const mask = (source[andOffset + byte] >> shift) & 1
+      if (mask && !xor) continue
+      paths[xor] += `M${x} ${y}h1v1h-1z`
+    }
+  }
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" shape-rendering="crispEdges"><path fill="${colors[0]}" d="${paths[0]}"/><path fill="${colors[1]}" d="${paths[1]}"/></svg>`
+  return {
+    width,
+    height,
+    hotspotX,
+    hotspotY,
+    image: `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`
+  }
+}
+
+const cursors = {
+  pointer: cursorVisual(await readFile(`${SOURCE}/pointer.cur`)),
+  click: cursorVisual(await readFile(`${SOURCE}/click.cur`))
+}
+
+async function showCursor(page, kind, target, position = {}) {
+  const box = await target.boundingBox()
+  if (!box) throw new Error(`Unable to place ${kind} cursor`)
+  const cursor = cursors[kind]
+  const pointX = box.x + box.width * (position.x ?? 0.5) + (position.offsetX ?? 0)
+  const pointY = box.y + box.height * (position.y ?? 0.5) + (position.offsetY ?? 0)
+  await page.evaluate(async ({ cursor, pointX, pointY }) => {
+    document.querySelector('[data-readme-cursor]')?.remove()
+    const image = new Image()
+    image.dataset.readmeCursor = 'true'
+    image.src = cursor.image
+    image.style.cssText = [
+      'position: fixed',
+      `left: ${pointX - cursor.hotspotX}px`,
+      `top: ${pointY - cursor.hotspotY}px`,
+      `width: ${cursor.width}px`,
+      `height: ${cursor.height}px`,
+      'z-index: 2147483647',
+      'pointer-events: none'
+    ].join(';')
+    document.body.append(image)
+    await image.decode()
+  }, { cursor, pointX, pointY })
+}
 
 function fakeApi({ settings, providers }) {
   const minutes = (value) => new Date(Date.now() + value * 60_000).toISOString()
@@ -15,10 +87,13 @@ function fakeApi({ settings, providers }) {
     typeof item === 'string' && item.startsWith('+') && /At$|resetsAt/.test(key)
       ? minutes(Number(item.slice(1)))
       : item)
-  const views = revive(providers).map((provider) => ({
-    ...provider,
-    snapshot: { providerId: provider.id, lastUpdatedAt: new Date().toISOString(), limits: [], ...provider.snapshot }
-  }))
+  const enabledProviderIds = new Set(settings.providers.filter((provider) => provider.enabled).map((provider) => provider.id))
+  const views = revive(providers)
+    .filter((provider) => enabledProviderIds.has(provider.id))
+    .map((provider) => ({
+      ...provider,
+      snapshot: { providerId: provider.id, lastUpdatedAt: new Date().toISOString(), limits: [], ...provider.snapshot }
+    }))
 
   const dayKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
   const days = Array.from({ length: 31 }, (_, index) => {
@@ -38,7 +113,7 @@ function fakeApi({ settings, providers }) {
     ['claude', 'weekly', 4, 6],
     ['openai', 'primary', 2, 11],
     ['cursor', 'auto', 6, 9],
-    ['copilot', 'premium_interactions', 1, 5]
+    ['antigravity', 'gemini', 1, 7]
   ].map(([providerId, limitId, seed, scale]) => {
     const points = wave(seed, scale)
     const total = Math.round(points.reduce((sum, point) => sum + point.quota, 0) * 10) / 10
@@ -50,7 +125,15 @@ function fakeApi({ settings, providers }) {
   let current = settings
   const settingsListeners = new Set()
   const api = {
-    overlay: { startDragging: async () => {}, endDragging: async () => {}, setInteractionRegions: async () => {} },
+    overlay: {
+      startDragging: async () => {},
+      endDragging: async () => {},
+      setInteractionRegions: async () => {},
+      dragPointerUp: async () => {},
+      onDragMove: () => () => {},
+      onDragEnd: () => () => {},
+      onDisplays: () => () => {}
+    },
     providers: { list: async () => views, refresh: async () => views, onUpdated: () => () => {} },
     settings: {
       get: async () => structuredClone(current),
@@ -90,8 +173,8 @@ const providerSettings = (overrides = {}) => [
   { id: 'claude', enabled: true, order: 0, usageDisplay: { split: true, primaryLimitId: 'session', secondaryLimitId: 'weekly' } },
   { id: 'openai', enabled: true, order: 1, usageDisplay: { split: true, primaryLimitId: 'primary', secondaryLimitId: 'secondary' } },
   { id: 'cursor', enabled: true, order: 2, usageDisplay: { split: true, primaryLimitId: 'auto', secondaryLimitId: 'api' } },
-  { id: 'copilot', enabled: true, order: 3, usageDisplay: { split: true, primaryLimitId: 'premium_interactions', secondaryLimitId: 'chat' } },
-  { id: 'antigravity', enabled: false, order: 4, usageDisplay: { split: false } }
+  { id: 'antigravity', enabled: true, order: 3, usageDisplay: { split: true, primaryLimitId: 'gemini', secondaryLimitId: 'partner' } },
+  { id: 'copilot', enabled: false, order: 4, usageDisplay: { split: true, primaryLimitId: 'premium_interactions', secondaryLimitId: 'chat' } }
 ].map((provider) => ({ ...provider, ...overrides[provider.id] }))
 
 const baseSettings = (widget = {}, providers = {}) => ({
@@ -185,6 +268,27 @@ const baseProviders = (activity = {}) => [
     }
   },
   {
+    id: 'antigravity',
+    name: 'Antigravity',
+    activity: activity.antigravity,
+    snapshot: {
+      status: 'connected',
+      plan: 'pro',
+      limits: [
+        { id: 'gemini', label: 'Gemini models', percent: 44, resetsAt: '+2860' },
+        { id: 'partner', label: 'Partner models', percent: 27, resetsAt: '+2860' }
+      ],
+      analytics: {
+        listPrice: price(20),
+        trends: [
+          { limitId: 'gemini', observedSince: '2026-09-01', consumedLast24Hours: 15, averageDailyConsumption: 7, projectedPercentAtReset: 76 },
+          { limitId: 'partner', observedSince: '2026-09-01', consumedLast24Hours: 8, averageDailyConsumption: 4, projectedPercentAtReset: 49 }
+        ],
+        localMetrics: [{ label: 'Agent turns today', value: '46' }]
+      }
+    }
+  },
+  {
     id: 'copilot',
     name: 'GitHub Copilot',
     activity: activity.copilot,
@@ -253,8 +357,10 @@ const shots = {
       settings: baseSettings({ verticalPosition: 0.48 }),
       providers: baseProviders({ claude: 'active' })
     })
-    await page.locator('[data-provider-id="claude"]').hover()
+    const provider = page.locator('[data-provider-id="claude"]')
+    await provider.hover()
     await page.waitForTimeout(500)
+    await showCursor(page, 'pointer', provider)
     const clip = pad(
       union(await page.locator('.widget').boundingBox(), await page.locator('.usage-popover').boundingBox()),
       { left: 36, right: 18, top: 28, bottom: 28 },
@@ -287,8 +393,10 @@ const shots = {
       settings: baseSettings({}, { copilot: { enabled: false } }),
       providers: baseProviders({ claude: 'active', cursor: 'active' })
     })
-    await page.locator('.widget').hover()
+    const provider = page.locator('[data-provider-id="cursor"]')
+    await provider.hover()
     await page.waitForTimeout(700)
+    await showCursor(page, 'pointer', provider)
     const clip = pad(await page.locator('.widget').boundingBox(), { left: 42, right: 14, top: 32, bottom: 32 }, desktop)
     await page.screenshot({ path: `${OUT}/widget-working.png`, clip })
     await context.close()
@@ -302,8 +410,10 @@ const shots = {
       settings: baseSettings({ verticalPosition: 0.5 }),
       providers: baseProviders()
     })
-    await page.getByRole('button', { name: 'Open Widoken Menu' }).hover()
+    const menuButton = page.getByRole('button', { name: 'Open Widoken Menu' })
+    await menuButton.hover()
     await page.waitForTimeout(500)
+    await showCursor(page, 'click', menuButton)
     const clip = pad(
       union(await page.locator('.widget').boundingBox(), await page.locator('.unavailable-popover').boundingBox()),
       { left: 28, right: 16, top: 26, bottom: 26 },
@@ -321,8 +431,10 @@ const shots = {
       settings: baseSettings({ orientation: 'horizontal', side: 'top', verticalPosition: 0, horizontalPosition: 0.52 }),
       providers: baseProviders({ openai: 'active' })
     })
-    await page.locator('[data-provider-id="cursor"]').hover()
+    const provider = page.locator('[data-provider-id="cursor"]')
+    await provider.hover()
     await page.waitForTimeout(500)
+    await showCursor(page, 'pointer', provider)
     const clip = pad(
       union(await page.locator('.widget').boundingBox(), await page.locator('.usage-popover').boundingBox()),
       { left: 40, right: 40, top: 12, bottom: 28 },
@@ -342,7 +454,7 @@ const shots = {
       settings: baseSettings(),
       providers: baseProviders({ claude: 'active' })
     })
-    await page.screenshot({ path: `${OUT}/dashboard-raw.png` })
+    await page.screenshot({ path: `${SOURCE}/dashboard-raw.png` })
     await context.close()
   }
 }

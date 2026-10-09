@@ -1,143 +1,195 @@
 <p align="center">
-  <img src="resources/widoken.png" width="72" alt="widoken">
+  <img src="resources/widoken.png" width="72" alt="Widoken icon">
 </p>
 
-<h1 align="center">widoken</h1>
+<h1 align="center">Widoken</h1>
 
 <p align="center"><strong>Your AI usage, living on the edge of the screen.</strong></p>
 
 <p align="center">
-  Other tools hide your limits in a tab, a status bar, or a page you never open.<br>
-  widoken stays on the desktop. Always. Without stealing a single click.
+  A small desktop widget for the limits spread across your AI tools.<br>
+  See what is available, what is running, and what resets next—without opening another tab.
 </p>
 
 <p align="center">
-  <img src="assets/readme/hero.png" alt="widoken widget on the desktop, with Claude usage open beside it">
+  <img src="assets/readme/hero.png" alt="Widoken widget on the desktop with a provider usage popover open">
 </p>
-
-## Why it exists
-
-You already pay for more than one AI. Claude for the long work. ChatGPT for the rest. Cursor when you are inside the editor. Copilot in the gaps.
-
-Each one keeps its own meter in its own house. You find out you are empty when the model says no.
-
-widoken puts every meter on the glass. The widget is the product. Everything else is there so the widget can stay small.
-
-## This is the product
-
-A slim strip docks to the side of your screen. Each icon is a provider. Each ring is a limit you can read from across the room.
-
-Two limits can live on the same icon: session on the left, week on the right. You do not open anything to know where you stand.
 
 <p align="center">
-  <img src="assets/readme/widget-closeup.png" width="280" alt="Close-up of the widoken widget and its usage rings">
+  <a href="#the-widget">The widget</a> ·
+  <a href="#providers">Providers</a> ·
+  <a href="#getting-started">Getting started</a> ·
+  <a href="#platform-support">Platforms</a> ·
+  <a href="#privacy-and-local-data">Privacy</a> ·
+  <a href="#development">Development</a>
 </p>
 
-Editors show one provider. Sites show another. Nothing else puts all of them on your desktop, in the same place you already look, without covering the work.
+## Why Widoken
 
-## Every provider on the same strip
+Your limits are scattered across different products. Claude, ChatGPT, Cursor, Copilot, and Antigravity each have their own place to check usage, usually after you have already hit a limit.
 
-widoken watches the tools you already signed into.
+Widoken brings those readings into one persistent, compact view. The widget is the product: the dashboard exists to give you history and control when you need them, then gets out of the way.
 
-| | What you see |
+## The widget
+
+Each provider has a place on the strip. Its usage ring shows the percentage of a limit already used; when a provider exposes two limits, the left and right halves can show both at once. Choose the limits and their order in the dashboard.
+
+<p align="center">
+  <img src="assets/readme/widget-closeup.png" width="280" alt="Close-up of the Widoken widget and its usage rings">
+</p>
+
+Hover a provider to see the details it reports: limit names, usage, reset times, and available counts. Once Widoken has collected enough local samples, the popover can also show recent consumption and a projected exhaustion time. An unavailable or signed-out provider remains visible with an explicit state instead of a made-up percentage.
+
+<p align="center">
+  <img src="assets/readme/widget-horizontal.png" alt="Horizontal Widoken widget with a Cursor usage popover">
+</p>
+
+For providers with a reliable local activity signal—currently Codex, Cursor, and Antigravity—the ring animates while a turn is in progress. When that activity ends, Widoken requests fresh usage for that provider.
+
+<p align="center">
+  <img src="assets/readme/widget-working.png" width="280" alt="Widoken usage rings showing provider activity">
+</p>
+
+Move the widget to a screen edge or leave it free. It supports vertical and horizontal layouts, magnetic docking guides, edge tuck, adjustable scale and spacing, shadows, and provider ordering. The unused area of the overlay is designed to let pointer input reach the application underneath; the exact behavior depends on the desktop platform.
+
+The Widoken icon on the strip opens the app menu. From there, open the dashboard without hunting for a tray icon or another window.
+
+<p align="center">
+  <img src="assets/readme/widget-menu.png" alt="Widoken app menu beside the widget">
+</p>
+
+### A dashboard when you want more
+
+The dashboard shows a 31-day usage chart, current provider states, individual limit breakdowns, and summary metrics. History starts when Widoken begins recording samples; it cannot reconstruct past usage. Where a provider supplies an absolute amount, Widoken prefers that over an estimate derived from percentages. Any plan price shown is a reference list price, not a bill or a record of actual spending.
+
+<p align="center">
+  <img src="assets/readme/dashboard.png" alt="Widoken dashboard showing usage history and provider details">
+</p>
+
+Widget settings are grouped into Providers, Usage ring, Appearance, and Behavior. General settings cover startup, refresh frequency, and optional local insights. Disabling the widget leaves the dashboard available so you can turn it back on.
+
+### Make it yours
+
+Monokai Black is the default. Other presets include Dark, Slate, Dracula, Nord, Catppuccin Mocha, Tokyo Night, Gruvbox, One Dark, Solarized Dark, and Monokai. You can also import the colors of your active VS Code theme on demand, and choose whether the dashboard follows the widget theme.
+
+<p align="center">
+  <img src="assets/readme/widget-themes.png" alt="Widoken widget shown in a selection of available themes">
+</p>
+
+## Providers
+
+Widoken uses sessions that already exist on your computer. It does not ask you to paste a token into the app. Availability and the exact limits shown depend on the provider, your account, and the data its client or service exposes.
+
+| Provider | What Widoken reads | Before you start |
+| --- | --- | --- |
+| Claude | Session and weekly usage from Anthropic | Sign in with Claude Code. |
+| ChatGPT / Codex | Primary and secondary Codex usage windows | Sign in through Codex; a browser-only ChatGPT session is not enough. |
+| Cursor | Cursor Models, Other Models, and any available spend buckets | Sign in to the Cursor editor. |
+| Antigravity | Model pools and available credits from its local language server | Run and sign in to Antigravity. |
+| GitHub Copilot | Quotas exposed by GitHub, including premium requests | Enable it in **Widget → Providers** and provide an existing GitHub CLI or environment-token session. |
+
+Claude, ChatGPT/Codex, Cursor, and Antigravity are enabled by default; Copilot is off until you enable it. A disabled provider is not polled. If a service changes its usage response or a session expires, Widoken shows an unavailable or error state rather than treating the limit as zero.
+
+For integration details and current limitations, see [Provider adapters](docs/PROVIDER_ADAPTERS.md).
+
+## Getting started
+
+### Run from source
+
+Install a recent Node.js release and npm. The project uses Electron and a native SQLite module, so a platform may also need native build tools if a prebuilt module is unavailable.
+
+```bash
+npm ci
+npm run dev
+```
+
+On first launch, the widget appears with the default Monokai Black theme. Sign in to the provider clients you use, hover their icons to inspect the reported limits, then open **Widget → Providers** to hide or reorder providers. Use **Widget → Usage ring** to choose which limits appear on each ring.
+
+### Build an installer
+
+Run the packaging command on the platform you are targeting:
+
+```bash
+# Linux: AppImage and .deb
+npm run package:linux
+
+# Windows: NSIS installer
+npm run package:windows
+```
+
+Packages are written to `dist/`. Install the generated `.deb` with your package manager, run the AppImage after making it executable, or launch the Windows NSIS installer. The Linux command generates the required icon sizes and needs Python 3. The repository does not currently provide a macOS packaging command. `npm run package` creates an unpacked application for local inspection.
+
+## Platform support
+
+| Platform | Current status | Notes |
+| --- | --- | --- |
+| Windows | Supported target | Uses native overlay shaping and cursor tracking for click-through. NSIS packaging is configured. |
+| Linux X11 | Supported target | Uses window shaping and a window-manager hint to keep the widget out of the taskbar. |
+| KDE Plasma / Wayland | Supported target | Uses native Wayland and a session-scoped KWin bridge for click-through, always-on-top, and taskbar behavior. |
+| Linux XWayland | Compatibility path | Set `WIDOKEN_OZONE_PLATFORM=x11`; behavior depends on the driver and compositor. |
+| Other Wayland compositors | Experimental | Rendering works, but regional click-through needs compositor-specific support. |
+| macOS | Planned | The current overlay fallback is not feature-complete and no installer target is configured. |
+
+Multi-monitor behavior and platform-specific overlay constraints are described in [Platform support](docs/PLATFORM_SUPPORT.md) and [Overlay behavior](docs/OVERLAY_BEHAVIOR.md).
+
+## Privacy and local data
+
+Widoken has no separate account or cloud-sync service. Provider adapters read existing local sign-in material in the main process and use it to request usage directly from the corresponding provider endpoint. Cursor's adapter reads session fields from Cursor's local database and sends them as an authentication cookie to Cursor; Antigravity is queried through its local language server. These integrations require access to the clients' existing sessions, so enable only the providers you want Widoken to watch.
+
+Settings and sampled usage history are stored under Electron's per-user application-data directory as `settings.json` and `analytics.sqlite`. On POSIX systems, settings are written with owner-only file permissions. Samples older than 90 days are pruned during active recording, while the dashboard displays a 31-day view. The **Local analytics** switch controls additional metrics read from local client data; it is off by default. Ordinary usage history is recorded independently of that switch.
+
+The widget and dashboard have separate, sandboxed renderer processes. Provider credentials stay out of their exposed interfaces. Widoken does not read browser cookies or ask for a new sign-in, but it does rely on the local credentials described above. See [Security](docs/SECURITY.md) for the process and IPC boundaries.
+
+## Troubleshooting
+
+| Symptom | What to check |
 | --- | --- |
-| **Claude** | Session and weekly limits, together on one ring |
-| **ChatGPT** | The short window and the weekly window |
-| **Cursor** | Cursor Models and Other Models, with the real counts when Cursor sends them |
-| **GitHub Copilot** | Premium requests and chat, only after you turn it on |
-| **Antigravity** | Gemini and partner-model quotas from the local Antigravity session |
+| A provider says **Unavailable** | Confirm that its desktop client is signed in. Codex usage requires a Codex session, not just a ChatGPT browser session. Antigravity also needs a running local language server. |
+| Usage appears stale | Check the provider's error message and network access. The default refresh interval is 45 seconds; change it under **General → Data**. |
+| The history chart is empty | History begins with Widoken's first successful usage samples. Let the app run through a few refreshes; old usage cannot be imported retrospectively. |
+| The overlay does not pass clicks through on Wayland | Check the [platform matrix](#platform-support). KDE has a dedicated bridge; other Wayland compositors do not yet have equivalent support. |
 
-You choose who appears. A provider that is off is not watched. Turn it on when you want it there; turn it off and widoken stops looking.
+When reporting a provider issue, include the OS, provider, and visible status or error—but never attach credentials, session files, or unredacted logs.
 
-Signed out, unavailable, or in error — the icon stays, so you can see that too.
+## Development
 
-## One hover. The whole story.
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the Electron app with live reload. |
+| `npm run dev:web` | Run the browser preview with sample usage data for UI work and screenshots. |
+| `npm run typecheck` | Check main, renderer, and test TypeScript projects. |
+| `npm test` | Run unit tests. |
+| `npm run test:e2e` | Build and run the Playwright Electron smoke tests. |
+| `npm run build` | Type-check and create production app bundles. |
 
-The rings are the glance. Point at an icon and the rest arrives beside the widget:
+The Electron main process owns settings, provider adapters, analytics, and the native windows. The widget and dashboard are separate React renderers connected through narrow preload APIs. Start with [Architecture](docs/ARCHITECTURE.md) for the full layout and [Testing](docs/TESTING.md) for validation guidance.
 
-- how full each limit is
-- when it resets
-- what the last day cost you
-- how fast you are burning
-- when you will run out
-- the plan you are on, and what it lists for
-- the small local numbers, like messages or agent turns today
+Product screenshots are generated from the browser preview with the scripts in [`assets/readme/image-gen`](assets/readme/image-gen). Their wallpaper, cursors, and theme captures live in [`assets/readme/source`](assets/readme/source); keep these sources when updating the final images.
 
-You never leave the work. You just point at the icon.
+### Updating screenshots
 
-<p align="center">
-  <img src="assets/readme/widget-horizontal.png" alt="Horizontal widget with Cursor usage open underneath">
-</p>
+The capture scripts expect the preview server on a fixed port. From the repository root, use two terminals for the main images:
 
-## You will see the work happening
+```bash
+# Terminal 1
+npx vite --config vite.web.config.ts --port 5199
+```
 
-While an agent is mid-turn, the ring comes alive. Claude thinking. Cursor still in a prompt. The widget itself tells you someone is working.
+```bash
+# Terminal 2
+node assets/readme/image-gen/capture.mjs
+node assets/readme/image-gen/compose-dashboard.mjs
+```
 
-No extra window. No pile of notifications. When the turn ends, the usage updates.
+For the theme comparison, start the preview server on port `5213`, then run:
 
-<p align="center">
-  <img src="assets/readme/widget-working.png" width="280" alt="Widget rings spinning while Claude and Cursor are working">
-</p>
+```bash
+node assets/readme/image-gen/capture-themes.mjs
+node assets/readme/image-gen/compose-themes.mjs
+```
 
-## Put it where your hand already is
+These scripts use Playwright Chromium; install its browser binary if it is not already present. Keep the source wallpaper and cursor files in `assets/readme/source/` so regenerated images stay consistent.
 
-The widget is not a window you park. It belongs to the edge of the screen.
+## License
 
-- **Any side.** Left, right, top, or bottom. Drag it. It snaps when you want it to, and sits free when you do not.
-- **Vertical or horizontal.** A column on the side. A row on the top. Same rings.
-- **Tuck.** Let it slide into the edge until you come back. The desktop is yours again.
-- **Your size.** Scale it, space the icons, keep the shadow or take it off.
-
-It never blocks a click that was meant for the app underneath. The rest of the screen stays the rest of the screen.
-
-## The menu is on the widget
-
-The last icon is Widoken. Hover it and the door is already there — the month, the widget, the rest of the app — without hunting a tray.
-
-<p align="center">
-  <img src="assets/readme/widget-menu.png" alt="Open Widoken Menu hovering beside the widget">
-</p>
-
-That is the only extra surface. Open it when you want more. Close it, and you are back to the strip.
-
-## The rest of the month, when you want it
-
-The menu opens the month.
-
-Thirty-one days of usage, stacked the way you actually burned it. A strip of numbers you can read in one pass: who is connected, what is highest, what resets next, who is working right now, what today cost, which day was busiest, how far back the history goes, what the plans add up to.
-
-Every provider is on that page. The ones on the widget. The ones you turned off. The ones that could not answer. Then a breakdown of each limit, if you want to hunt.
-
-<p align="center">
-  <img src="assets/readme/dashboard.png" alt="widoken menu open over the desktop, showing usage for the month">
-</p>
-
-Some of that history only exists after Widoken was on the machine. The widget still prefers a number the provider told it over a number it had to guess.
-
-## Make it feel like your desktop
-
-The widget is not stuck in one skin.
-
-<p align="center">
-  <img src="assets/readme/widget-themes.png" alt="The same widget in Monokai Black, Dark, Dracula, Nord, Catppuccin, Tokyo Night, Gruvbox, Solarized, and Monokai">
-</p>
-
-Monokai Black, Dark, Slate, Dracula, Nord, Catppuccin, Tokyo Night, Gruvbox, One Dark, Solarized, Monokai — or the colors of the VS Code theme you are already living in.
-
-You can let that same theme paint the menu, or leave the menu on its own. You can split a ring or show one limit. You can dim a provider that is away, or leave it bright. You can open the menu when the machine starts, or leave only the widget.
-
-The widget can be turned off. The menu stays, so you can turn it back on.
-
-## It does not take what you did not give
-
-widoken reads usage from the tools you already use, on this computer. It does not open your browser. It does not lift cookies. A provider you leave off is a provider it does not touch.
-
-Copilot stays off until you say otherwise. That switch is the permission.
-
-What it learns, it keeps here: the rings, the month, the small local counts. Nothing else needs to exist for the widget to be useful.
-
-## Nothing else sits on your desktop like this
-
-Other software can show usage. They cannot live on the glass without getting in the way.
-
-widoken can. That is the whole point.
+Widoken is released under the [MIT License](LICENSE).

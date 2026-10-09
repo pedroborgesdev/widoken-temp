@@ -71,7 +71,7 @@ export function DashboardPanel({
           <span className="settings-panel__mark grid size-8 shrink-0 place-items-center overflow-hidden rounded-full border-0 bg-transparent" aria-hidden="true">
             <img className="settings-panel__app-icon block size-8 object-contain" src={appIcon} alt="" />
           </span>
-          <strong className="text-sm font-semibold text-overlay-strong">widoken</strong>
+          <strong className="text-sm font-semibold text-overlay-strong">Widoken</strong>
         </div>
         <div className="flex items-center gap-0.5">
           <button className="grid size-8 cursor-pointer place-items-center rounded-md border-0 text-lg leading-none text-overlay-muted transition-[background-color,color] duration-[120ms] hover:bg-overlay-hover hover:text-overlay-strong" type="button" onClick={onMinimize} aria-label="Minimize dashboard">−</button>

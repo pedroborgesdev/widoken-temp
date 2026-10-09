@@ -1,6 +1,7 @@
 node_modules/
 out/
 dist/
+build/icons/
 release/
 coverage/
 test-results/
@@ -8,3 +9,4 @@ playwright-report/
 *.log
 *.tsbuildinfo
 .DS_Store
+assets/readme/source/dashboard-raw.png

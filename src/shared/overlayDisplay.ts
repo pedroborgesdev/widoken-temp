@@ -19,7 +19,7 @@ export interface OverlayLayout {
   height: number
 }
 
-const OVERLAY_TITLE_PREFIX = 'widoken overlay'
+const OVERLAY_TITLE_PREFIX = 'Widoken Widget'
 
 export const WIDGET_OVERLAY_TITLE = OVERLAY_TITLE_PREFIX
 
@@ -28,9 +28,15 @@ export function overlayWindowTitle(displayId: number): string {
 }
 
 export function displayIdFromOverlayTitle(title: string): number | undefined {
-  if (!title.startsWith(`${OVERLAY_TITLE_PREFIX} `)) return undefined
-  const id = Number(title.slice(OVERLAY_TITLE_PREFIX.length + 1))
-  return Number.isInteger(id) && id >= 0 ? id : undefined
+  if (title.startsWith(`${OVERLAY_TITLE_PREFIX} `)) {
+    const id = Number(title.slice(OVERLAY_TITLE_PREFIX.length + 1))
+    return Number.isInteger(id) && id >= 0 ? id : undefined
+  }
+  if (title.startsWith('widoken overlay ')) {
+    const id = Number(title.slice('widoken overlay '.length))
+    return Number.isInteger(id) && id >= 0 ? id : undefined
+  }
+  return undefined
 }
 
 export function widgetLivesOnDisplay(

@@ -26,7 +26,7 @@ export function GeneralPage({ settings, onUpdate }: GeneralPageProps): React.JSX
           <div className="grid border-t border-overlay-track">
             <SettingsCheckbox
               checked={settings.launchAtStartup}
-              label="Launch at startup"
+              label="Launch Widget at startup"
               onChange={(launchAtStartup) => onUpdate({ launchAtStartup })}
             />
             <SettingsCheckbox

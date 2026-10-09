@@ -247,6 +247,13 @@ body {
   animation: widget-startup-in 280ms ease-out both;
 }
 
+.widget-stage {
+  position: fixed;
+  z-index: 20;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .widget {
   --provider-count: 4;
   --widget-width: 54px;
@@ -258,7 +265,7 @@ body {
   --widget-scale: 1;
   --widget-core-shift-x: 0px;
   --widget-core-shift-y: 0px;
-  position: fixed;
+  position: absolute;
   z-index: 20;
   width: var(--widget-width);
   height: calc(var(--widget-control-height) + var(--provider-span) + var(--provider-edge-spacing));
@@ -269,14 +276,27 @@ body {
     right 180ms ease;
 }
 
+.widget-stage .widget {
+  pointer-events: auto;
+}
+
 .widget--dragging {
   transition: none;
 }
 
 .widget--dragging.widget--snapped {
-  transition:
-    top 90ms cubic-bezier(0.2, 0.9, 0.3, 1.2),
-    left 90ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  transition: none;
+}
+
+/* Animate only the coordinate being pulled into the docking lane. The other
+   coordinate must keep tracking the pointer; transitioning both on every
+   cursor sample makes movement along the lane feel stuck. */
+.widget--dragging.widget--snapped:is(.widget--left, .widget--right) {
+  transition: left 90ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.widget--dragging.widget--snapped:is(.widget--top, .widget--bottom) {
+  transition: top 90ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
 
 .widget--dragging .widget__thumb {

@@ -794,46 +794,53 @@ export default function App(): React.JSX.Element {
           <SelectionGrid candidateSide={display.id === (stage?.id ?? -1) && dragVisit !== 'away' ? state.drag?.candidateSide : undefined} />
         </div>
       ))}
-      {widgetIsHere && <Widget
-        ref={widgetRef}
-        providers={providers}
-        providerSettings={providerSettings}
-        side={effectiveSide}
-        left={effectiveLeft + stageX}
-        top={effectiveTop + stageY}
-        dragging={state.mode === 'dragging'}
-        snapped={Boolean(state.drag?.pulled)}
-        settingsOpen={state.dashboardWindowOpen}
-        hot={showCornerChrome}
-        orientation={widgetOrientation}
-        itemGap={itemGap}
-        scale={widgetScale}
-        coreShiftX={cornerControls.coreShiftX}
-        coreShiftY={cornerControls.coreShiftY}
-        gearTurn={showCornerChrome ? cornerControls.gearTurn : undefined}
-        grabTurn={showCornerChrome ? cornerControls.grabTurn : undefined}
-        collapsedEdge={collapsed && edgeCollapse ? edgeCollapse : undefined}
-        edge={edgeCollapse}
-        collapseX={collapseOffset.x / widgetScale}
-        collapseY={collapseOffset.y / widgetScale}
-        edgeGap={edgeGap / widgetScale}
-        appTurn={appIconTurn(effectiveLeft, widgetWidth, stageWidth)}
-        appTurned={appPointing}
-        onProviderEnter={openProvider}
-        onProviderLeave={closeProviderSoon}
-        onHoverChange={setWidgetHovered}
-        onAppEnter={openAppMenu}
-        onAppLeave={closeAppMenuSoon}
-        onDashboard={() => {
-          setAppMenuOpen(false)
-          void desktop.dashboard.open({ page: 'dashboard' })
-        }}
-        onSettings={() => {
-          setAppMenuOpen(false)
-          void desktop.dashboard.open({ page: 'widget', section: DEFAULT_WIDGET_SECTION })
-        }}
-        onGrabPointerDown={startDrag}
-      />}
+      {widgetIsHere && (
+        <div
+          className="widget-stage"
+          style={{ left: stageX, top: stageY, width: stageWidth, height: stageHeight }}
+        >
+          <Widget
+            ref={widgetRef}
+            providers={providers}
+            providerSettings={providerSettings}
+            side={effectiveSide}
+            left={effectiveLeft}
+            top={effectiveTop}
+            dragging={state.mode === 'dragging'}
+            snapped={Boolean(state.drag?.pulled)}
+            settingsOpen={state.dashboardWindowOpen}
+            hot={showCornerChrome}
+            orientation={widgetOrientation}
+            itemGap={itemGap}
+            scale={widgetScale}
+            coreShiftX={cornerControls.coreShiftX}
+            coreShiftY={cornerControls.coreShiftY}
+            gearTurn={showCornerChrome ? cornerControls.gearTurn : undefined}
+            grabTurn={showCornerChrome ? cornerControls.grabTurn : undefined}
+            collapsedEdge={collapsed && edgeCollapse ? edgeCollapse : undefined}
+            edge={edgeCollapse}
+            collapseX={collapseOffset.x / widgetScale}
+            collapseY={collapseOffset.y / widgetScale}
+            edgeGap={edgeGap / widgetScale}
+            appTurn={appIconTurn(effectiveLeft, widgetWidth, stageWidth)}
+            appTurned={appPointing}
+            onProviderEnter={openProvider}
+            onProviderLeave={closeProviderSoon}
+            onHoverChange={setWidgetHovered}
+            onAppEnter={openAppMenu}
+            onAppLeave={closeAppMenuSoon}
+            onDashboard={() => {
+              setAppMenuOpen(false)
+              void desktop.dashboard.open({ page: 'dashboard' })
+            }}
+            onSettings={() => {
+              setAppMenuOpen(false)
+              void desktop.dashboard.open({ page: 'widget', section: DEFAULT_WIDGET_SECTION })
+            }}
+            onGrabPointerDown={startDrag}
+          />
+        </div>
+      )}
       {widgetIsHere && expandSettled && state.mode === 'provider-hover' && hoveredProvider && (
         <UsagePopover
           key={hoveredProvider.id}

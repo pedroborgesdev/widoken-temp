@@ -11,7 +11,7 @@ import {
   updateInteractionWindowBounds
 } from '../window/interactionRegions'
 import { startKWinCursorBridge, type KWinCursorBridge } from '../window/kwinCursorBridge'
-import { isNativeWayland } from '../window/platform'
+import { isKdeWayland, isNativeWayland, overlaySpansDesktop } from '../window/platform'
 
 const CURSOR_INTERVAL_MS = 16
 
@@ -21,12 +21,8 @@ interface DragSession {
   hostId?: number
 }
 
-function isKdeWayland(): boolean {
-  return isNativeWayland() && (process.env.XDG_CURRENT_DESKTOP ?? '').toLowerCase().includes('kde')
-}
-
 function spansDesktop(): boolean {
-  return !isNativeWayland()
+  return overlaySpansDesktop()
 }
 
 export class WidgetWindowManager {
@@ -281,6 +277,13 @@ export class WidgetWindowManager {
   }
 
   private currentLayouts(): OverlayLayout[] {
+    if (spansDesktop()) {
+      const bounds = unionBounds(screen.getAllDisplays().map((display) => display.bounds))
+      return bounds
+        ? [{ caption: WIDGET_OVERLAY_TITLE, ...bounds }]
+        : []
+    }
+
     const layouts = screen.getAllDisplays().map((display) => ({
       caption: overlayWindowTitle(display.id),
       x: display.bounds.x,

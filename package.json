@@ -1,9 +1,14 @@
 {
   "name": "widoken",
+  "productName": "Widoken",
+  "desktopName": "widoken.desktop",
   "version": "0.1.0",
   "description": "A discreet desktop overlay for AI provider usage limits.",
   "main": "./out/main/index.js",
-  "author": "widoken contributors",
+  "author": {
+    "name": "Pedro Borges (@pedroborgesdev)",
+    "email": "pedrofilipe.github@gmail.com"
+  },
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -15,8 +20,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run build && playwright test",
+    "generate:icons": "python3 scripts/generate-icons.py",
     "package": "npm run build && electron-builder --dir",
-    "package:linux": "npm run build && electron-builder --linux AppImage deb",
+    "package:linux": "npm run build && npm run generate:icons && electron-builder --linux AppImage deb",
     "package:windows": "npm run build && electron-builder --win nsis"
   },
   "dependencies": {
@@ -46,7 +52,8 @@
   },
   "build": {
     "appId": "dev.widoken.app",
-    "productName": "widoken",
+    "productName": "Widoken",
+    "artifactName": "${name}-${version}-${arch}.${ext}",
     "asar": true,
     "files": [
       "out/**/*",
@@ -63,19 +70,40 @@
       {
         "from": "resources/widoken-taskbar.png",
         "to": "widoken-taskbar.png"
+      },
+      {
+        "from": "resources/widoken.png",
+        "to": "widoken.png"
       }
     ],
     "linux": {
-      "icon": "resources/widoken-taskbar.png",
+      "icon": "build/icons",
+      "executableName": "widoken",
+      "syncDesktopName": true,
+      "desktop": {
+        "entry": {
+          "Name": "Widoken"
+        }
+      },
       "target": [
         "AppImage",
         "deb"
       ],
       "category": "Utility"
     },
+    "appImage": {
+      "artifactName": "${name}-${version}-${arch}.${ext}"
+    },
     "win": {
       "icon": "resources/widoken-taskbar.png",
       "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "shortcutName": "Widoken",
+      "installerSidebar": "assets/installer/side-banner.bmp",
+      "uninstallerSidebar": "assets/installer/side-banner.bmp",
+      "installerHeader": "assets/installer/top-banner.bmp"
     }
   }
 }

@@ -102,7 +102,7 @@ function reportWindowState(window) {
 function isWidokenOverlay(window) {
   return window.pid === widokenPid &&
     typeof window.caption === 'string' &&
-    window.caption.indexOf('widoken overlay') === 0
+    (window.caption.indexOf('Widoken Widget') === 0 || window.caption.indexOf('widoken overlay') === 0)
 }
 
 function configureWidokenWindow(window) {

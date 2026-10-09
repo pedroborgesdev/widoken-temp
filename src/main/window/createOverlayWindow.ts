@@ -5,7 +5,7 @@ import { WIDGET_OVERLAY_TITLE, overlayWindowTitle, serializeDisplayRects, type D
 import type { AppSettings } from '@shared/settings'
 import { applyInteractionRegions, registerInteractionDisplay, updateInteractionCursor, updateInteractionWindowBounds } from './interactionRegions'
 import { isNativeWayland } from './platform'
-import { appIconPath } from './appIcon'
+import { widgetIconPath } from './appIcon'
 
 export function resolveTargetDisplay(settings: AppSettings): Display {
   const displays = screen.getAllDisplays()
@@ -89,7 +89,7 @@ export function createOverlayWindow(
     fullscreenable: false,
     hasShadow: false,
     backgroundColor: '#00000000',
-    icon: appIconPath(),
+    icon: widgetIconPath(),
     title: options?.role === 'guides' ? overlayWindowTitle(display.id) : WIDGET_OVERLAY_TITLE,
     show: false,
     webPreferences: {
