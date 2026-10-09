@@ -4,9 +4,11 @@ import { PROVIDER_USAGE_LIMITS } from '@shared/providerUsage'
 import {
   DEFAULT_SETTINGS,
   APP_THEMES,
+  CREDENTIAL_SOURCES,
   clampHorizontalPosition,
   clampVerticalPosition,
   type AppSettings,
+  type CredentialSource,
   type ProviderSetting,
   type ProviderUsageDisplay,
   type SettingsPatch,
@@ -61,6 +63,10 @@ function sanitizeProviderUsage(
   }
 }
 
+function sanitizeCredentialSource(value: unknown): CredentialSource {
+  return CREDENTIAL_SOURCES.includes(value as CredentialSource) ? value as CredentialSource : 'auto'
+}
+
 function sanitizeProviders(value: unknown): ProviderSetting[] {
   if (!Array.isArray(value)) return DEFAULT_SETTINGS.providers
 
@@ -71,12 +77,14 @@ function sanitizeProviders(value: unknown): ProviderSetting[] {
     if (typeof item.id !== 'string' || !PROVIDER_IDS.has(item.id) || seen.has(item.id)) return []
     seen.add(item.id)
     const fallback = DEFAULT_SETTINGS.providers.find((provider) => provider.id === item.id)!
-    return [{
+    const setting: ProviderSetting = {
       id: item.id,
       enabled: item.enabled !== false,
       order: Number.isFinite(item.order) ? Number(item.order) : index,
       usageDisplay: sanitizeProviderUsage(item.id, item.usageDisplay, fallback.usageDisplay)
-    } satisfies ProviderSetting]
+    }
+    if (item.id === 'deepseek') setting.credentialSource = sanitizeCredentialSource(item.credentialSource)
+    return [setting]
   })
 
   for (const fallback of DEFAULT_SETTINGS.providers) {

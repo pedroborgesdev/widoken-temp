@@ -26,7 +26,7 @@
 
 ## Why Widoken
 
-Your limits are scattered across different products. Claude, ChatGPT, Cursor, Copilot, and Antigravity each have their own place to check usage, usually after you have already hit a limit.
+Your limits are scattered across different products. Claude, ChatGPT, Cursor, Copilot, Antigravity, and DeepSeek each have their own place to check usage, usually after you have already hit a limit.
 
 Widoken brings those readings into one persistent, compact view. The widget is the product: the dashboard exists to give you history and control when you need them, then gets out of the way.
 
@@ -78,7 +78,7 @@ Monokai Black is the default. Other presets include Dark, Slate, Dracula, Nord, 
 
 ## Providers
 
-Widoken uses sessions that already exist on your computer. It does not ask you to paste a token into the app. Availability and the exact limits shown depend on the provider, your account, and the data its client or service exposes.
+Widoken uses sessions that already exist on your computer and does not ask you to paste tokens for most providers. DeepSeek is the exception and offers two explicit sources: a **Harness account** it reads (read-only) from `~/.dsh/.credentials.yaml`, or an **API key** you enter in the dashboard and that is encrypted locally. Availability and the exact limits shown depend on the provider, your account, and the data its client or service exposes.
 
 | Provider | What Widoken reads | Before you start |
 | --- | --- | --- |
@@ -87,8 +87,11 @@ Widoken uses sessions that already exist on your computer. It does not ask you t
 | Cursor | Cursor Models, Other Models, and any available spend buckets | Sign in to the Cursor editor. |
 | Antigravity | Model pools and available credits from its local language server | Run and sign in to Antigravity. |
 | GitHub Copilot | Quotas exposed by GitHub, including premium requests | Enable it in **Widget → Providers** and provide an existing GitHub CLI or environment-token session. |
+| DeepSeek | Account balance per currency from the DeepSeek Harness account or the DeepSeek API | Enable it in **Widget → Providers**, choose a credential source, and either sign in with the DeepSeek harness or save an API key. `DEEPSEEK_API_KEY` still works as a compatibility fallback. |
 
-Claude, ChatGPT/Codex, Cursor, and Antigravity are enabled by default; Copilot is off until you enable it. A disabled provider is not polled. If a service changes its usage response or a session expires, Widoken shows an unavailable or error state rather than treating the limit as zero.
+Claude, ChatGPT/Codex, Cursor, and Antigravity are enabled by default; Copilot and DeepSeek are off until you enable them. A disabled provider is not polled. If a service changes its usage response or a session expires, Widoken shows an unavailable or error state rather than treating the limit as zero.
+
+DeepSeek offers an explicit panel to choose between the existing Harness account and an API key. The **DeepSeek credential source** selector offers Automatic, Harness account, and API key. Automatic tries the Harness account first and falls back to the saved (or environment) API key when the harness is missing or the request fails, remembering which source worked so later polls try it first and switch back only if it breaks. Fixed modes never fall back. The adapter reads the harness grant from `~/.dsh/.credentials.yaml` (or `DSH_HOME/.credentials.yaml`) only, accepts only the `https://platform.deepseek.com` issuer, and never writes to that file. Because a DeepSeek balance is a prepaid amount rather than a quota window, the ring is measured against the first balance observed for that source and currency: that reading becomes the capacity and usage is `(capacity - remaining) / capacity`. While the balance falls or stays equal, the capacity is kept. When the balance grows above the previous reading, the whole capacity is replaced by the new balance—a recharge resets usage to 0% instead of adding the difference—so the ring stays a fair proxy for how much of the observed baseline has been spent. The DeepSeek limit exposes the remaining balance, its currency, and the baseline-derived used and capacity, so the popover shows both the remaining amount and how much of the observed baseline has been spent.
 
 For integration details and current limitations, see [Provider adapters](docs/PROVIDER_ADAPTERS.md).
 
@@ -134,17 +137,20 @@ Multi-monitor behavior and platform-specific overlay constraints are described i
 
 ## Privacy and local data
 
-Widoken has no separate account or cloud-sync service. Provider adapters read existing local sign-in material in the main process and use it to request usage directly from the corresponding provider endpoint. Cursor's adapter reads session fields from Cursor's local database and sends them as an authentication cookie to Cursor; Antigravity is queried through its local language server. These integrations require access to the clients' existing sessions, so enable only the providers you want Widoken to watch.
+Widoken has no separate account or cloud-sync service. Provider adapters read existing local sign-in material in the main process and use it to request usage directly from the corresponding provider endpoint. Cursor's adapter reads session fields from Cursor's local database and sends them as an authentication cookie to Cursor; Antigravity is queried through its local language server. DeepSeek differs by offering two explicit sources and a dashboard-managed API key: it can use the existing Harness account, whose grant is read without modification from `~/.dsh/.credentials.yaml` (or `DSH_HOME/.credentials.yaml`), or an API key you save in the dashboard, which is encrypted with Electron `safeStorage` and stored only as ciphertext in the `provider_credentials` table of `analytics.sqlite`; `DEEPSEEK_API_KEY` remains as a compatibility fallback. The harness token and the API key stay in the main process and are never exposed to the widget or dashboard renderers. These integrations require access to the clients' existing sessions, so enable only the providers you want Widoken to watch.
 
-Settings and sampled usage history are stored under Electron's per-user application-data directory as `settings.json` and `analytics.sqlite`. On POSIX systems, settings are written with owner-only file permissions. Samples older than 90 days are pruned during active recording, while the dashboard displays a 31-day view. The **Local analytics** switch controls additional metrics read from local client data; it is off by default. Ordinary usage history is recorded independently of that switch.
+Settings and sampled usage history are stored under Electron's per-user application-data directory as `settings.json` and the local `analytics.sqlite` database. A DeepSeek API key you save is encrypted with Electron `safeStorage` and stored only as a ciphertext BLOB in the `provider_credentials` table of `analytics.sqlite`; it is never written in plain text and the dashboard only ever learns whether a key is stored. The DeepSeek adapter also keeps `deepseek-balance.json` there with the observed baseline per source and currency—the capacity, the last remaining balance, and a format marker—so the ring survives a restart; it holds no credential. `settings.json` and `deepseek-balance.json` are replaced atomically and written with owner-only file permissions where the platform supports it; `analytics.sqlite` remains a local database. Samples older than 90 days are pruned during active recording, while the dashboard displays a 31-day view. The **Local analytics** switch controls additional metrics read from local client data; it is off by default. Ordinary usage history is recorded independently of that switch.
 
-The widget and dashboard have separate, sandboxed renderer processes. Provider credentials stay out of their exposed interfaces. Widoken does not read browser cookies or ask for a new sign-in, but it does rely on the local credentials described above. See [Security](docs/SECURITY.md) for the process and IPC boundaries.
+The widget and dashboard have separate, sandboxed renderer processes. Provider credentials stay out of their exposed interfaces: the dashboard credential panel receives only non-secret availability flags, and the stored key never crosses the IPC boundary. The DeepSeek **Harness account** source reads this credential file: the dashboard performs a local, read-only check of `~/.dsh/.credentials.yaml` (or `DSH_HOME/.credentials.yaml`) to show whether a grant is available when it opens, while the token stays in the main process and is used to request the balance only while DeepSeek is enabled; Widoken never writes to that file. Widoken does not read browser cookies or ask for a new sign-in, but it does rely on the local sessions described above. See [Security](docs/SECURITY.md) for the process and IPC boundaries.
 
 ## Troubleshooting
 
 | Symptom | What to check |
 | --- | --- |
-| A provider says **Unavailable** | Confirm that its desktop client is signed in. Codex usage requires a Codex session, not just a ChatGPT browser session. Antigravity also needs a running local language server. |
+| A provider says **Unavailable** | Confirm that its desktop client is signed in. Codex usage requires a Codex session, not just a ChatGPT browser session. Antigravity also needs a running local language server. For DeepSeek, check the credential panel: the harness may not be signed in and no API key may be saved. |
+| DeepSeek does not detect the Harness account | Sign in with the DeepSeek harness so `~/.dsh/.credentials.yaml` (or `DSH_HOME/.credentials.yaml`) contains the `deepseek-account-platform/default` grant, or switch the credential source to API key and save one. |
+| DeepSeek says the key was rejected or rate limited | Verify the key with a call to `https://api.deepseek.com/user/balance`, then save it again or restart Widoken. If the API returned HTTP 429, wait and let the next refresh retry. |
+| The Save API key button is disabled | The secure credential store must be available: `safeStorage` needs an OS keyring, and Linux `basic_text` backends are rejected on purpose. |
 | Usage appears stale | Check the provider's error message and network access. The default refresh interval is 45 seconds; change it under **General → Data**. |
 | The history chart is empty | History begins with Widoken's first successful usage samples. Let the app run through a few refreshes; old usage cannot be imported retrospectively. |
 | The overlay does not pass clicks through on Wayland | Check the [platform matrix](#platform-support). KDE has a dedicated bridge; other Wayland compositors do not yet have equivalent support. |

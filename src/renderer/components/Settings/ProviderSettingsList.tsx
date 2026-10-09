@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import type { ProviderSetting } from '@shared/settings'
 import { providerLogos, providerName } from '../../utils/providerBranding'
 import { SettingsSection, SettingsToggle } from './SettingsControls'
@@ -7,6 +7,7 @@ interface ProviderSettingsListProps {
   providers: ProviderSetting[]
   onToggle: (id: string) => void
   onReorder: (providerIds: string[]) => void
+  children?: ReactNode
 }
 
 type DropPosition = { id: string; edge: 'before' | 'after' }
@@ -14,7 +15,8 @@ type DropPosition = { id: string; edge: 'before' | 'after' }
 export function ProviderSettingsList({
   providers,
   onToggle,
-  onReorder
+  onReorder,
+  children
 }: ProviderSettingsListProps): React.JSX.Element {
   const ordered = [...providers].sort((a, b) => a.order - b.order)
   const draggedIdRef = useRef<string | undefined>(undefined)
@@ -130,6 +132,7 @@ export function ProviderSettingsList({
           )
         })}
       </div>
+      {children}
     </SettingsSection>
   )
 }

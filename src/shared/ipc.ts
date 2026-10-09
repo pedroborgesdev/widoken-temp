@@ -27,9 +27,19 @@ export const IPC = {
   dashboardWindowState: 'dashboard-window:state',
   dashboardNavigate: 'dashboard:navigate',
   analyticsHistory: 'analytics:history',
+  deepseekCredentialStatus: 'deepseek:credential-status',
+  deepseekSaveApiKey: 'deepseek:save-api-key',
+  deepseekClearApiKey: 'deepseek:clear-api-key',
   themeSyncVsCode: 'theme:sync-vscode',
   appQuit: 'app:quit'
 } as const
+
+/** Non-secret DeepSeek credential availability. Never carries the key itself. */
+export interface DeepSeekCredentialStatus {
+  storedApiKeyConfigured: boolean
+  environmentApiKeyAvailable: boolean
+  harnessAccountAvailable: boolean
+}
 
 interface ProvidersApi {
   list(): Promise<ProviderView[]>
@@ -86,6 +96,11 @@ export interface DashboardDesktopApi {
   }
   analytics: {
     history(): Promise<UsageHistory>
+  }
+  deepseek: {
+    status(): Promise<DeepSeekCredentialStatus>
+    saveApiKey(apiKey: string): Promise<DeepSeekCredentialStatus>
+    clearApiKey(): Promise<DeepSeekCredentialStatus>
   }
   app: {
     quit(): Promise<void>

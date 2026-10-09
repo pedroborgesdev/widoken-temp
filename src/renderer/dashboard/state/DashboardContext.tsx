@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { dashboardRouteFromSearch, sanitizeDashboardRoute, type DashboardRoute } from '@shared/dashboard'
+import type { DeepSeekCredentialStatus } from '@shared/ipc'
 import type { ProviderView } from '@shared/provider'
 import { DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/settings'
 import { buildUsageHistory, type UsageHistory } from '@shared/usageHistory'
 import { dashboardDesktop } from '../../services/desktop'
 import { DashboardContext } from './useDashboard'
+
+const EMPTY_DEEPSEEK_CREDENTIALS: DeepSeekCredentialStatus = {
+  storedApiKeyConfigured: false,
+  environmentApiKeyAvailable: false,
+  harnessAccountAvailable: false
+}
 
 function mergeSettings(settings: AppSettings, patch: SettingsPatch): AppSettings {
   return {
@@ -21,6 +28,7 @@ export function DashboardProvider({ children }: { children: ReactNode }): React.
   const [settingsReady, setSettingsReady] = useState(false)
   const [providers, setProviders] = useState<ProviderView[]>([])
   const [history, setHistory] = useState<UsageHistory>(() => buildUsageHistory([], Date.now()))
+  const [deepSeekCredentials, setDeepSeekCredentials] = useState<DeepSeekCredentialStatus>(EMPTY_DEEPSEEK_CREDENTIALS)
   const [route, setRoute] = useState<DashboardRoute>(() => dashboardRouteFromSearch(window.location.search))
 
   useEffect(() => {
@@ -33,6 +41,9 @@ export function DashboardProvider({ children }: { children: ReactNode }): React.
     void dashboardDesktop.providers.list().then((loadedProviders) => {
       if (active) setProviders(loadedProviders)
     })
+    void dashboardDesktop.deepseek.status().then((status) => {
+      if (active) setDeepSeekCredentials(status)
+    }).catch(() => undefined)
     return () => {
       active = false
     }
@@ -80,9 +91,43 @@ export function DashboardProvider({ children }: { children: ReactNode }): React.
     return updatedSettings
   }, [])
 
+  const saveDeepSeekApiKey = useCallback(async (apiKey: string): Promise<DeepSeekCredentialStatus> => {
+    const status = await dashboardDesktop.deepseek.saveApiKey(apiKey)
+    setDeepSeekCredentials(status)
+    return status
+  }, [])
+
+  const clearDeepSeekApiKey = useCallback(async (): Promise<DeepSeekCredentialStatus> => {
+    const status = await dashboardDesktop.deepseek.clearApiKey()
+    setDeepSeekCredentials(status)
+    return status
+  }, [])
+
   const value = useMemo(
-    () => ({ settings, settingsReady, providers, history, route, navigate, updateSettings }),
-    [settings, settingsReady, providers, history, route, navigate, updateSettings]
+    () => ({
+      settings,
+      settingsReady,
+      providers,
+      history,
+      deepSeekCredentials,
+      route,
+      navigate,
+      updateSettings,
+      saveDeepSeekApiKey,
+      clearDeepSeekApiKey
+    }),
+    [
+      settings,
+      settingsReady,
+      providers,
+      history,
+      deepSeekCredentials,
+      route,
+      navigate,
+      updateSettings,
+      saveDeepSeekApiKey,
+      clearDeepSeekApiKey
+    ]
   )
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>
 }

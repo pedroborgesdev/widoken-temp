@@ -69,7 +69,9 @@ export function WidgetSettingsPage({
   }
 
   if (section === 'providers') {
-    return <ProviderSettingsList providers={settings.providers} onToggle={toggleProvider} onReorder={reorderProviders} />
+    return (
+      <ProviderSettingsList providers={settings.providers} onToggle={toggleProvider} onReorder={reorderProviders} />
+    )
   }
 
   if (section === 'usage') {

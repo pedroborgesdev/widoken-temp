@@ -32,6 +32,10 @@ export const PROVIDER_USAGE_LIMITS: Record<string, UsageLimitOption[]> = {
     { id: 'partner', label: 'Partner models' },
     { id: 'prompt-credits', label: 'Prompt credits' },
     { id: 'flow-credits', label: 'Flow credits' }
+  ],
+  deepseek: [
+    { id: 'balance-usd', label: 'USD balance' },
+    { id: 'balance-cny', label: 'CNY balance' }
   ]
 }
 

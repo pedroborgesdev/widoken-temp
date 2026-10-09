@@ -8,7 +8,7 @@ import { overviewMetrics } from '../overviewMetrics'
 import { SettingsSection } from '../../components/Settings/SettingsControls'
 import { UsageBar } from '../../components/UsagePopover/UsageBar'
 import { providerLogos, providerName } from '../../utils/providerBranding'
-import { compactDuration, listPriceDescription, percentDescription, readableName, relativeFuture } from '../../utils/usageFormat'
+import { amountDescription, compactDuration, listPriceDescription, percentDescription, readableName, relativeFuture } from '../../utils/usageFormat'
 
 type CardStatus = ProviderStatus | 'off'
 
@@ -44,6 +44,7 @@ function Metric({ label, value, detail, tone }: MetricProps): React.JSX.Element 
 function limitDetails(limit: UsageLimit, trend: UsageTrend | undefined): string {
   const resetsAt = limit.resetsAt ? Date.parse(limit.resetsAt) - Date.now() : Number.NaN
   return [
+    amountDescription(limit),
     Number.isFinite(resetsAt) ? (resetsAt > 0 ? `resets in ${compactDuration(resetsAt)}` : 'resetting') : undefined,
     trend?.consumedLast24Hours === undefined ? undefined : `24h +${trend.consumedLast24Hours}%`,
     trend?.averageDailyConsumption === undefined ? undefined : `${trend.averageDailyConsumption}%/day`,

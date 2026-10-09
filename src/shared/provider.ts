@@ -9,6 +9,7 @@ export interface UsageLimit {
   id: string
   label: string
   percent: number
+  currency?: string
   resetsAt?: string
   used?: number
   limit?: number
@@ -44,6 +45,9 @@ export interface ProviderAnalytics {
   localMetrics?: LocalAnalyticsMetric[]
 }
 
+export const PROVIDER_AUTH_SOURCES = ['harness-account', 'api-key'] as const
+export type ProviderAuthSource = (typeof PROVIDER_AUTH_SOURCES)[number]
+
 export interface ProviderSnapshot {
   providerId: string
   status: ProviderStatus
@@ -53,6 +57,7 @@ export interface ProviderSnapshot {
   isUnlimited?: boolean
   analytics?: ProviderAnalytics
   error?: string
+  authSource?: ProviderAuthSource
 }
 
 export interface ProviderDescriptor {

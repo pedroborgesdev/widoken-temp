@@ -1,5 +1,5 @@
 import { dashboardRouteQuery, sanitizeDashboardRoute } from '@shared/dashboard'
-import type { DashboardDesktopApi, DesktopApi, WidgetDesktopApi } from '@shared/ipc'
+import type { DashboardDesktopApi, DeepSeekCredentialStatus, DesktopApi, WidgetDesktopApi } from '@shared/ipc'
 import { buildUsageHistory, type UsageHistorySample } from '@shared/usageHistory'
 import type { ProviderView } from '@shared/provider'
 import { APP_THEMES, DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/settings'
@@ -37,7 +37,8 @@ const previewProviders: Omit<ProviderView, 'snapshot'>[] = [
   { id: 'claude', name: 'Claude' },
   { id: 'openai', name: 'ChatGPT' },
   { id: 'cursor', name: 'Cursor' },
-  { id: 'antigravity', name: 'Antigravity' }
+  { id: 'antigravity', name: 'Antigravity' },
+  { id: 'deepseek', name: 'DeepSeek' }
 ]
 
 function futureDate(minutes: number): string {
@@ -76,6 +77,19 @@ const providerListeners = new Set<(providers: ProviderView[]) => void>()
 const settingsListeners = new Set<(settings: AppSettings) => void>()
 const dashboardWindowListeners = new Set<(open: boolean) => void>()
 
+/**
+ * Browser preview keeps the DeepSeek API key in memory only. It is never written
+ * to localStorage, settings, or any provider snapshot.
+ */
+let previewDeepSeekApiKey: string | undefined
+function previewDeepSeekStatus(): DeepSeekCredentialStatus {
+  return {
+    storedApiKeyConfigured: previewDeepSeekApiKey !== undefined,
+    environmentApiKeyAvailable: false,
+    harnessAccountAvailable: true
+  }
+}
+
 function previewProviderViews(): ProviderView[] {
   const snapshots: Record<string, ProviderView['snapshot']> = {
     claude: {
@@ -109,6 +123,17 @@ function previewProviderViews(): ProviderView[] {
       limits: [
         { id: 'gemini', label: 'Gemini models', percent: 44, resetsAt: futureDate(2860) },
         { id: 'partner', label: 'Partner models', percent: 27, resetsAt: futureDate(2860) }
+      ],
+      lastUpdatedAt: new Date().toISOString()
+    },
+    deepseek: {
+      providerId: 'deepseek',
+      status: 'connected',
+      plan: 'Harness',
+      authSource: 'harness-account',
+      limits: [
+        { id: 'balance-cny', label: 'CNY balance', currency: 'CNY', percent: 50, used: 5, limit: 10, remaining: 5 },
+        { id: 'balance-usd', label: 'USD balance', currency: 'USD', percent: 80, used: 8, limit: 10, remaining: 2 }
       ],
       lastUpdatedAt: new Date().toISOString()
     }
@@ -197,6 +222,19 @@ const browserDesktopApi: DesktopApi = {
         ...buildUsageHistory(samples, Date.now()),
         since: new Date(Math.min(...samples.map((sample) => sample.capturedAt))).toISOString()
       }
+    }
+  },
+  deepseek: {
+    status: async () => previewDeepSeekStatus(),
+    saveApiKey: async (apiKey: string) => {
+      const trimmed = apiKey.trim()
+      if (trimmed.length === 0) throw new Error('API key cannot be empty.')
+      previewDeepSeekApiKey = trimmed
+      return previewDeepSeekStatus()
+    },
+    clearApiKey: async () => {
+      previewDeepSeekApiKey = undefined
+      return previewDeepSeekStatus()
     }
   },
   app: {

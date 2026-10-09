@@ -5,7 +5,18 @@ import { DashboardPanel } from './DashboardPanel'
 import { useDashboard } from './state/useDashboard'
 
 export function DashboardApp(): React.JSX.Element {
-  const { settings, settingsReady, providers, history, route, navigate, updateSettings } = useDashboard()
+  const {
+    settings,
+    settingsReady,
+    providers,
+    history,
+    deepSeekCredentials,
+    route,
+    navigate,
+    updateSettings,
+    saveDeepSeekApiKey,
+    clearDeepSeekApiKey
+  } = useDashboard()
 
   const syncVsCodeTheme = useCallback(async (): Promise<string> => {
     const theme = await dashboardDesktop.themes.syncVsCode()
@@ -30,8 +41,11 @@ export function DashboardApp(): React.JSX.Element {
           providers={providers}
           history={history}
           route={route}
+          deepSeekCredentials={deepSeekCredentials}
           onNavigate={navigate}
           onUpdate={(patch) => void updateSettings(patch)}
+          onSaveDeepSeekApiKey={saveDeepSeekApiKey}
+          onClearDeepSeekApiKey={clearDeepSeekApiKey}
           onSyncVsCodeTheme={syncVsCodeTheme}
           onClose={() => void dashboardDesktop.dashboard.close()}
           onMinimize={() => void dashboardDesktop.dashboard.minimize()}

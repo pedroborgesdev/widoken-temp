@@ -19,6 +19,9 @@ const IPC = {
   dashboardWindowResizeToContent: 'dashboard-window:resize-to-content',
   dashboardNavigate: 'dashboard:navigate',
   analyticsHistory: 'analytics:history',
+  deepseekCredentialStatus: 'deepseek:credential-status',
+  deepseekSaveApiKey: 'deepseek:save-api-key',
+  deepseekClearApiKey: 'deepseek:clear-api-key',
   themeSyncVsCode: 'theme:sync-vscode',
   appQuit: 'app:quit'
 } as const
@@ -57,6 +60,11 @@ const dashboardDesktopApi: DashboardDesktopApi = {
   },
   analytics: {
     history: (): Promise<UsageHistory> => ipcRenderer.invoke(IPC.analyticsHistory)
+  },
+  deepseek: {
+    status: () => ipcRenderer.invoke(IPC.deepseekCredentialStatus),
+    saveApiKey: (apiKey: string) => ipcRenderer.invoke(IPC.deepseekSaveApiKey, apiKey),
+    clearApiKey: () => ipcRenderer.invoke(IPC.deepseekClearApiKey)
   },
   app: {
     quit: () => ipcRenderer.invoke(IPC.appQuit)

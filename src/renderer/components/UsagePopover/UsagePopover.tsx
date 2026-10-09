@@ -2,19 +2,11 @@ import { forwardRef } from 'react'
 import type { ProviderView, UsageTrend } from '@shared/provider'
 import { displayedUsageLimits } from '@shared/providerUsage'
 import type { DockSide, ProviderUsageDisplay } from '@shared/settings'
-import { listPriceDescription, percentDescription, readableName, relativeFuture, resetDescription } from '../../utils/usageFormat'
+import { amountDescription, listPriceDescription, percentDescription, readableName, relativeFuture, resetDescription } from '../../utils/usageFormat'
 import { UnavailablePopover } from './UnavailablePopover'
 import { UsageBar } from './UsageBar'
 
 export type PopoverPlacement = DockSide | 'top' | 'bottom'
-
-function amountDescription(used?: number, limit?: number, remaining?: number): string | undefined {
-  const format = (value: number): string => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value)
-  if (typeof used === 'number' && typeof limit === 'number') return `${format(used)} / ${format(limit)} used`
-  if (typeof remaining === 'number') return `${format(remaining)} remaining`
-  if (typeof used === 'number') return `${format(used)} used`
-  return undefined
-}
 
 function updateDescription(value: string): string {
   const updated = new Date(value)
@@ -95,7 +87,7 @@ export const UsagePopover = forwardRef<HTMLDivElement, UsagePopoverProps>(functi
           )}
           <div className="usage-popover__limits">
             {provider.snapshot.limits.map((limit) => {
-              const amount = amountDescription(limit.used, limit.limit, limit.remaining)
+              const amount = amountDescription(limit)
               const trend = provider.snapshot.analytics?.trends.find((candidate) => candidate.limitId === limit.id)
               return (
                 <div className="usage-popover__limit" key={limit.id}>

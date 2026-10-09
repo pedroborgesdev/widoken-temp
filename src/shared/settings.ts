@@ -46,11 +46,15 @@ export interface ProviderUsageDisplay {
   secondaryLimitId?: string
 }
 
+export const CREDENTIAL_SOURCES = ['auto', 'harness-account', 'api-key'] as const
+export type CredentialSource = (typeof CREDENTIAL_SOURCES)[number]
+
 export interface ProviderSetting {
   id: string
   enabled: boolean
   order: number
   usageDisplay: ProviderUsageDisplay
+  credentialSource?: CredentialSource
 }
 
 export interface AppSettings {
@@ -111,7 +115,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     { id: 'openai', enabled: true, order: 1, usageDisplay: { split: true, primaryLimitId: 'primary', secondaryLimitId: 'secondary' } },
     { id: 'cursor', enabled: true, order: 2, usageDisplay: { split: true, primaryLimitId: 'auto', secondaryLimitId: 'api' } },
     { id: 'antigravity', enabled: true, order: 3, usageDisplay: { split: true, primaryLimitId: 'gemini', secondaryLimitId: 'partner' } },
-    { id: 'copilot', enabled: false, order: 4, usageDisplay: { split: true, primaryLimitId: 'premium_interactions', secondaryLimitId: 'chat' } }
+    { id: 'copilot', enabled: false, order: 4, usageDisplay: { split: true, primaryLimitId: 'premium_interactions', secondaryLimitId: 'chat' } },
+    { id: 'deepseek', enabled: false, order: 5, usageDisplay: { split: true, primaryLimitId: 'balance-usd', secondaryLimitId: 'balance-cny' }, credentialSource: 'auto' }
   ],
   refreshIntervalSeconds: 45,
   launchAtStartup: false,

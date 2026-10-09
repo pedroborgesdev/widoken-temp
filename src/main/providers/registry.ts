@@ -4,6 +4,7 @@ import { CodexProviderAdapter } from './CodexProviderAdapter'
 import { ClaudeProviderAdapter } from './ClaudeProviderAdapter'
 import { GitHubCopilotProviderAdapter } from './GitHubCopilotProviderAdapter'
 import { AntigravityProviderAdapter } from './AntigravityProviderAdapter'
+import { DeepSeekProviderAdapter, type DeepSeekApiKeyStore } from './DeepSeekProviderAdapter'
 import type { ProviderAdapter } from './ProviderAdapter'
 
 const inMinutes = (minutes: number): string => new Date(Date.now() + minutes * 60_000).toISOString()
@@ -48,12 +49,23 @@ function createTestRegistry(): Map<string, ProviderAdapter> {
       name: 'GitHub Copilot',
       plan: 'individual',
       limits: [{ id: 'month', label: 'Monthly premium requests', percent: 18, resetsAt: inDays(12), used: 18, limit: 100, remaining: 82 }]
+    }),
+    new MockProviderAdapter({
+      id: 'deepseek',
+      name: 'DeepSeek',
+      plan: 'Harness',
+      limits: [{ id: 'balance-usd', label: 'USD balance', currency: 'USD', percent: 50, used: 5, limit: 10, remaining: 5 }]
     })
   ]
   return new Map(adapters.map((adapter) => [adapter.id, adapter]))
 }
 
-export function createProviderRegistry(): Map<string, ProviderAdapter> {
+export interface ProviderRegistryOptions {
+  deepSeekStatePath?: string
+  deepSeekApiKeys?: DeepSeekApiKeyStore
+}
+
+export function createProviderRegistry(options: ProviderRegistryOptions = {}): Map<string, ProviderAdapter> {
   if (process.env.NODE_ENV === 'test') return createTestRegistry()
 
   const adapters: ProviderAdapter[] = [
@@ -61,7 +73,11 @@ export function createProviderRegistry(): Map<string, ProviderAdapter> {
     new CodexProviderAdapter(),
     new CursorProviderAdapter(),
     new GitHubCopilotProviderAdapter(),
-    new AntigravityProviderAdapter()
+    new AntigravityProviderAdapter(),
+    new DeepSeekProviderAdapter({
+      statePath: options.deepSeekStatePath,
+      apiKeys: options.deepSeekApiKeys
+    })
   ]
 
   return new Map(adapters.map((adapter) => [adapter.id, adapter]))

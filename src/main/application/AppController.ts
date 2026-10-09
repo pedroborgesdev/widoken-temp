@@ -4,7 +4,11 @@ import { IPC } from '@shared/ipc'
 import type { ProviderView } from '@shared/provider'
 import type { AppSettings } from '@shared/settings'
 import { AnalyticsService } from '../analytics/AnalyticsService'
+import { DeepSeekCredentialService } from '../credentials/DeepSeekCredentialService'
+import { ProviderCredentialRepository, repositoryApiKeyStore } from '../credentials/ProviderCredentialRepository'
+import { safeStorageCodec } from '../credentials/safeStorageCodec'
 import { registerAnalyticsIpc } from '../ipc/analytics.ipc'
+import { registerDeepSeekCredentialsIpc } from '../ipc/deepseekCredentials.ipc'
 import { registerOverlayIpc } from '../ipc/overlay.ipc'
 import { registerProvidersIpc } from '../ipc/providers.ipc'
 import { registerSettingsIpc } from '../ipc/settings.ipc'
@@ -16,6 +20,7 @@ import { WidgetWindowManager } from '../windows/WidgetWindowManager'
 
 export class AppController {
   private analyticsService: AnalyticsService | undefined
+  private credentialRepository: ProviderCredentialRepository | undefined
   private providerManager: ProviderManager | undefined
   private widgetWindows: WidgetWindowManager | undefined
   private dashboardWindows: DashboardWindowManager | undefined
@@ -24,7 +29,9 @@ export class AppController {
     const userDataPath = app.getPath('userData')
     const settingsRepository = new SettingsRepository(join(userDataPath, 'settings.json'))
     const settings = await settingsRepository.get()
-    const analyticsService = new AnalyticsService(join(userDataPath, 'analytics.sqlite'))
+    const analyticsDatabasePath = join(userDataPath, 'analytics.sqlite')
+    const analyticsService = new AnalyticsService(analyticsDatabasePath)
+    const credentialRepository = new ProviderCredentialRepository(analyticsDatabasePath, { codec: safeStorageCodec })
     const widgetWindows = new WidgetWindowManager(settingsRepository)
     const dashboardWindows = new DashboardWindowManager(
       settingsRepository,
@@ -32,12 +39,16 @@ export class AppController {
       (open) => widgetWindows.sendDashboardWindowState(open)
     )
     const providerManager = new ProviderManager(
-      createProviderRegistry(),
+      createProviderRegistry({
+        deepSeekStatePath: join(userDataPath, 'deepseek-balance.json'),
+        deepSeekApiKeys: repositoryApiKeyStore(credentialRepository)
+      }),
       (providers) => this.publishProviders(providers),
       analyticsService
     )
 
     this.analyticsService = analyticsService
+    this.credentialRepository = credentialRepository
     this.widgetWindows = widgetWindows
     this.dashboardWindows = dashboardWindows
     this.providerManager = providerManager
@@ -45,6 +56,7 @@ export class AppController {
     registerOverlayIpc(widgetWindows)
     registerAnalyticsIpc(analyticsService)
     registerProvidersIpc(providerManager)
+    registerDeepSeekCredentialsIpc(new DeepSeekCredentialService(credentialRepository), providerManager)
     registerSettingsIpc(
       settingsRepository,
       providerManager,
@@ -72,10 +84,12 @@ export class AppController {
     this.dashboardWindows?.destroy()
     await this.widgetWindows?.destroy()
     this.analyticsService?.close()
+    this.credentialRepository?.close()
     this.providerManager = undefined
     this.dashboardWindows = undefined
     this.widgetWindows = undefined
     this.analyticsService = undefined
+    this.credentialRepository = undefined
   }
 
   private async applySettings(settings: AppSettings): Promise<AppSettings> {

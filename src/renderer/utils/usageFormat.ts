@@ -1,4 +1,38 @@
-import type { ProviderListPrice } from '@shared/provider'
+import type { ProviderListPrice, UsageLimit } from '@shared/provider'
+
+function formatAmount(value: number, currency?: string): string {
+  if (!currency) return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value)
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 2
+    }).format(value)
+  } catch {
+    return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value)} ${currency}`
+  }
+}
+
+export function amountDescription(limit: UsageLimit): string | undefined {
+  const { used, remaining, currency } = limit
+  const maximum = limit.limit
+  if (currency) {
+    const parts: string[] = []
+    if (typeof remaining === 'number') parts.push(`${formatAmount(remaining, currency)} remaining`)
+    if (typeof used === 'number' && typeof maximum === 'number') {
+      parts.push(`${formatAmount(used, currency)} / ${formatAmount(maximum, currency)} used`)
+    } else if (typeof used === 'number') {
+      parts.push(`${formatAmount(used, currency)} used`)
+    }
+    return parts.length > 0 ? parts.join(' · ') : undefined
+  }
+  if (typeof used === 'number' && typeof maximum === 'number') {
+    return `${formatAmount(used)} / ${formatAmount(maximum)} used`
+  }
+  if (typeof remaining === 'number') return `${formatAmount(remaining)} remaining`
+  if (typeof used === 'number') return `${formatAmount(used)} used`
+  return undefined
+}
 
 export function listPriceDescription(price: ProviderListPrice): string {
   if (price.amount === 0) return 'Free list price'

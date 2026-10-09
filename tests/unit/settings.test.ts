@@ -95,4 +95,74 @@ describe('provider usage settings', () => {
       secondaryLimitId: 'api'
     })
   })
+
+  it('adds DeepSeek disabled when loading settings saved before the integration existed', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'widoken-settings-'))
+    temporaryDirectories.push(directory)
+    const path = join(directory, 'settings.json')
+    await writeFile(path, JSON.stringify({
+      providers: DEFAULT_SETTINGS.providers
+        .filter(({ id }) => id !== 'deepseek')
+        .map(({ id, enabled, order, usageDisplay }) => ({ id, enabled, order, usageDisplay }))
+    }))
+
+    const settings = await new SettingsRepository(path).get()
+
+    expect(settings.providers.at(-1)).toEqual({
+      id: 'deepseek',
+      enabled: false,
+      order: 5,
+      usageDisplay: { split: true, primaryLimitId: 'balance-usd', secondaryLimitId: 'balance-cny' },
+      credentialSource: 'auto'
+    })
+  })
+
+  it('defaults the DeepSeek credential source to auto and sanitizes invalid values', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'widoken-settings-'))
+    temporaryDirectories.push(directory)
+    const path = join(directory, 'settings.json')
+    await writeFile(path, JSON.stringify({
+      providers: DEFAULT_SETTINGS.providers.map((provider) => (
+        provider.id === 'deepseek'
+          ? { ...provider, credentialSource: 'api-key' }
+          : provider
+      ))
+    }))
+
+    const explicit = await new SettingsRepository(path).get()
+    expect(explicit.providers.find(({ id }) => id === 'deepseek')?.credentialSource).toBe('api-key')
+
+    await writeFile(path, JSON.stringify({
+      providers: DEFAULT_SETTINGS.providers.map((provider) => (
+        provider.id === 'deepseek'
+          ? { ...provider, credentialSource: 'carrier-pigeon' }
+          : { ...provider, credentialSource: 'api-key' }
+      ))
+    }))
+    const sanitized = await new SettingsRepository(path).get()
+    expect(sanitized.providers.find(({ id }) => id === 'deepseek')?.credentialSource).toBe('auto')
+    expect(sanitized.providers.find(({ id }) => id === 'claude')).not.toHaveProperty('credentialSource')
+  })
+
+  it('ships DeepSeek disabled by default', () => {
+    expect(DEFAULT_SETTINGS.providers.find(({ id }) => id === 'deepseek')).toMatchObject({
+      enabled: false,
+      order: 5
+    })
+  })
+
+  it('preserves an explicitly enabled DeepSeek setting', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'widoken-settings-'))
+    temporaryDirectories.push(directory)
+    const path = join(directory, 'settings.json')
+    await writeFile(path, JSON.stringify({
+      providers: DEFAULT_SETTINGS.providers.map((provider) => (
+        provider.id === 'deepseek' ? { ...provider, enabled: true } : provider
+      ))
+    }))
+
+    const settings = await new SettingsRepository(path).get()
+
+    expect(settings.providers.find(({ id }) => id === 'deepseek')?.enabled).toBe(true)
+  })
 })

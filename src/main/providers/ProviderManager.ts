@@ -34,6 +34,9 @@ export class ProviderManager {
 
   configure(providers: ProviderSetting[], intervalSeconds: number, localInsights = this.localInsights): void {
     this.configurationRevision += 1
+    for (const setting of providers) {
+      this.adapters.get(setting.id)?.configure?.(setting)
+    }
     this.enabled = providers
       .filter((provider) => provider.enabled && this.adapters.has(provider.id))
       .sort((a, b) => a.order - b.order)

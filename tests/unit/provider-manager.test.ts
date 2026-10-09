@@ -129,4 +129,36 @@ describe('ProviderManager', () => {
     expect(onUpdate.mock.calls.at(-1)?.[0]).toMatchObject([{ activity: 'idle' }])
     manager.stop()
   })
+
+  it('delivers each provider setting to the adapter before refreshing', () => {
+    vi.useFakeTimers()
+    const configure = vi.fn()
+    const adapter: ProviderAdapter = {
+      id: 'deepseek',
+      name: 'DeepSeek',
+      connect: async () => undefined,
+      disconnect: async () => undefined,
+      isConnected: async () => true,
+      configure,
+      getUsage: async () => ({
+        providerId: 'deepseek',
+        status: 'connected',
+        limits: [],
+        lastUpdatedAt: new Date().toISOString()
+      })
+    }
+    const manager = new ProviderManager(new Map([['deepseek', adapter]]), () => undefined)
+    const setting = {
+      id: 'deepseek',
+      enabled: true,
+      order: 0,
+      usageDisplay,
+      credentialSource: 'api-key' as const
+    }
+
+    manager.configure([setting], 30)
+
+    expect(configure).toHaveBeenCalledWith(setting)
+    manager.stop()
+  })
 })

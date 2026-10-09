@@ -54,17 +54,18 @@ async function closeSettingsWindow(): Promise<void> {
 
 async function selectSettingsPage(
   settings: Page,
-  name: 'Dashboard' | 'General' | 'Providers' | 'Usage ring' | 'Appearance' | 'Behavior'
+  name: 'Dashboard' | 'Providers' | 'General' | 'Widget providers' | 'Usage ring' | 'Appearance' | 'Behavior'
 ): Promise<void> {
   const pages = settings.getByRole('navigation', { name: 'Dashboard sections' })
-  const topLevel = name === 'Dashboard' || name === 'General'
+  const topLevel = name === 'Dashboard' || name === 'Providers' || name === 'General'
   const pageButton = pages.getByRole('button', { name: topLevel ? name : 'Widget', exact: true })
   if (await pageButton.getAttribute('aria-current') !== 'page') {
     await pageButton.click()
     await expect(pageButton).toHaveAttribute('aria-current', 'page')
   }
   if (topLevel) return
-  const button = settings.getByRole('navigation', { name: 'Widget settings' }).getByRole('button', { name, exact: true })
+  const sectionName = name === 'Widget providers' ? 'Providers' : name
+  const button = settings.getByRole('navigation', { name: 'Widget settings' }).getByRole('button', { name: sectionName, exact: true })
   if (await button.getAttribute('aria-current') === 'page') return
   await button.click()
   await expect(button).toHaveAttribute('aria-current', 'page')
@@ -373,8 +374,8 @@ test('opens the dashboard in a separate native window with an isolated preload',
   await expect(sectionContents.first()).toHaveCSS('overflow-y', 'auto')
   await expect.poll(async () => sectionContents.first().evaluate((element) => getComputedStyle(element).scrollbarColor)).not.toBe('auto')
   const navigation = settingsWindow.getByRole('navigation', { name: 'Dashboard sections' })
-  await expect(navigation.getByRole('button')).toHaveText(['Dashboard', 'Widget', 'General'])
-  await expect(navigation.locator('svg')).toHaveCount(3)
+  await expect(navigation.getByRole('button')).toHaveText(['Dashboard', 'Widget', 'Providers', 'General'])
+  await expect(navigation.locator('svg')).toHaveCount(4)
   await expect(navigation.getByRole('button', { name: 'Widget' })).toHaveAttribute('aria-current', 'page')
   await expect(navigation.getByRole('button', { name: 'Widget' })).toHaveAttribute('aria-expanded', 'true')
   const widgetNavigation = settingsWindow.getByRole('navigation', { name: 'Widget settings' })
@@ -556,7 +557,7 @@ test('opens the dashboard in a separate native window with an isolated preload',
   await edgeTuckCheckbox.check()
   await expect(page.locator('.widget')).toHaveClass(/widget--collapsed/)
 
-  await selectSettingsPage(settingsWindow, 'Providers')
+  await selectSettingsPage(settingsWindow, 'Widget providers')
   await expect(settingsWindow.locator('.provider-setting__icon-shell').first()).not.toHaveCSS('background-color', 'rgb(8, 8, 8)')
   await selectSettingsPage(settingsWindow, 'Appearance')
   const shadowCheckbox = settingsWindow.getByRole('checkbox', { name: 'Enable shadows' })
@@ -594,8 +595,8 @@ test('opens the dashboard in a separate native window with an isolated preload',
   await expect(settingsWindow.locator('.settings-window')).toHaveClass(/overlay-root--shadows-disabled/)
   await expect(page.locator('.overlay-root')).toHaveClass(/overlay-root--shadows-disabled/)
   await expect(page.locator('.widget')).toHaveCSS('filter', 'none')
-  await selectSettingsPage(settingsWindow, 'Providers')
-  await expect(settingsWindow.locator('.provider-setting__drag-handle')).toHaveCount(5)
+  await selectSettingsPage(settingsWindow, 'Widget providers')
+  await expect(settingsWindow.locator('.provider-setting__drag-handle')).toHaveCount(6)
   await expect(settingsWindow.getByRole('heading', { name: 'Providers' })).toBeVisible()
   await expect(page.locator('.widget')).toHaveClass(/widget--settings-open/)
   await page.mouse.move(700, 500)
@@ -994,6 +995,40 @@ test('navigates the dashboard from the widoken icon and the widget gear', async 
   await expect.poll(async () => (await widgetNavigation.boundingBox())?.width).toBeCloseTo(208, 0)
 })
 
+test('opens the top-level Providers settings and manages provider authentication', async () => {
+  const dashboard = await openSettingsWindow()
+  await selectSettingsPage(dashboard, 'Dashboard')
+
+  const pages = dashboard.getByRole('navigation', { name: 'Dashboard sections' })
+  const providerSettingsButton = pages.getByRole('button', { name: 'Providers', exact: true })
+  await providerSettingsButton.click()
+  await expect(providerSettingsButton).toHaveAttribute('aria-current', 'page')
+  await expect(providerSettingsButton).toHaveAttribute('aria-expanded', 'true')
+
+  const providerNavigation = dashboard.getByRole('navigation', { name: 'Provider settings' })
+  await expect(providerNavigation).toBeVisible()
+  await expect(providerNavigation.getByRole('button')).toHaveText([
+    'Claude', 'ChatGPT', 'Cursor', 'Antigravity', 'GitHub Copilot', 'DeepSeek'
+  ])
+  await expect(providerNavigation.locator('img')).toHaveCount(6)
+  const mainNavigationBox = await pages.boundingBox()
+  expect((await providerNavigation.boundingBox())?.x).toBeCloseTo(
+    (mainNavigationBox?.x ?? 0) + (mainNavigationBox?.width ?? 0),
+    0
+  )
+  await expect(providerNavigation.getByRole('button', { name: 'Claude', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(dashboard.getByTestId('provider-settings-page')).toHaveAttribute('data-provider-id', 'claude')
+  await expect(dashboard.getByTestId('deepseek-credentials')).toHaveCount(0)
+
+  await providerNavigation.getByRole('button', { name: 'DeepSeek', exact: true }).click()
+  await expect(providerNavigation.getByRole('button', { name: 'DeepSeek', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(dashboard.getByTestId('provider-settings-page')).toHaveAttribute('data-provider-id', 'deepseek')
+  await expect(dashboard.getByTestId('deepseek-credentials')).toBeVisible()
+
+  await selectSettingsPage(dashboard, 'Widget providers')
+  await expect(dashboard.getByTestId('deepseek-credentials')).toHaveCount(0)
+})
+
 test('configures the usage ring per provider from the widget settings', async () => {
   const settingsWindow = await openSettingsWindow()
   await selectSettingsPage(settingsWindow, 'Usage ring')
@@ -1033,7 +1068,7 @@ test('configures the usage ring per provider from the widget settings', async ()
 
 test('reorders providers by dragging and shows newly enabled providers immediately', async () => {
   const settingsWindow = await openSettingsWindow()
-  await selectSettingsPage(settingsWindow, 'Providers')
+  await selectSettingsPage(settingsWindow, 'Widget providers')
   const rows = settingsWindow.locator('.provider-setting')
 
   const firstName = await rows.first().locator('.provider-setting__identity strong').innerText()
@@ -1068,6 +1103,39 @@ test('reorders providers by dragging and shows newly enabled providers immediate
   )).toBe(true)
   await expect(settingsWindow.getByRole('checkbox', { name: 'Enable GitHub Copilot' })).not.toBeChecked()
   await page.emulateMedia({ reducedMotion: 'no-preference' })
+})
+
+test('enables the DeepSeek provider and shows its USD balance', async () => {
+  const settingsWindow = await openSettingsWindow()
+  await selectSettingsPage(settingsWindow, 'Widget providers')
+  const deepSeekRow = settingsWindow.locator('.provider-setting').filter({ hasText: 'DeepSeek' })
+
+  await expect(deepSeekRow).toHaveCount(1)
+  await expect(settingsWindow.getByRole('checkbox', { name: 'Enable DeepSeek' })).not.toBeChecked()
+
+  await deepSeekRow.locator('.settings-switch').click()
+  await expect(page.locator('.provider-item')).toHaveCount(5)
+  await expect(settingsWindow.getByRole('checkbox', { name: 'Disable DeepSeek' })).toBeChecked()
+
+  const deepSeekItem = page.getByRole('button', { name: /DeepSeek/ })
+  await expect(deepSeekItem).toHaveAttribute('data-provider-id', 'deepseek')
+  await expect(deepSeekItem).toHaveClass(/provider-item--connected/)
+  await deepSeekItem.hover()
+
+  const popover = page.locator('.usage-popover-anchor > .usage-popover')
+  await expect(popover).toBeVisible()
+  await expect(popover.locator('.usage-popover__label')).toHaveText('USD balance')
+  await expect(popover.locator('.usage-popover__percent')).toHaveText('50%')
+  const amount = popover.locator('.usage-popover__amount')
+  const amountText = await amount.innerText()
+  expect(amountText).toMatch(/\p{Sc}/u)
+  expect(amountText).toMatch(/5(?:[.,]00)?[^\d]*remaining/)
+  expect(amountText).toMatch(/5(?:[.,]00)?[^\d]{0,8}\/[^\d]{0,8}10(?:[.,]00)?[^\d]{0,8}used/)
+  expect(amountText.indexOf('remaining')).toBeLessThan(amountText.indexOf('used'))
+
+  await deepSeekRow.locator('.settings-switch').click()
+  await expect(page.locator('.provider-item')).toHaveCount(4)
+  await expect(settingsWindow.getByRole('checkbox', { name: 'Enable DeepSeek' })).not.toBeChecked()
 })
 
 test('keeps the horizontal popover outside the turned thumb', async () => {
