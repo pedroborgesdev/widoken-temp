@@ -4,21 +4,14 @@ import { join } from 'node:path'
 import { JsonlActivityTracker } from './JsonlActivityTracker'
 
 const DEFAULT_STALE_AFTER_MS = 30 * 60 * 1000
+const DEFAULT_IDLE_GRACE_MS = 5_000
+const DISCOVERY_INTERVAL_MS = 2_000
 
 interface RolloutEvent {
   type?: string
   payload?: {
     type?: string
   }
-}
-
-function dateDirectory(root: string, date: Date): string {
-  return join(
-    root,
-    String(date.getFullYear()),
-    String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0')
-  )
 }
 
 function activityFromLine(line: string, current: boolean): boolean {
@@ -44,31 +37,56 @@ function activityFromLine(line: string, current: boolean): boolean {
 
 export class CodexActivityProbe {
   private readonly tracker: JsonlActivityTracker
+  private candidates: string[] = []
+  private discoveredAt = Number.NEGATIVE_INFINITY
+  private reportedActive = false
+  private inactiveSince?: number
 
   constructor(
     private readonly sessionsRoot = join(homedir(), '.codex', 'sessions'),
-    staleAfterMs = DEFAULT_STALE_AFTER_MS
+    private readonly staleAfterMs = DEFAULT_STALE_AFTER_MS,
+    private readonly idleGraceMs = DEFAULT_IDLE_GRACE_MS
   ) {
     this.tracker = new JsonlActivityTracker(activityFromLine, staleAfterMs)
   }
 
   async isActive(now = Date.now()): Promise<boolean> {
-    const yesterday = new Date(now)
-    yesterday.setDate(yesterday.getDate() - 1)
-    const directories = [...new Set([
-      dateDirectory(this.sessionsRoot, new Date(now)),
-      dateDirectory(this.sessionsRoot, yesterday)
-    ])]
-    const candidates = (await Promise.all(directories.map((directory) => this.rolloutFiles(directory)))).flat()
-    return this.tracker.update(candidates, now)
+    if (now - this.discoveredAt >= DISCOVERY_INTERVAL_MS) {
+      this.candidates = await this.recentRolloutFiles(now)
+      this.discoveredAt = now
+    }
+
+    const rawActive = await this.tracker.update(this.candidates, now)
+    if (rawActive) {
+      this.reportedActive = true
+      this.inactiveSince = undefined
+      return true
+    }
+    if (!this.reportedActive) return false
+
+    this.inactiveSince ??= now
+    if (now - this.inactiveSince < this.idleGraceMs) return true
+    this.reportedActive = false
+    this.inactiveSince = undefined
+    return false
   }
 
-  private async rolloutFiles(directory: string): Promise<string[]> {
+  /** Finds recently modified rollouts regardless of the date directory in which a thread began. */
+  private async recentRolloutFiles(now: number): Promise<string[]> {
     try {
-      const entries = await fs.readdir(directory, { withFileTypes: true })
-      return entries
+      const entries = await fs.readdir(this.sessionsRoot, { withFileTypes: true, recursive: true })
+      const paths = entries
         .filter((entry) => entry.isFile() && entry.name.startsWith('rollout-') && entry.name.endsWith('.jsonl'))
-        .map((entry) => join(directory, entry.name))
+        .map((entry) => join(entry.parentPath, entry.name))
+      const recent = await Promise.all(paths.map(async (path) => {
+        try {
+          const stats = await fs.stat(path)
+          return now - stats.mtimeMs <= this.staleAfterMs ? path : undefined
+        } catch {
+          return undefined
+        }
+      }))
+      return recent.filter((path): path is string => Boolean(path))
     } catch {
       return []
     }

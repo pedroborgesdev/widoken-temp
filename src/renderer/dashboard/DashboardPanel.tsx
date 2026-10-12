@@ -7,8 +7,7 @@ import {
   faLayerGroup,
   faPalette,
   faPuzzlePiece,
-  faSliders,
-  faTableCellsLarge
+  faSliders
 } from '@fortawesome/free-solid-svg-icons'
 import {
   DEFAULT_PROVIDER_SECTION,
@@ -21,17 +20,14 @@ import {
 } from '@shared/dashboard'
 import type { DeepSeekCredentialStatus } from '@shared/ipc'
 import type { ProviderView } from '@shared/provider'
-import type { UsageHistory } from '@shared/usageHistory'
 import type { AppSettings, SettingsPatch } from '@shared/settings'
 import appIcon from '../../../resources/widoken.png'
 import { providerLogos, providerName } from '../utils/providerBranding'
 import { GeneralPage } from './pages/GeneralPage'
-import { OverviewPage } from './pages/OverviewPage'
 import { ProvidersPage } from './pages/ProvidersPage'
 import { WidgetSettingsPage } from './pages/WidgetSettingsPage'
 
 const pageItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: faTableCellsLarge },
   { id: 'widget', label: 'Widget', icon: faLayerGroup },
   { id: 'providers', label: 'Providers', icon: faKey },
   { id: 'general', label: 'General', icon: faGear }
@@ -58,11 +54,11 @@ function isProviderSection(value: unknown): value is ProviderSettingsSection {
 interface DashboardPanelProps {
   settings: AppSettings
   providers: ProviderView[]
-  history: UsageHistory
   deepSeekCredentials: DeepSeekCredentialStatus
   route: DashboardRoute
   onNavigate: (route: DashboardRoute) => void
   onUpdate: (patch: SettingsPatch) => void
+  onReset: () => Promise<AppSettings>
   onSaveDeepSeekApiKey: (apiKey: string) => Promise<DeepSeekCredentialStatus>
   onClearDeepSeekApiKey: () => Promise<DeepSeekCredentialStatus>
   onSyncVsCodeTheme: () => Promise<string>
@@ -73,11 +69,11 @@ interface DashboardPanelProps {
 export function DashboardPanel({
   settings,
   providers,
-  history,
   deepSeekCredentials,
   route,
   onNavigate,
   onUpdate,
+  onReset,
   onSaveDeepSeekApiKey,
   onClearDeepSeekApiKey,
   onSyncVsCodeTheme,
@@ -238,15 +234,8 @@ export function DashboardPanel({
               onSaveDeepSeekApiKey={onSaveDeepSeekApiKey}
               onClearDeepSeekApiKey={onClearDeepSeekApiKey}
             />
-          ) : route.page === 'general' ? (
-            <GeneralPage settings={settings} onUpdate={onUpdate} />
           ) : (
-            <OverviewPage
-              settings={settings}
-              providers={providers}
-              history={history}
-              onChooseProviders={() => openWidgetSection('providers')}
-            />
+            <GeneralPage settings={settings} onUpdate={onUpdate} onReset={onReset} />
           )}
         </div>
       </div>

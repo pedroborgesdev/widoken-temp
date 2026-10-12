@@ -1,38 +1,38 @@
 import type { ProviderSnapshot, ProviderView } from '@shared/provider'
 import type { ProviderSetting } from '@shared/settings'
 import type { ProviderAdapter } from './ProviderAdapter'
-import type { AnalyticsService } from '../analytics/AnalyticsService'
+import { planListPrice } from './planPricing'
 
 type UpdateListener = (providers: ProviderView[]) => void
 const ACTIVITY_POLL_INTERVAL_MS = 750
+const ACTIVITY_FAILURE_GRACE_MS = 5_000
 
 export class ProviderManager {
   private enabled: ProviderSetting[] = []
   private readonly snapshots = new Map<string, ProviderSnapshot>()
   private pollTimer?: NodeJS.Timeout
   private intervalSeconds = 45
-  private localInsights = false
   private inFlight?: Promise<ProviderView[]>
   private configurationRevision = 0
   private inFlightRevision = 0
   private readonly activity = new Map<string, boolean>()
+  private readonly activityFailureSince = new Map<string, number>()
   private activityTimer?: NodeJS.Timeout
   private activityPolling = false
 
   constructor(
     private readonly adapters: Map<string, ProviderAdapter>,
-    private readonly onUpdate: UpdateListener,
-    private readonly analytics?: AnalyticsService
+    private readonly onUpdate: UpdateListener
   ) {}
 
-  start(providers: ProviderSetting[], intervalSeconds: number, localInsights = false): void {
-    this.configure(providers, intervalSeconds, localInsights)
+  start(providers: ProviderSetting[], intervalSeconds: number): void {
+    this.configure(providers, intervalSeconds)
     void this.refresh()
     this.activityPolling = true
     void this.pollActivity()
   }
 
-  configure(providers: ProviderSetting[], intervalSeconds: number, localInsights = this.localInsights): void {
+  configure(providers: ProviderSetting[], intervalSeconds: number): void {
     this.configurationRevision += 1
     for (const setting of providers) {
       this.adapters.get(setting.id)?.configure?.(setting)
@@ -42,11 +42,12 @@ export class ProviderManager {
       .sort((a, b) => a.order - b.order)
     const enabledIds = new Set(this.enabled.map((provider) => provider.id))
     for (const id of this.activity.keys()) {
-      if (!enabledIds.has(id)) this.activity.delete(id)
+      if (!enabledIds.has(id)) {
+        this.activity.delete(id)
+        this.activityFailureSince.delete(id)
+      }
     }
     this.intervalSeconds = Math.min(3600, Math.max(30, intervalSeconds))
-    this.localInsights = localInsights
-    this.analytics?.setLocalInsights(localInsights)
     this.scheduleNext()
     this.onUpdate(this.list())
   }
@@ -57,6 +58,7 @@ export class ProviderManager {
     this.activityPolling = false
     if (this.activityTimer) clearTimeout(this.activityTimer)
     this.activityTimer = undefined
+    for (const adapter of this.adapters.values()) void adapter.disconnect()
   }
 
   list(): ProviderView[] {
@@ -117,7 +119,8 @@ export class ProviderManager {
 
         try {
           const snapshot = await adapter.getUsage()
-          this.snapshots.set(providerId, this.analytics ? await this.analytics.enhance(snapshot) : snapshot)
+          const listPrice = planListPrice(providerId, snapshot.plan)
+          this.snapshots.set(providerId, listPrice ? { ...snapshot, listPrice } : snapshot)
         } catch (error) {
           this.snapshots.set(providerId, {
             providerId,
@@ -146,9 +149,15 @@ export class ProviderManager {
       const adapter = this.adapters.get(id)
       if (!adapter?.isActive) return { active: false, id }
       try {
-        return { active: await adapter.isActive(), id }
+        const active = await adapter.isActive()
+        this.activityFailureSince.delete(id)
+        return { active, id }
       } catch {
-        return { active: false, id }
+        const now = Date.now()
+        const failedSince = this.activityFailureSince.get(id) ?? now
+        this.activityFailureSince.set(id, failedSince)
+        const keepActive = (this.activity.get(id) ?? false) && now - failedSince < ACTIVITY_FAILURE_GRACE_MS
+        return { active: keepActive, id }
       }
     }))
     if (!this.activityPolling) return

@@ -2,7 +2,7 @@ import { BrowserWindow, screen, type Display, type Rectangle } from 'electron'
 import { join } from 'node:path'
 import { shadowPaintOutset } from '@shared/overlay'
 import { WIDGET_OVERLAY_TITLE, overlayWindowTitle, serializeDisplayRects, type DisplayRect } from '@shared/overlayDisplay'
-import type { AppSettings } from '@shared/settings'
+import { providerVisibleInWidget, type AppSettings } from '@shared/settings'
 import { applyInteractionRegions, registerInteractionDisplay, updateInteractionCursor, updateInteractionWindowBounds } from './interactionRegions'
 import { isNativeWayland } from './platform'
 import { widgetIconPath } from './appIcon'
@@ -43,7 +43,7 @@ export function createOverlayWindow(
   const { x, y, width, height } = display.bounds
   const originX = x - windowBounds.x
   const originY = y - windowBounds.y
-  const enabledProviders = settings.providers.filter((provider) => provider.enabled).length
+  const enabledProviders = settings.providers.filter(providerVisibleInWidget).length
   const scale = settings.widget.scale / 100
   const boardItems = enabledProviders + 1
   const providerSpan = boardItems * 42 + Math.max(0, boardItems - 1) * settings.widget.itemGap

@@ -24,6 +24,14 @@
   <a href="#development">Development</a>
 </p>
 
+## Provider integrations
+
+<p align="center">
+  <img src="assets/readme/providers.png" alt="Widoken integrations: Claude, ChatGPT and Codex, Cursor, Antigravity, GitHub Copilot, DeepSeek, and Hugging Face">
+</p>
+
+Widoken currently integrates with seven AI providers, bringing their available usage data into the same compact widget. See [Providers](#providers) for the session requirements, supported limits, and setup details for each integration.
+
 ## Why Widoken
 
 Your limits are scattered across different products. Claude, ChatGPT, Cursor, Copilot, Antigravity, and DeepSeek each have their own place to check usage, usually after you have already hit a limit.
@@ -32,19 +40,19 @@ Widoken brings those readings into one persistent, compact view. The widget is t
 
 ## The widget
 
-Each provider has a place on the strip. Its usage ring shows the percentage of a limit already used; when a provider exposes two limits, the left and right halves can show both at once. Choose the limits and their order in the dashboard.
+Each provider has a place on the strip. Its usage ring shows the percentage of a limit already used; when a provider exposes two limits, the left and right halves can show both at once. A single-limit ring starts at the top and advances clockwise. When two visible limits share the same status color, the right half is 25% dimmer so the limits remain distinguishable; limits with different status colors keep their original brightness. Choose the limits and their order in the dashboard.
 
 <p align="center">
   <img src="assets/readme/widget-closeup.png" width="280" alt="Close-up of the Widoken widget and its usage rings">
 </p>
 
-Hover a provider to see the details it reports: limit names, usage, reset times, and available counts. Once Widoken has collected enough local samples, the popover can also show recent consumption and a projected exhaustion time. An unavailable or signed-out provider remains visible with an explicit state instead of a made-up percentage.
+Hover a provider to see the details it reports: limit names, usage, reset times, and available counts. Widoken shows only what a provider reports. An unavailable or signed-out provider remains visible with an explicit state instead of a made-up percentage.
 
 <p align="center">
   <img src="assets/readme/widget-horizontal.png" alt="Horizontal Widoken widget with a Cursor usage popover">
 </p>
 
-For providers with a reliable local activity signal—currently Codex, Cursor, and Antigravity—the ring animates while a turn is in progress. When that activity ends, Widoken requests fresh usage for that provider.
+For providers with a reliable activity signal—currently Codex, Cursor, Antigravity, the DeepSeek Harness, and Hugging Face inference usage—the ring animates while a turn is in progress. When that activity ends, Widoken requests fresh usage for that provider.
 
 <p align="center">
   <img src="assets/readme/widget-working.png" width="280" alt="Widoken usage rings showing provider activity">
@@ -58,15 +66,11 @@ The Widoken icon on the strip opens the app menu. From there, open the dashboard
   <img src="assets/readme/widget-menu.png" alt="Widoken app menu beside the widget">
 </p>
 
-### A dashboard when you want more
+### Settings when you want them
 
-The dashboard shows a 31-day usage chart, current provider states, individual limit breakdowns, and summary metrics. History starts when Widoken begins recording samples; it cannot reconstruct past usage. Where a provider supplies an absolute amount, Widoken prefers that over an estimate derived from percentages. Any plan price shown is a reference list price, not a bill or a record of actual spending.
+The dashboard window opens on the widget settings and also holds every provider and app option, so a provider is checked without opening the window. Where a provider supplies an absolute amount, Widoken prefers that over an estimate derived from percentages. Any plan price shown is a reference list price, not a bill or a record of actual spending.
 
-<p align="center">
-  <img src="assets/readme/dashboard.png" alt="Widoken dashboard showing usage history and provider details">
-</p>
-
-Widget settings are grouped into Providers, Usage ring, Appearance, and Behavior. General settings cover startup, refresh frequency, and optional local insights. Disabling the widget leaves the dashboard available so you can turn it back on.
+Widget settings are grouped into Providers, Usage ring, Appearance, and Behavior. General settings cover launching at startup, refresh frequency, and resetting every setting back to its default. Disabling the widget leaves the dashboard available so you can turn it back on.
 
 ### Make it yours
 
@@ -86,12 +90,15 @@ Widoken uses sessions that already exist on your computer and does not ask you t
 | ChatGPT / Codex | Primary and secondary Codex usage windows | Sign in through Codex; a browser-only ChatGPT session is not enough. |
 | Cursor | Cursor Models, Other Models, and any available spend buckets | Sign in to the Cursor editor. |
 | Antigravity | Model pools and available credits from its local language server | Run and sign in to Antigravity. |
-| GitHub Copilot | Quotas exposed by GitHub, including premium requests | Enable it in **Widget → Providers** and provide an existing GitHub CLI or environment-token session. |
-| DeepSeek | Account balance per currency from the DeepSeek Harness account or the DeepSeek API | Enable it in **Widget → Providers**, choose a credential source, and either sign in with the DeepSeek harness or save an API key. `DEEPSEEK_API_KEY` still works as a compatibility fallback. |
+| GitHub Copilot | Quotas exposed by GitHub, including premium requests | Provide an existing GitHub CLI or environment-token session and verify the integration under **Providers → GitHub Copilot**. |
+| DeepSeek | Account balance per currency from the DeepSeek Harness account or the DeepSeek API | Under **Providers → DeepSeek**, choose a credential source and either sign in with the DeepSeek harness or save an API key. `DEEPSEEK_API_KEY` still works as a compatibility fallback. |
+| Hugging Face | USD billing balance and inference-provider activity | Sign in at `huggingface.co` in a supported browser, then select that browser under **Providers → Hugging Face**. |
 
-Claude, ChatGPT/Codex, Cursor, and Antigravity are enabled by default; Copilot and DeepSeek are off until you enable them. A disabled provider is not polled. If a service changes its usage response or a session expires, Widoken shows an unavailable or error state rather than treating the limit as zero.
+All providers are globally enabled by default. On the very first launch of a new installation, Widoken probes each integration once and adds to the widget only the providers that successfully return usage data. This automatic widget discovery is then marked complete and never runs again, so later manual visibility choices are preserved across launches. The top-level **Providers** pages control collection and dashboard data; a disabled provider is not polled and is also removed from the widget. **Widget → Providers** controls only widget visibility and order, so hiding an enabled provider there does not stop collection or remove it from the dashboard. If a service changes its usage response or a session expires, Widoken shows an unavailable or error state rather than treating the limit as zero.
 
 DeepSeek offers an explicit panel to choose between the existing Harness account and an API key. The **DeepSeek credential source** selector offers Automatic, Harness account, and API key. Automatic tries the Harness account first and falls back to the saved (or environment) API key when the harness is missing or the request fails, remembering which source worked so later polls try it first and switch back only if it breaks. Fixed modes never fall back. The adapter reads the harness grant from `~/.dsh/.credentials.yaml` (or `DSH_HOME/.credentials.yaml`) only, accepts only the `https://platform.deepseek.com` issuer, and never writes to that file. Because a DeepSeek balance is a prepaid amount rather than a quota window, the ring is measured against the first balance observed for that source and currency: that reading becomes the capacity and usage is `(capacity - remaining) / capacity`. While the balance falls or stays equal, the capacity is kept. When the balance grows above the previous reading, the whole capacity is replaced by the new balance—a recharge resets usage to 0% instead of adding the difference—so the ring stays a fair proxy for how much of the observed baseline has been spent. The DeepSeek limit exposes the remaining balance, its currency, and the baseline-derived used and capacity, so the popover shows both the remaining amount and how much of the observed baseline has been spent.
+
+Hugging Face uses the same observed-balance rule and USD popover presentation as DeepSeek, but collection comes from the selected browser session. Its bundled Python collectors require Python 3 plus `browser-cookie3`, `beautifulsoup4`, and `requests`; install them with `python3 -m pip install -r resources/huggingface/requirements.txt`. `WIDOKEN_PYTHON` can point to a specific Python executable. Automatic browser discovery checks Chrome, Chromium, Firefox, Brave, and Edge in that order.
 
 For integration details and current limitations, see [Provider adapters](docs/PROVIDER_ADAPTERS.md).
 
@@ -137,11 +144,11 @@ Multi-monitor behavior and platform-specific overlay constraints are described i
 
 ## Privacy and local data
 
-Widoken has no separate account or cloud-sync service. Provider adapters read existing local sign-in material in the main process and use it to request usage directly from the corresponding provider endpoint. Cursor's adapter reads session fields from Cursor's local database and sends them as an authentication cookie to Cursor; Antigravity is queried through its local language server. DeepSeek differs by offering two explicit sources and a dashboard-managed API key: it can use the existing Harness account, whose grant is read without modification from `~/.dsh/.credentials.yaml` (or `DSH_HOME/.credentials.yaml`), or an API key you save in the dashboard, which is encrypted with Electron `safeStorage` and stored only as ciphertext in the `provider_credentials` table of `analytics.sqlite`; `DEEPSEEK_API_KEY` remains as a compatibility fallback. The harness token and the API key stay in the main process and are never exposed to the widget or dashboard renderers. These integrations require access to the clients' existing sessions, so enable only the providers you want Widoken to watch.
+Widoken has no separate account or cloud-sync service. Provider adapters read existing local sign-in material in the main process and use it to request usage directly from the corresponding provider endpoint. Cursor's adapter reads session fields from Cursor's local database and sends them as an authentication cookie to Cursor; Antigravity is queried through its local language server. DeepSeek differs by offering two explicit sources and a dashboard-managed API key: it can use the existing Harness account, whose grant is read without modification from `~/.dsh/.credentials.yaml` (or `DSH_HOME/.credentials.yaml`), or an API key you save in the dashboard, which is encrypted with Electron `safeStorage` and stored only as ciphertext in the `provider_credentials` table of `analytics.sqlite`; `DEEPSEEK_API_KEY` remains as a compatibility fallback. Hugging Face runs a bundled collector in the main process and reads only `huggingface.co` cookies from the explicitly selected local browser; cookies are used for direct Hugging Face requests and are never persisted or sent to a renderer. These integrations require access to the clients' existing sessions, so enable only the providers you want Widoken to watch.
 
-Settings and sampled usage history are stored under Electron's per-user application-data directory as `settings.json` and the local `analytics.sqlite` database. A DeepSeek API key you save is encrypted with Electron `safeStorage` and stored only as a ciphertext BLOB in the `provider_credentials` table of `analytics.sqlite`; it is never written in plain text and the dashboard only ever learns whether a key is stored. The DeepSeek adapter also keeps `deepseek-balance.json` there with the observed baseline per source and currency—the capacity, the last remaining balance, and a format marker—so the ring survives a restart; it holds no credential. `settings.json` and `deepseek-balance.json` are replaced atomically and written with owner-only file permissions where the platform supports it; `analytics.sqlite` remains a local database. Samples older than 90 days are pruned during active recording, while the dashboard displays a 31-day view. The **Local analytics** switch controls additional metrics read from local client data; it is off by default. Ordinary usage history is recorded independently of that switch.
+Settings are stored under Electron's per-user application-data directory as `settings.json`; `analytics.sqlite` holds only provider credentials. A DeepSeek API key you save is encrypted with Electron `safeStorage` and stored only as a ciphertext BLOB in the `provider_credentials` table of `analytics.sqlite`; it is never written in plain text and the dashboard only ever learns whether a key is stored. The DeepSeek adapter also keeps `deepseek-balance.json` there with the observed baseline per source and currency—the capacity, the last remaining balance, and a format marker—so the ring survives a restart; it holds no credential. `settings.json` and `deepseek-balance.json` are replaced atomically and written with owner-only file permissions where the platform supports it; `analytics.sqlite` remains a local database and never leaves the machine.
 
-The widget and dashboard have separate, sandboxed renderer processes. Provider credentials stay out of their exposed interfaces: the dashboard credential panel receives only non-secret availability flags, and the stored key never crosses the IPC boundary. The DeepSeek **Harness account** source reads this credential file: the dashboard performs a local, read-only check of `~/.dsh/.credentials.yaml` (or `DSH_HOME/.credentials.yaml`) to show whether a grant is available when it opens, while the token stays in the main process and is used to request the balance only while DeepSeek is enabled; Widoken never writes to that file. Widoken does not read browser cookies or ask for a new sign-in, but it does rely on the local sessions described above. See [Security](docs/SECURITY.md) for the process and IPC boundaries.
+The widget and dashboard have separate, sandboxed renderer processes. Provider credentials stay out of their exposed interfaces: the dashboard credential panel receives only non-secret availability flags, and the stored key never crosses the IPC boundary. The DeepSeek **Harness account** source reads this credential file: the dashboard performs a local, read-only check of `~/.dsh/.credentials.yaml` (or `DSH_HOME/.credentials.yaml`) to show whether a grant is available when it opens, while the token stays in the main process and is used to request the balance only while DeepSeek is enabled; Widoken never writes to that file. Hugging Face browser-cookie access happens only after that disabled-by-default provider is enabled and is scoped to `huggingface.co`. See [Security](docs/SECURITY.md) for the process and IPC boundaries.
 
 ## Troubleshooting
 
@@ -150,9 +157,10 @@ The widget and dashboard have separate, sandboxed renderer processes. Provider c
 | A provider says **Unavailable** | Confirm that its desktop client is signed in. Codex usage requires a Codex session, not just a ChatGPT browser session. Antigravity also needs a running local language server. For DeepSeek, check the credential panel: the harness may not be signed in and no API key may be saved. |
 | DeepSeek does not detect the Harness account | Sign in with the DeepSeek harness so `~/.dsh/.credentials.yaml` (or `DSH_HOME/.credentials.yaml`) contains the `deepseek-account-platform/default` grant, or switch the credential source to API key and save one. |
 | DeepSeek says the key was rejected or rate limited | Verify the key with a call to `https://api.deepseek.com/user/balance`, then save it again or restart Widoken. If the API returned HTTP 429, wait and let the next refresh retry. |
+| Hugging Face says collector dependencies are missing | Run `python3 -m pip install -r resources/huggingface/requirements.txt`, or set `WIDOKEN_PYTHON` to an environment with those packages. |
+| Hugging Face cannot find a browser session | Sign in at `huggingface.co` and select the exact browser under **Providers → Hugging Face**. |
 | The Save API key button is disabled | The secure credential store must be available: `safeStorage` needs an OS keyring, and Linux `basic_text` backends are rejected on purpose. |
 | Usage appears stale | Check the provider's error message and network access. The default refresh interval is 45 seconds; change it under **General → Data**. |
-| The history chart is empty | History begins with Widoken's first successful usage samples. Let the app run through a few refreshes; old usage cannot be imported retrospectively. |
 | The overlay does not pass clicks through on Wayland | Check the [platform matrix](#platform-support). KDE has a dedicated bridge; other Wayland compositors do not yet have equivalent support. |
 
 When reporting a provider issue, include the OS, provider, and visible status or error—but never attach credentials, session files, or unredacted logs.
@@ -168,7 +176,7 @@ When reporting a provider issue, include the OS, provider, and visible status or
 | `npm run test:e2e` | Build and run the Playwright Electron smoke tests. |
 | `npm run build` | Type-check and create production app bundles. |
 
-The Electron main process owns settings, provider adapters, analytics, and the native windows. The widget and dashboard are separate React renderers connected through narrow preload APIs. Start with [Architecture](docs/ARCHITECTURE.md) for the full layout and [Testing](docs/TESTING.md) for validation guidance.
+The Electron main process owns settings, provider adapters, and the native windows. The widget and dashboard are separate React renderers connected through narrow preload APIs. Start with [Architecture](docs/ARCHITECTURE.md) for the full layout and [Testing](docs/TESTING.md) for validation guidance.
 
 Product screenshots are generated from the browser preview with the scripts in [`assets/readme/image-gen`](assets/readme/image-gen). Their wallpaper, cursors, and theme captures live in [`assets/readme/source`](assets/readme/source); keep these sources when updating the final images.
 
@@ -184,7 +192,7 @@ npx vite --config vite.web.config.ts --port 5199
 ```bash
 # Terminal 2
 node assets/readme/image-gen/capture.mjs
-node assets/readme/image-gen/compose-dashboard.mjs
+node assets/readme/image-gen/compose-providers.mjs
 ```
 
 For the theme comparison, start the preview server on port `5213`, then run:

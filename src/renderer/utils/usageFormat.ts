@@ -43,14 +43,6 @@ export function listPriceDescription(price: ProviderListPrice): string {
   }).format(price.amount)}/mo list`
 }
 
-export function relativeFuture(value: string): string {
-  const difference = Date.parse(value) - Date.now()
-  if (!Number.isFinite(difference) || difference <= 0) return 'soon'
-  const hours = Math.round(difference / 3_600_000)
-  if (hours < 24) return `in ${Math.max(1, hours)}h`
-  return `in ${Math.round(hours / 24)}d`
-}
-
 /** Short countdown such as "45m", "3h 20m" or "4d 2h". */
 export function compactDuration(milliseconds: number): string {
   const minutes = Math.max(0, Math.round(milliseconds / 60_000))

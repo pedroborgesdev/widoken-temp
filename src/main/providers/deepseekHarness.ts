@@ -25,13 +25,19 @@ const TOKEN_PATTERN = /^[\x21-\x7e]+$/
 const CURRENCY_PATTERN = /^[A-Z]{3}$/
 const PLATFORM_CURRENCIES = new Set(['USD', 'CNY'])
 
-export function harnessCredentialPath(
+export function harnessDataRoot(
   env: NodeJS.ProcessEnv = process.env,
   home: string = homedir()
 ): string {
   const configuredRoot = env.DSH_HOME?.trim()
-  const root = configuredRoot && configuredRoot.length > 0 ? configuredRoot : join(home, '.dsh')
-  return join(root, HARNESS_CREDENTIAL_FILENAME)
+  return configuredRoot && configuredRoot.length > 0 ? configuredRoot : join(home, '.dsh')
+}
+
+export function harnessCredentialPath(
+  env: NodeJS.ProcessEnv = process.env,
+  home: string = homedir()
+): string {
+  return join(harnessDataRoot(env, home), HARNESS_CREDENTIAL_FILENAME)
 }
 
 /** Validates the harness grant record. Invalid or foreign issuers are rejected outright. */

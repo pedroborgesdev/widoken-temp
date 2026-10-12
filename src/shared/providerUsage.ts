@@ -36,6 +36,9 @@ export const PROVIDER_USAGE_LIMITS: Record<string, UsageLimitOption[]> = {
   deepseek: [
     { id: 'balance-usd', label: 'USD balance' },
     { id: 'balance-cny', label: 'CNY balance' }
+  ],
+  huggingface: [
+    { id: 'balance-usd', label: 'USD balance' }
   ]
 }
 

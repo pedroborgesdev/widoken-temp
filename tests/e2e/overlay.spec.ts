@@ -54,10 +54,10 @@ async function closeSettingsWindow(): Promise<void> {
 
 async function selectSettingsPage(
   settings: Page,
-  name: 'Dashboard' | 'Providers' | 'General' | 'Widget providers' | 'Usage ring' | 'Appearance' | 'Behavior'
+  name: 'Providers' | 'General' | 'Widget providers' | 'Usage ring' | 'Appearance' | 'Behavior'
 ): Promise<void> {
   const pages = settings.getByRole('navigation', { name: 'Dashboard sections' })
-  const topLevel = name === 'Dashboard' || name === 'Providers' || name === 'General'
+  const topLevel = name === 'Providers' || name === 'General'
   const pageButton = pages.getByRole('button', { name: topLevel ? name : 'Widget', exact: true })
   if (await pageButton.getAttribute('aria-current') !== 'page') {
     await pageButton.click()
@@ -107,9 +107,12 @@ test.afterAll(async () => {
 test('renders the dynamic widget and provider usage states', async () => {
   const widget = page.locator('.widget')
   await expect(widget).toBeVisible()
-  await expect(page.locator('.widget__visual')).toHaveCSS('animation-name', 'widget-startup-in')
-  await expect(page.locator('.provider-item')).toHaveCount(4)
-  await expect.poll(async () => (await widget.boundingBox())?.height).toBeCloseTo(282, 1)
+  await expect(page.locator('.provider-item')).toHaveCount(7)
+  await expect.poll(async () => (await widget.boundingBox())?.height).toBeCloseTo(426, 1)
+  await expect.poll(async () => page.evaluate(() =>
+    (window as unknown as { widgetDesktop: { settings: { get: () => Promise<{ widgetProviderDiscoveryCompleted: boolean }> } } })
+      .widgetDesktop.settings.get()
+  ).then((settings) => settings.widgetProviderDiscoveryCompleted)).toBe(true)
   await expect(page.locator('.board-app')).toBeVisible()
   await expect(page.locator('.board-app .usage-ring')).toHaveCount(0)
   await expect.poll(async () => (await page.locator('.board-app').boundingBox())?.width).toBeCloseTo(42, 1)
@@ -140,11 +143,11 @@ test('renders the dynamic widget and provider usage states', async () => {
     }
   })
   expectGeometryClose(geometry, {
-    thumb: { x: 12, y: 0, width: 30, height: 282 },
-    board: { x: 0, y: 18, width: 54, height: 246 },
+    thumb: { x: 12, y: 0, width: 30, height: 426 },
+    board: { x: 0, y: 18, width: 54, height: 390 },
     firstProvider: { x: 6, y: 24, width: 42, height: 42 },
     gear: { x: 20, y: 3.5, width: 15, height: 15 },
-    grab: { x: 16.5, y: 268, width: 21, height: 9 }
+    grab: { x: 16.5, y: 412, width: 21, height: 9 }
   })
 
   await page.locator('.provider-item').first().hover()
@@ -374,7 +377,7 @@ test('opens the dashboard in a separate native window with an isolated preload',
   await expect(sectionContents.first()).toHaveCSS('overflow-y', 'auto')
   await expect.poll(async () => sectionContents.first().evaluate((element) => getComputedStyle(element).scrollbarColor)).not.toBe('auto')
   const navigation = settingsWindow.getByRole('navigation', { name: 'Dashboard sections' })
-  await expect(navigation.getByRole('button')).toHaveText(['Dashboard', 'Widget', 'Providers', 'General'])
+  await expect(navigation.getByRole('button')).toHaveText(['Widget', 'Providers', 'General'])
   await expect(navigation.locator('svg')).toHaveCount(4)
   await expect(navigation.getByRole('button', { name: 'Widget' })).toHaveAttribute('aria-current', 'page')
   await expect(navigation.getByRole('button', { name: 'Widget' })).toHaveAttribute('aria-expanded', 'true')
@@ -502,6 +505,12 @@ test('opens the dashboard in a separate native window with an isolated preload',
 
   await selectSettingsPage(settingsWindow, 'General')
   const startupCheckbox = settingsWindow.getByRole('checkbox', { name: 'Launch Widget at startup' })
+  // Launching at startup is the default, so exercise the switch both ways.
+  await expect(startupCheckbox).toBeChecked()
+  await startupCheckbox.uncheck()
+  await expect.poll(async () => settingsWindow.evaluate(() =>
+    (window as unknown as { dashboardDesktop: { settings: { get: () => Promise<{ launchAtStartup: boolean }> } } }).dashboardDesktop.settings.get()
+  ).then((settings) => settings.launchAtStartup)).toBe(false)
   await startupCheckbox.check()
   await expect.poll(async () => switchTrack('Launch Widget at startup').evaluate((element) =>
     getComputedStyle(element, '::after').backgroundColor
@@ -516,24 +525,6 @@ test('opens the dashboard in a separate native window with an isolated preload',
     .not.toBe(monokaiBlackBackground)
   await followThemeCheckbox.uncheck()
   await expect(dashboardWindow).toHaveClass(/overlay-root--theme-monokai-black/)
-  const openDashboardCheckbox = settingsWindow.getByRole('checkbox', { name: 'Open the dashboard at startup' })
-  await expect(openDashboardCheckbox).not.toBeChecked()
-  await openDashboardCheckbox.check()
-  await expect.poll(async () => settingsWindow.evaluate(() =>
-    (window as unknown as { dashboardDesktop: { settings: { get: () => Promise<{ openDashboardAtStartup: boolean }> } } }).dashboardDesktop.settings.get()
-  ).then((settings) => settings.openDashboardAtStartup)).toBe(true)
-  await openDashboardCheckbox.uncheck()
-  const localAnalyticsCheckbox = settingsWindow.getByRole('checkbox', { name: 'Local analytics' })
-  await expect(localAnalyticsCheckbox).not.toBeChecked()
-  await localAnalyticsCheckbox.check()
-  await expect.poll(async () => settingsWindow.evaluate(() =>
-    (window as unknown as { dashboardDesktop: { settings: { get: () => Promise<{ analytics: { localInsights: boolean } }> } } }).dashboardDesktop.settings.get()
-  ).then((settings) => settings.analytics.localInsights)).toBe(true)
-  await localAnalyticsCheckbox.uncheck()
-  await expect.poll(async () => settingsWindow.evaluate(() =>
-    (window as unknown as { dashboardDesktop: { settings: { get: () => Promise<{ analytics: { localInsights: boolean } }> } } }).dashboardDesktop.settings.get()
-  ).then((settings) => settings.analytics.localInsights)).toBe(false)
-
   await selectSettingsPage(settingsWindow, 'Behavior')
   const dockingGuidesCheckbox = settingsWindow.getByRole('checkbox', { name: 'Docking guides' })
   await expect(dockingGuidesCheckbox).toBeChecked()
@@ -581,7 +572,7 @@ test('opens the dashboard in a separate native window with an isolated preload',
   })
   const widgetPositionBeforeScale = await page.locator('.widget').boundingBox()
   await widgetScale.fill('120')
-  await expect.poll(async () => (await page.locator('.widget').boundingBox())?.height).toBeCloseTo(367.2, 0)
+  await expect.poll(async () => (await page.locator('.widget').boundingBox())?.height).toBeCloseTo(511.2, 0)
   await expect.poll(async () => (await page.locator('.widget').boundingBox())?.x).toBeCloseTo(widgetPositionBeforeScale?.x ?? 0, 0)
   await expect.poll(async () => (await page.locator('.widget').boundingBox())?.y).toBeCloseTo(widgetPositionBeforeScale?.y ?? 0, 0)
   await expect(page.locator('.widget')).toHaveCSS('transform', 'none')
@@ -590,13 +581,13 @@ test('opens the dashboard in a separate native window with an isolated preload',
   await expect.poll(async () => (await page.locator('.usage-ring').first().boundingBox())?.width).toBeCloseTo(50.4, 1)
   await itemGap.fill('6')
   await widgetScale.fill('100')
-  await expect.poll(async () => (await page.locator('.widget').boundingBox())?.height).toBeCloseTo(282, 0)
+  await expect.poll(async () => (await page.locator('.widget').boundingBox())?.height).toBeCloseTo(426, 0)
   await shadowCheckbox.uncheck()
   await expect(settingsWindow.locator('.settings-window')).toHaveClass(/overlay-root--shadows-disabled/)
   await expect(page.locator('.overlay-root')).toHaveClass(/overlay-root--shadows-disabled/)
   await expect(page.locator('.widget')).toHaveCSS('filter', 'none')
   await selectSettingsPage(settingsWindow, 'Widget providers')
-  await expect(settingsWindow.locator('.provider-setting__drag-handle')).toHaveCount(6)
+  await expect(settingsWindow.locator('.provider-setting__drag-handle')).toHaveCount(7)
   await expect(settingsWindow.getByRole('heading', { name: 'Providers' })).toBeVisible()
   await expect(page.locator('.widget')).toHaveClass(/widget--settings-open/)
   await page.mouse.move(700, 500)
@@ -620,10 +611,10 @@ test('keeps the horizontal widget anatomy aligned', async () => {
 
   const widget = page.locator('.widget')
   await expect(widget).toHaveClass(/widget--horizontal/)
-  await expect.poll(async () => (await widget.boundingBox())?.width).toBeCloseTo(282, 1)
+  await expect.poll(async () => (await widget.boundingBox())?.width).toBeCloseTo(426, 1)
   await expect.poll(async () => (await widget.boundingBox())?.height).toBeCloseTo(54, 1)
   await widget.hover()
-  await expect.poll(async () => page.locator('.widget__thumb').evaluate((element) => element.getBoundingClientRect().width)).toBeCloseTo(282, 1)
+  await expect.poll(async () => page.locator('.widget__thumb').evaluate((element) => element.getBoundingClientRect().width)).toBeCloseTo(426, 1)
   await expect.poll(async () => page.locator('.gear-button img').evaluate((element) => element.getBoundingClientRect().width)).toBeCloseTo(15, 1)
   await expect.poll(async () => page.locator('.grab-handle img').evaluate((element) => element.getBoundingClientRect().width)).toBeCloseTo(9, 1)
   await expect(page.locator('.widget__controls')).toHaveCSS('z-index', '0')
@@ -666,12 +657,12 @@ test('keeps the horizontal widget anatomy aligned', async () => {
   })
 
   expectGeometryClose(geometry, {
-    thumb: { x: 0, y: 12, width: 282, height: 30 },
-    board: { x: 18, y: 0, width: 246, height: 54 },
+    thumb: { x: 0, y: 12, width: 426, height: 30 },
+    board: { x: 18, y: 0, width: 390, height: 54 },
     firstProvider: { x: 24, y: 6, width: 42, height: 42 },
-    lastProvider: { x: 168, y: 6, width: 42, height: 42 },
+    lastProvider: { x: 312, y: 6, width: 42, height: 42 },
     gear: { x: 5, y: 19.5, width: 15, height: 15 },
-    grab: { x: 268, y: 16.5, width: 9, height: 21 }
+    grab: { x: 412, y: 16.5, width: 9, height: 21 }
   })
 })
 
@@ -926,67 +917,22 @@ test('drags from the grab handle and persists right-side docking', async () => {
   await expect.poll(async () => Math.abs(((await settingsPanel.boundingBox())?.height ?? 0) - expectedHeight)).toBeLessThanOrEqual(1)
 })
 
-test('navigates the dashboard from the widoken icon and the widget gear', async () => {
+test('opens the dashboard on the widget page from the widoken icon and the widget gear', async () => {
   const dashboard = await openSettingsWindow()
   const pages = dashboard.getByRole('navigation', { name: 'Dashboard sections' })
   const widgetNavigation = dashboard.getByRole('navigation', { name: 'Widget settings' })
+  await expect(pages.getByRole('button')).toHaveText(['Widget', 'Providers', 'General'])
   await selectSettingsPage(dashboard, 'Behavior')
 
   await revealWidget()
   await page.locator('.board-app').click()
-  await expect(pages.getByRole('button', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page')
-  await expect(dashboard.getByRole('heading', { name: 'Dashboard', level: 2 })).toBeVisible()
+  await expect(pages.getByRole('button', { name: 'Widget' })).toHaveAttribute('aria-current', 'page')
+  await expect(widgetNavigation.getByRole('button', { name: 'Appearance' })).toHaveAttribute('aria-current', 'page')
+
+  await selectSettingsPage(dashboard, 'General')
   const collapsedWidgetNavigation = dashboard.locator('.settings-panel__subnav')
-  await expect(widgetNavigation).toHaveCount(0)
   await expect(collapsedWidgetNavigation).toHaveAttribute('aria-hidden', 'true')
   await expect.poll(async () => (await collapsedWidgetNavigation.boundingBox())?.width ?? 0).toBeLessThan(1)
-  await expect(dashboard.locator('.dashboard-provider-card')).not.toHaveCount(0)
-  const history = dashboard.locator('.usage-history')
-  await expect(history).toBeVisible()
-  await expect(history.getByText(/after Widoken was installed/)).toBeVisible()
-  const historyBox = await history.boundingBox()
-  const cardBox = await dashboard.locator('.dashboard-provider-card').first().boundingBox()
-  expect(historyBox && cardBox && historyBox.y < cardBox.y).toBe(true)
-  const days = await history.locator('[data-day]').evaluateAll((columns) =>
-    columns.map((column) => column.getAttribute('data-day') ?? '')
-  )
-  expect(days).toHaveLength(31)
-  for (let index = 1; index < days.length; index += 1) {
-    const [year, month, day] = days[index - 1].split('-').map(Number)
-    const next = new Date(year, month - 1, day)
-    next.setDate(next.getDate() + 1)
-    const monthText = String(next.getMonth() + 1).padStart(2, '0')
-    const dayText = String(next.getDate()).padStart(2, '0')
-    expect(days[index]).toBe(`${next.getFullYear()}-${monthText}-${dayText}`)
-  }
-  const labels = (await history.locator('.usage-history__labels span').allTextContents())
-    .map((label) => label.trim())
-    .filter(Boolean)
-  expect(labels.length).toBeGreaterThan(10)
-  for (const label of labels) expect(label).toMatch(/^[A-Z][a-z]{2} \d{1,2}$/)
-  const metrics = dashboard.getByLabel('Usage metrics')
-  await expect(metrics.getByRole('group')).toHaveText([
-    /^Connected/, /^Highest usage/, /^Next reset/, /^Working now/, /^Today/, /^Busiest day/, /^Tracking since/, /^Plans/
-  ])
-  const metricsBox = await metrics.boundingBox()
-  expect(historyBox && metricsBox && historyBox.y < metricsBox.y && metricsBox.y < (cardBox?.y ?? 0)).toBe(true)
-  const savedProviders = await dashboard.evaluate(() =>
-    (window as unknown as { dashboardDesktop: { settings: { get: () => Promise<{ providers: Array<{ id: string; enabled: boolean }> }> } } }).dashboardDesktop.settings.get()
-  ).then((settings) => settings.providers)
-  await expect(dashboard.locator('.dashboard-provider-card')).toHaveCount(savedProviders.length)
-  const offProvider = savedProviders.find((provider) => !provider.enabled)
-  expect(offProvider).toBeDefined()
-  const offCard = dashboard.locator(`.dashboard-provider-card[data-provider-id="${offProvider?.id}"]`)
-  await expect(offCard.locator('.dashboard-provider-card__status')).toHaveText('Off')
-  await expect(dashboard.getByRole('checkbox', { name: 'Launch Widget at startup' })).toHaveCount(0)
-  await offCard.getByRole('button', { name: 'Manage' }).click()
-  await expect(widgetNavigation.getByRole('button', { name: 'Providers' })).toHaveAttribute('aria-current', 'page')
-  await selectSettingsPage(dashboard, 'Behavior')
-  await selectSettingsPage(dashboard, 'Dashboard')
-
-  await pages.getByRole('button', { name: 'Widget' }).click()
-  await expect(widgetNavigation.getByRole('button', { name: 'Behavior' })).toHaveAttribute('aria-current', 'page')
-  await selectSettingsPage(dashboard, 'Dashboard')
 
   await revealWidget()
   await page.locator('.gear-button').click()
@@ -997,7 +943,6 @@ test('navigates the dashboard from the widoken icon and the widget gear', async 
 
 test('opens the top-level Providers settings and manages provider authentication', async () => {
   const dashboard = await openSettingsWindow()
-  await selectSettingsPage(dashboard, 'Dashboard')
 
   const pages = dashboard.getByRole('navigation', { name: 'Dashboard sections' })
   const providerSettingsButton = pages.getByRole('button', { name: 'Providers', exact: true })
@@ -1008,9 +953,9 @@ test('opens the top-level Providers settings and manages provider authentication
   const providerNavigation = dashboard.getByRole('navigation', { name: 'Provider settings' })
   await expect(providerNavigation).toBeVisible()
   await expect(providerNavigation.getByRole('button')).toHaveText([
-    'Claude', 'ChatGPT', 'Cursor', 'Antigravity', 'GitHub Copilot', 'DeepSeek'
+    'Claude', 'ChatGPT', 'Cursor', 'Antigravity', 'GitHub Copilot', 'DeepSeek', 'Hugging Face'
   ])
-  await expect(providerNavigation.locator('img')).toHaveCount(6)
+  await expect(providerNavigation.locator('img')).toHaveCount(7)
   const mainNavigationBox = await pages.boundingBox()
   expect((await providerNavigation.boundingBox())?.x).toBeCloseTo(
     (mainNavigationBox?.x ?? 0) + (mainNavigationBox?.width ?? 0),
@@ -1066,7 +1011,7 @@ test('configures the usage ring per provider from the widget settings', async ()
   await expect(settingsWindow.locator('.usage-ring-setting[data-provider-id="antigravity"]')).toHaveCount(0)
 })
 
-test('reorders providers by dragging and shows newly enabled providers immediately', async () => {
+test('reorders providers and changes only their widget visibility', async () => {
   const settingsWindow = await openSettingsWindow()
   await selectSettingsPage(settingsWindow, 'Widget providers')
   const rows = settingsWindow.locator('.provider-setting')
@@ -1083,39 +1028,47 @@ test('reorders providers by dragging and shows newly enabled providers immediate
   await settingsWindow.mouse.up()
   await expect(rows.last().locator('.provider-setting__identity strong')).toHaveText(firstName)
 
-  const copilotRow = rows.filter({ hasText: 'GitHub Copilot' })
+  const openaiRow = rows.filter({ hasText: 'ChatGPT' })
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await copilotRow.locator('.settings-switch').click()
-  await expect(page.locator('.provider-item')).toHaveCount(5)
-  await expect.poll(async () => page.locator('.widget__visual').evaluate((element) =>
-    element.getAnimations().some((animation) => animation.effect?.getTiming().duration === 480)
-  )).toBe(true)
-  const copilotItem = page.getByRole('button', { name: /GitHub Copilot/ })
-  await expect(copilotItem).toHaveClass(/provider-item--entering/)
-  await expect(copilotItem).toHaveCSS('animation-name', 'provider-item-in')
-  await expect(copilotItem).toHaveCSS('animation-duration', '0.32s')
-  await expect(settingsWindow.getByRole('checkbox', { name: 'Disable GitHub Copilot' })).toBeChecked()
-
-  await copilotRow.locator('.settings-switch').click()
-  await expect(page.locator('.provider-item')).toHaveCount(4)
+  await openaiRow.locator('.settings-switch').click()
+  await expect(page.locator('.provider-item')).toHaveCount(6)
   await expect.poll(async () => page.locator('.widget__visual').evaluate((element) =>
     element.getAnimations().some((animation) => animation.effect?.getTiming().duration === 420)
   )).toBe(true)
-  await expect(settingsWindow.getByRole('checkbox', { name: 'Enable GitHub Copilot' })).not.toBeChecked()
+  await expect(settingsWindow.getByRole('checkbox', { name: 'Show ChatGPT in widget' })).not.toBeChecked()
+  await expect.poll(async () => settingsWindow.evaluate(() =>
+    (window as unknown as { dashboardDesktop: { settings: { get: () => Promise<{ providers: Array<{ id: string; enabled: boolean; visibleInWidget?: boolean }> }> } } })
+      .dashboardDesktop.settings.get()
+  ).then((settings) => settings.providers.find(({ id }) => id === 'openai'))).toMatchObject({
+    enabled: true,
+    visibleInWidget: false
+  })
+
+  await openaiRow.locator('.settings-switch').click()
+  await expect(page.locator('.provider-item')).toHaveCount(7)
+  await expect.poll(async () => page.locator('.widget__visual').evaluate((element) =>
+    element.getAnimations().some((animation) => animation.effect?.getTiming().duration === 480)
+  )).toBe(true)
+  const openaiItem = page.getByRole('button', { name: /ChatGPT/ })
+  await expect(openaiItem).toHaveClass(/provider-item--entering/)
+  await expect(openaiItem).toHaveCSS('animation-name', 'provider-item-in')
+  await expect(openaiItem).toHaveCSS('animation-duration', '0.32s')
+  await expect(settingsWindow.getByRole('checkbox', { name: 'Hide ChatGPT in widget' })).toBeChecked()
   await page.emulateMedia({ reducedMotion: 'no-preference' })
 })
 
-test('enables the DeepSeek provider and shows its USD balance', async () => {
+test('shows discovered DeepSeek usage and global disable overrides widget visibility', async () => {
   const settingsWindow = await openSettingsWindow()
+  await selectSettingsPage(settingsWindow, 'Providers')
+  const providerNavigation = settingsWindow.getByRole('navigation', { name: 'Provider settings' })
+  await providerNavigation.getByRole('button', { name: 'DeepSeek', exact: true }).click()
+  await expect(settingsWindow.getByRole('checkbox', { name: 'Disable DeepSeek' })).toBeChecked()
+
   await selectSettingsPage(settingsWindow, 'Widget providers')
   const deepSeekRow = settingsWindow.locator('.provider-setting').filter({ hasText: 'DeepSeek' })
 
   await expect(deepSeekRow).toHaveCount(1)
-  await expect(settingsWindow.getByRole('checkbox', { name: 'Enable DeepSeek' })).not.toBeChecked()
-
-  await deepSeekRow.locator('.settings-switch').click()
-  await expect(page.locator('.provider-item')).toHaveCount(5)
-  await expect(settingsWindow.getByRole('checkbox', { name: 'Disable DeepSeek' })).toBeChecked()
+  await expect(settingsWindow.getByRole('checkbox', { name: 'Hide DeepSeek in widget' })).toBeChecked()
 
   const deepSeekItem = page.getByRole('button', { name: /DeepSeek/ })
   await expect(deepSeekItem).toHaveAttribute('data-provider-id', 'deepseek')
@@ -1133,9 +1086,88 @@ test('enables the DeepSeek provider and shows its USD balance', async () => {
   expect(amountText).toMatch(/5(?:[.,]00)?[^\d]{0,8}\/[^\d]{0,8}10(?:[.,]00)?[^\d]{0,8}used/)
   expect(amountText.indexOf('remaining')).toBeLessThan(amountText.indexOf('used'))
 
-  await deepSeekRow.locator('.settings-switch').click()
-  await expect(page.locator('.provider-item')).toHaveCount(4)
+  await selectSettingsPage(settingsWindow, 'Providers')
+  await providerNavigation.getByRole('button', { name: 'DeepSeek', exact: true }).click()
+  await settingsWindow.getByRole('checkbox', { name: 'Disable DeepSeek' }).click()
+  await expect(page.locator('.provider-item')).toHaveCount(6)
   await expect(settingsWindow.getByRole('checkbox', { name: 'Enable DeepSeek' })).not.toBeChecked()
+
+  await settingsWindow.getByRole('checkbox', { name: 'Enable DeepSeek' }).click()
+  await selectSettingsPage(settingsWindow, 'Widget providers')
+  await expect(settingsWindow.getByRole('checkbox', { name: 'Show DeepSeek in widget' })).not.toBeChecked()
+  await deepSeekRow.locator('.settings-switch').click()
+  await expect(page.locator('.provider-item')).toHaveCount(7)
+})
+
+test('keeps a provider toggle from popping a tucked widget out of its edge', async () => {
+  const settingsWindow = await openSettingsWindow()
+  await selectSettingsPage(settingsWindow, 'Widget providers')
+  const chatGptItem = page.locator('.provider-item[data-provider-id="openai"]')
+  const chatGptRow = settingsWindow.locator('.provider-setting[data-provider-id="openai"]')
+  await expect(chatGptRow).toHaveCount(1)
+  // Initial discovery decides which providers start visible, so make the target
+  // visible explicitly before parking the board.
+  const chatGptToggle = chatGptRow.getByRole('checkbox')
+  if (!(await chatGptToggle.isChecked())) {
+    await chatGptRow.locator('.settings-switch').click()
+    await expect(chatGptToggle).toBeChecked()
+  }
+  await expect(chatGptItem).toHaveCount(1)
+
+  await page.mouse.move(700, 500)
+  await expect(page.locator('.widget')).toHaveClass(/widget--collapsed/)
+  const visual = page.locator('.widget__visual')
+  await visual.evaluate(async (element) => {
+    await Promise.allSettled(element.getAnimations().map((animation) => animation.finished))
+  })
+  const parkedTransform = await visual.evaluate((element) => getComputedStyle(element).transform)
+
+  // Watch every frame across the toggle: the provider entry/exit animation must
+  // still play, but it has to spring around the parked position instead of
+  // taking over the transform and pulling the board back out of the edge.
+  await page.evaluate((parked) => {
+    const element = document.querySelector('.widget__visual') as HTMLElement
+    const widget = document.querySelector('.widget') as HTMLElement
+    const tucksSideways = /widget--collapsed-(left|right)/.test(widget.className)
+    const readMatrix = (value: string): DOMMatrix => value === 'none' ? new DOMMatrix() : new DOMMatrix(value)
+    const parkedAxis = tucksSideways ? readMatrix(parked).m41 : readMatrix(parked).m42
+    const watch = { durations: [] as number[], maxDrift: 0, minOpacity: 1 }
+    const start = performance.now()
+    const tick = (): void => {
+      for (const animation of element.getAnimations()) {
+        const duration = animation.effect?.getTiming().duration
+        if (typeof duration === 'number') watch.durations.push(duration)
+      }
+      const style = getComputedStyle(element)
+      const matrix = readMatrix(style.transform)
+      const axis = tucksSideways ? matrix.m41 : matrix.m42
+      watch.maxDrift = Math.max(watch.maxDrift, Math.abs(axis - parkedAxis))
+      watch.minOpacity = Math.min(watch.minOpacity, Number(style.opacity))
+      if (performance.now() - start < 900) requestAnimationFrame(tick)
+      else (window as unknown as { __tuckWatch: typeof watch }).__tuckWatch = watch
+    }
+    requestAnimationFrame(tick)
+  }, parkedTransform)
+
+  await chatGptRow.locator('.settings-switch').click()
+  await expect(chatGptItem).toHaveCount(0)
+  await expect(page.locator('.widget')).toHaveClass(/widget--collapsed/)
+  await page.waitForTimeout(1000)
+  const watch = await page.evaluate(() =>
+    (window as unknown as { __tuckWatch?: { durations: number[], maxDrift: number, minOpacity: number } }).__tuckWatch
+  )
+  expect(watch?.durations.filter((duration) => duration === 420 || duration === 480).length).toBeGreaterThan(0)
+  // Only the slide along the edge and the squash are allowed; the board never
+  // moves along the axis that hides it in the edge.
+  expect(watch?.maxDrift).toBeLessThanOrEqual(1)
+  // Fading the peek would read as the whole widget flickering.
+  expect(watch?.minOpacity).toBeGreaterThanOrEqual(0.99)
+  await expect.poll(async () => visual.evaluate((element) => getComputedStyle(element).transform))
+    .toBe(parkedTransform)
+
+  await chatGptRow.locator('.settings-switch').click()
+  await expect(chatGptItem).toHaveCount(1)
+  await expect(page.locator('.widget')).toHaveClass(/widget--collapsed/)
 })
 
 test('keeps the horizontal popover outside the turned thumb', async () => {
@@ -1263,4 +1295,87 @@ test('turns the widget off and back on without closing the dashboard', async () 
   await page.waitForLoadState('domcontentloaded')
   await expect(page.locator('.widget')).toBeVisible()
   await expect(widgetEnabled).toBeChecked()
+})
+
+test('resets every setting to its default from the General page', async () => {
+  const dashboard = await openSettingsWindow()
+  await selectSettingsPage(dashboard, 'Widget providers')
+  const chatGptVisible = dashboard.getByRole('checkbox', { name: 'Hide ChatGPT in widget' })
+  await expect(chatGptVisible).toBeChecked()
+  await chatGptVisible.uncheck()
+  await expect(dashboard.getByRole('checkbox', { name: 'Show ChatGPT in widget' })).not.toBeChecked()
+  await expect(page.locator('.provider-item[data-provider-id="openai"]')).toHaveCount(0)
+
+  await selectSettingsPage(dashboard, 'General')
+  const followsWidgetTheme = dashboard.getByRole('checkbox', { name: 'Use the widget theme for the whole interface' })
+  const launchAtStartup = dashboard.getByRole('checkbox', { name: 'Launch Widget at startup' })
+  await expect(followsWidgetTheme).not.toBeChecked()
+  await expect(launchAtStartup).toBeChecked()
+  await followsWidgetTheme.check()
+  await launchAtStartup.uncheck()
+  const refreshInterval = dashboard.locator('.settings-control').filter({ hasText: 'Refresh interval' })
+  await refreshInterval.locator('.settings-select__trigger').click()
+  await refreshInterval.getByRole('option', { name: '5 minutes' }).click()
+  await page.evaluate(() => (window as unknown as {
+    widgetDesktop: { settings: { update: (patch: object) => Promise<unknown> } }
+  }).widgetDesktop.settings.update({ widget: { theme: 'dracula', itemGap: 12, edgeTuck: false } }))
+
+  await expect.poll(async () => dashboard.evaluate(() =>
+    (window as unknown as {
+      dashboardDesktop: {
+        settings: {
+          get: () => Promise<{
+            widget: { theme: string, itemGap: number, edgeTuck: boolean }
+            launchAtStartup: boolean
+            dashboardFollowsWidgetTheme: boolean
+            refreshIntervalSeconds: number
+          }>
+        }
+      }
+    }).dashboardDesktop.settings.get()
+  )).toMatchObject({
+    widget: { theme: 'dracula', itemGap: 12, edgeTuck: false },
+    launchAtStartup: false,
+    dashboardFollowsWidgetTheme: true,
+    refreshIntervalSeconds: 300
+  })
+  await expect(page.locator('.overlay-root')).toHaveClass(/overlay-root--theme-dracula/)
+
+  const resetRow = dashboard.locator('.settings-reset')
+  await resetRow.getByRole('button', { name: 'Reset to defaults' }).click()
+  await expect(resetRow.getByRole('button', { name: 'Reset everything' })).toBeVisible()
+  await resetRow.getByRole('button', { name: 'Cancel' }).click()
+  await expect(followsWidgetTheme).toBeChecked()
+
+  await resetRow.getByRole('button', { name: 'Reset to defaults' }).click()
+  await resetRow.getByRole('button', { name: 'Reset everything' }).click()
+  await expect(dashboard.locator('.settings-reset__status')).toHaveText('Defaults restored.')
+
+  await expect(followsWidgetTheme).not.toBeChecked()
+  await expect(launchAtStartup).toBeChecked()
+  await expect(refreshInterval.locator('.settings-select__trigger')).toHaveText('45 seconds')
+  await expect(page.locator('.overlay-root')).toHaveClass(/overlay-root--theme-monokai-black/)
+  await expect.poll(async () => dashboard.evaluate(() =>
+    (window as unknown as {
+      dashboardDesktop: {
+        settings: {
+          get: () => Promise<{
+            widget: { theme: string, itemGap: number, edgeTuck: boolean }
+            launchAtStartup: boolean
+            dashboardFollowsWidgetTheme: boolean
+            refreshIntervalSeconds: number
+          }>
+        }
+      }
+    }).dashboardDesktop.settings.get()
+  )).toMatchObject({
+    widget: { theme: 'monokai-black', itemGap: 6, edgeTuck: true },
+    launchAtStartup: true,
+    dashboardFollowsWidgetTheme: false,
+    refreshIntervalSeconds: 45
+  })
+
+  await selectSettingsPage(dashboard, 'Widget providers')
+  await expect(dashboard.getByRole('checkbox', { name: 'Hide ChatGPT in widget' })).toBeChecked()
+  await expect(page.locator('.provider-item[data-provider-id="openai"]')).toHaveCount(1)
 })

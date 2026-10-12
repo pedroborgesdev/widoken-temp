@@ -17,32 +17,11 @@ export interface UsageLimit {
   unlimited?: boolean
 }
 
-export interface UsageTrend {
-  limitId: string
-  observedSince: string
-  consumedLast24Hours?: number
-  averageDailyConsumption?: number
-  burnRatePerHour?: number
-  estimatedExhaustionAt?: string
-  projectedPercentAtReset?: number
-}
-
 export interface ProviderListPrice {
   amount: number
   currency: string
   interval: 'month'
   asOf: string
-}
-
-export interface LocalAnalyticsMetric {
-  label: string
-  value: string
-}
-
-export interface ProviderAnalytics {
-  trends: UsageTrend[]
-  listPrice?: ProviderListPrice
-  localMetrics?: LocalAnalyticsMetric[]
 }
 
 export const PROVIDER_AUTH_SOURCES = ['harness-account', 'api-key'] as const
@@ -55,7 +34,8 @@ export interface ProviderSnapshot {
   lastUpdatedAt: string
   plan?: string
   isUnlimited?: boolean
-  analytics?: ProviderAnalytics
+  /** Reference monthly list price for the reported plan, when it is known. */
+  listPrice?: ProviderListPrice
   error?: string
   authSource?: ProviderAuthSource
 }

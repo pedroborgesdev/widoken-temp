@@ -9,11 +9,11 @@ export function DashboardApp(): React.JSX.Element {
     settings,
     settingsReady,
     providers,
-    history,
     deepSeekCredentials,
     route,
     navigate,
     updateSettings,
+    resetSettings,
     saveDeepSeekApiKey,
     clearDeepSeekApiKey
   } = useDashboard()
@@ -39,11 +39,11 @@ export function DashboardApp(): React.JSX.Element {
         <DashboardPanel
           settings={settings}
           providers={providers}
-          history={history}
           route={route}
           deepSeekCredentials={deepSeekCredentials}
           onNavigate={navigate}
           onUpdate={(patch) => void updateSettings(patch)}
+          onReset={resetSettings}
           onSaveDeepSeekApiKey={saveDeepSeekApiKey}
           onClearDeepSeekApiKey={clearDeepSeekApiKey}
           onSyncVsCodeTheme={syncVsCodeTheme}

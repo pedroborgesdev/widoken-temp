@@ -1,44 +1,18 @@
 import { dashboardRouteQuery, sanitizeDashboardRoute } from '@shared/dashboard'
 import type { DashboardDesktopApi, DeepSeekCredentialStatus, DesktopApi, WidgetDesktopApi } from '@shared/ipc'
-import { buildUsageHistory, type UsageHistorySample } from '@shared/usageHistory'
 import type { ProviderView } from '@shared/provider'
 import { APP_THEMES, DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/settings'
 
 const STORAGE_KEY = 'widoken.preview.settings'
-
-function previewUsageSamples(): UsageHistorySample[] {
-  const samples: UsageHistorySample[] = []
-  const at = (daysAgo: number): number => {
-    const date = new Date()
-    date.setHours(12, 0, 0, 0)
-    date.setDate(date.getDate() - daysAgo)
-    return date.getTime()
-  }
-  const push = (providerId: string, limitId: string, daysAgo: number, percent: number, used?: number, limitValue?: number): void => {
-    samples.push({
-      providerId,
-      limitId,
-      capturedAt: at(daysAgo),
-      percent,
-      resetAt: at(0) + 20 * 86_400_000,
-      used: used ?? null,
-      limitValue: limitValue ?? null
-    })
-  }
-  ;[28, 24, 21, 18, 14, 11, 8, 5, 2, 0].forEach((day, index) => {
-    push('claude', 'session', day, 8 + index * 4)
-    push('openai', 'primary', day, 12 + index * 3)
-    push('cursor', 'included', day, (10 + index * 6), 10 + index * 6, 100)
-  })
-  return samples
-}
 
 const previewProviders: Omit<ProviderView, 'snapshot'>[] = [
   { id: 'claude', name: 'Claude' },
   { id: 'openai', name: 'ChatGPT' },
   { id: 'cursor', name: 'Cursor' },
   { id: 'antigravity', name: 'Antigravity' },
-  { id: 'deepseek', name: 'DeepSeek' }
+  { id: 'copilot', name: 'GitHub Copilot' },
+  { id: 'deepseek', name: 'DeepSeek' },
+  { id: 'huggingface', name: 'Hugging Face' }
 ]
 
 function futureDate(minutes: number): string {
@@ -57,11 +31,15 @@ function loadPreviewSettings(): AppSettings {
         ...defaults,
         ...parsed,
         widget,
-        analytics: { ...DEFAULT_SETTINGS.analytics, ...parsed.analytics },
         providers: defaults.providers.map((fallback) => {
           const provider = parsed.providers?.find((candidate) => candidate.id === fallback.id)
           return provider
-            ? { ...fallback, ...provider, usageDisplay: { ...fallback.usageDisplay, ...provider.usageDisplay } }
+            ? {
+                ...fallback,
+                ...provider,
+                visibleInWidget: provider.enabled !== false && (provider.visibleInWidget ?? true),
+                usageDisplay: { ...fallback.usageDisplay, ...provider.usageDisplay }
+              }
             : fallback
         })
       }
@@ -126,6 +104,17 @@ function previewProviderViews(): ProviderView[] {
       ],
       lastUpdatedAt: new Date().toISOString()
     },
+    copilot: {
+      providerId: 'copilot',
+      status: 'connected',
+      plan: 'individual',
+      limits: [
+        { id: 'premium_interactions', label: 'Premium requests', percent: 18, used: 18, limit: 100, remaining: 82 },
+        { id: 'chat', label: 'Chat requests', percent: 12 },
+        { id: 'completions', label: 'Completions', percent: 8 }
+      ],
+      lastUpdatedAt: new Date().toISOString()
+    },
     deepseek: {
       providerId: 'deepseek',
       status: 'connected',
@@ -134,6 +123,14 @@ function previewProviderViews(): ProviderView[] {
       limits: [
         { id: 'balance-cny', label: 'CNY balance', currency: 'CNY', percent: 50, used: 5, limit: 10, remaining: 5 },
         { id: 'balance-usd', label: 'USD balance', currency: 'USD', percent: 80, used: 8, limit: 10, remaining: 2 }
+      ],
+      lastUpdatedAt: new Date().toISOString()
+    },
+    huggingface: {
+      providerId: 'huggingface',
+      status: 'connected',
+      limits: [
+        { id: 'balance-usd', label: 'USD balance', currency: 'USD', percent: 25, used: 5, limit: 20, remaining: 15 }
       ],
       lastUpdatedAt: new Date().toISOString()
     }
@@ -175,9 +172,18 @@ const browserDesktopApi: DesktopApi = {
         ...previewSettings,
         ...patch,
         widget: { ...previewSettings.widget, ...patch.widget },
-        analytics: { ...previewSettings.analytics, ...patch.analytics },
         providers: patch.providers ?? previewSettings.providers
       }
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(previewSettings))
+      } catch {
+        // Persistence is optional in browser preview mode.
+      }
+      settingsListeners.forEach((listener) => listener(structuredClone(previewSettings)))
+      return structuredClone(previewSettings)
+    },
+    reset: async () => {
+      previewSettings = structuredClone(DEFAULT_SETTINGS)
       try {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(previewSettings))
       } catch {
@@ -213,15 +219,6 @@ const browserDesktopApi: DesktopApi = {
   themes: {
     syncVsCode: async () => {
       throw new Error('VS Code theme sync is only available in the desktop app.')
-    }
-  },
-  analytics: {
-    history: async () => {
-      const samples = previewUsageSamples()
-      return {
-        ...buildUsageHistory(samples, Date.now()),
-        since: new Date(Math.min(...samples.map((sample) => sample.capturedAt))).toISOString()
-      }
     }
   },
   deepseek: {

@@ -2,7 +2,6 @@ import type { Rectangle } from 'electron'
 import type { DashboardRoute } from './dashboard'
 import type { DisplayRect } from './overlayDisplay'
 import type { ProviderView } from './provider'
-import type { UsageHistory } from './usageHistory'
 import type { AppSettings, SettingsPatch } from './settings'
 import type { SyncedVsCodeTheme } from './settings'
 
@@ -19,6 +18,7 @@ export const IPC = {
   providersUpdated: 'providers:updated',
   settingsGet: 'settings:get',
   settingsUpdate: 'settings:update',
+  settingsReset: 'settings:reset',
   settingsUpdated: 'settings:updated',
   dashboardWindowOpen: 'dashboard-window:open',
   dashboardWindowClose: 'dashboard-window:close',
@@ -26,7 +26,6 @@ export const IPC = {
   dashboardWindowResizeToContent: 'dashboard-window:resize-to-content',
   dashboardWindowState: 'dashboard-window:state',
   dashboardNavigate: 'dashboard:navigate',
-  analyticsHistory: 'analytics:history',
   deepseekCredentialStatus: 'deepseek:credential-status',
   deepseekSaveApiKey: 'deepseek:save-api-key',
   deepseekClearApiKey: 'deepseek:clear-api-key',
@@ -50,6 +49,7 @@ interface ProvidersApi {
 interface SettingsApi {
   get(): Promise<AppSettings>
   update(patch: SettingsPatch): Promise<AppSettings>
+  reset(): Promise<AppSettings>
   onUpdated(callback: (settings: AppSettings) => void): () => void
 }
 
@@ -93,9 +93,6 @@ export interface DashboardDesktopApi {
   }
   themes: {
     syncVsCode(): Promise<SyncedVsCodeTheme>
-  }
-  analytics: {
-    history(): Promise<UsageHistory>
   }
   deepseek: {
     status(): Promise<DeepSeekCredentialStatus>

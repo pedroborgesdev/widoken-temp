@@ -3,7 +3,6 @@ import { dashboardRouteFromSearch, sanitizeDashboardRoute, type DashboardRoute }
 import type { DeepSeekCredentialStatus } from '@shared/ipc'
 import type { ProviderView } from '@shared/provider'
 import { DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/settings'
-import { buildUsageHistory, type UsageHistory } from '@shared/usageHistory'
 import { dashboardDesktop } from '../../services/desktop'
 import { DashboardContext } from './useDashboard'
 
@@ -18,7 +17,6 @@ function mergeSettings(settings: AppSettings, patch: SettingsPatch): AppSettings
     ...settings,
     ...patch,
     widget: { ...settings.widget, ...patch.widget },
-    analytics: { ...settings.analytics, ...patch.analytics },
     providers: patch.providers ?? settings.providers
   }
 }
@@ -27,7 +25,6 @@ export function DashboardProvider({ children }: { children: ReactNode }): React.
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
   const [settingsReady, setSettingsReady] = useState(false)
   const [providers, setProviders] = useState<ProviderView[]>([])
-  const [history, setHistory] = useState<UsageHistory>(() => buildUsageHistory([], Date.now()))
   const [deepSeekCredentials, setDeepSeekCredentials] = useState<DeepSeekCredentialStatus>(EMPTY_DEEPSEEK_CREDENTIALS)
   const [route, setRoute] = useState<DashboardRoute>(() => dashboardRouteFromSearch(window.location.search))
 
@@ -56,26 +53,6 @@ export function DashboardProvider({ children }: { children: ReactNode }): React.
 
   useEffect(() => dashboardDesktop.providers.onUpdated(setProviders), [])
 
-  useEffect(() => {
-    let active = true
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const load = (): void => {
-      void dashboardDesktop.analytics.history().then((next) => {
-        if (active) setHistory(next)
-      }).catch(() => undefined)
-    }
-    load()
-    const unsubscribe = dashboardDesktop.providers.onUpdated(() => {
-      if (timer) clearTimeout(timer)
-      timer = setTimeout(load, 1500)
-    })
-    return () => {
-      active = false
-      if (timer) clearTimeout(timer)
-      unsubscribe()
-    }
-  }, [])
-
   useEffect(() => dashboardDesktop.dashboard.onNavigate((nextRoute) => {
     setRoute(sanitizeDashboardRoute(nextRoute))
   }), [])
@@ -89,6 +66,12 @@ export function DashboardProvider({ children }: { children: ReactNode }): React.
     const updatedSettings = await dashboardDesktop.settings.update(patch)
     setSettings(updatedSettings)
     return updatedSettings
+  }, [])
+
+  const resetSettings = useCallback(async (): Promise<AppSettings> => {
+    const reset = await dashboardDesktop.settings.reset()
+    setSettings(reset)
+    return reset
   }, [])
 
   const saveDeepSeekApiKey = useCallback(async (apiKey: string): Promise<DeepSeekCredentialStatus> => {
@@ -108,11 +91,11 @@ export function DashboardProvider({ children }: { children: ReactNode }): React.
       settings,
       settingsReady,
       providers,
-      history,
       deepSeekCredentials,
       route,
       navigate,
       updateSettings,
+      resetSettings,
       saveDeepSeekApiKey,
       clearDeepSeekApiKey
     }),
@@ -120,11 +103,11 @@ export function DashboardProvider({ children }: { children: ReactNode }): React.
       settings,
       settingsReady,
       providers,
-      history,
       deepSeekCredentials,
       route,
       navigate,
       updateSettings,
+      resetSettings,
       saveDeepSeekApiKey,
       clearDeepSeekApiKey
     ]

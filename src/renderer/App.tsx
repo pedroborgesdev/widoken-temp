@@ -3,6 +3,7 @@ import type { Rectangle } from 'electron'
 import { DEFAULT_WIDGET_SECTION } from '@shared/dashboard'
 import type { OverlayDragRelay } from '@shared/ipc'
 import { shadowPaintOutset } from '@shared/overlay'
+import { providerVisibleInWidget } from '@shared/settings'
 import { activeSyncedTheme, syncedThemeStyle } from './utils/theme'
 import { SelectionGrid } from './components/SelectionGrid/SelectionGrid'
 import { AppMenuPopover } from './components/UsagePopover/AppMenuPopover'
@@ -115,7 +116,7 @@ export default function App(): React.JSX.Element {
   const [yielded, setYielded] = useState(false)
 
   const providerSettings = useMemo(
-    () => [...state.settings.providers].filter((provider) => provider.enabled).sort((a, b) => a.order - b.order),
+    () => [...state.settings.providers].filter(providerVisibleInWidget).sort((a, b) => a.order - b.order),
     [state.settings.providers]
   )
   const providerMap = useMemo(() => new Map(state.providers.map((provider) => [provider.id, provider])), [state.providers])
@@ -236,9 +237,6 @@ export default function App(): React.JSX.Element {
           ).length * 18
           + hoveredProvider.snapshot.limits.length * 20
           + (hoveredProvider.snapshot.plan || hoveredProvider.snapshot.isUnlimited ? 28 : 0)
-          + (hoveredProvider.snapshot.analytics?.localMetrics?.length
-            ? 24 + hoveredProvider.snapshot.analytics.localMetrics.length * 14
-            : 0)
       )
   const popoverId = appMenuOpen ? 'app-menu' : hoveredProvider?.id
   const measuredPopover = resolvedPopoverHeight
@@ -831,7 +829,7 @@ export default function App(): React.JSX.Element {
             onAppLeave={closeAppMenuSoon}
             onDashboard={() => {
               setAppMenuOpen(false)
-              void desktop.dashboard.open({ page: 'dashboard' })
+              void desktop.dashboard.open({ page: 'widget', section: DEFAULT_WIDGET_SECTION })
             }}
             onSettings={() => {
               setAppMenuOpen(false)

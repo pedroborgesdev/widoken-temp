@@ -16,7 +16,7 @@ export default defineConfig({
     trace: 'retain-on-failure'
   },
   webServer: {
-    command: 'node node_modules/vite/bin/vite.js --config vite.web.config.ts --port 5199 --strictPort',
+    command: 'node node_modules/vite/bin/vite.js --config vite.web.config.ts --host 127.0.0.1 --port 5199 --strictPort',
     url: 'http://127.0.0.1:5199/dashboard.html',
     reuseExistingServer: true,
     timeout: 120_000

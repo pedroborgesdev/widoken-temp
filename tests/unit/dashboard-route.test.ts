@@ -9,14 +9,15 @@ import {
 } from '../../src/shared/dashboard'
 
 describe('dashboard route', () => {
-  it('falls back to the dashboard page for unknown input', () => {
+  it('falls back to the widget page for unknown input', () => {
     expect(sanitizeDashboardRoute(undefined)).toEqual(DEFAULT_DASHBOARD_ROUTE)
     expect(sanitizeDashboardRoute('widget')).toEqual(DEFAULT_DASHBOARD_ROUTE)
     expect(sanitizeDashboardRoute({ page: 'settings' })).toEqual(DEFAULT_DASHBOARD_ROUTE)
   })
 
-  it('drops sections from pages without a secondary sidebar', () => {
-    expect(sanitizeDashboardRoute({ page: 'dashboard', section: 'usage' })).toEqual({ page: 'dashboard' })
+  it('rejects the removed dashboard page and drops sections elsewhere', () => {
+    expect(sanitizeDashboardRoute({ page: 'dashboard' })).toEqual(DEFAULT_DASHBOARD_ROUTE)
+    expect(sanitizeDashboardRoute({ page: 'dashboard', section: 'usage' })).toEqual(DEFAULT_DASHBOARD_ROUTE)
     expect(sanitizeDashboardRoute({ page: 'general', section: 'behavior' })).toEqual({ page: 'general' })
   })
 
@@ -28,9 +29,14 @@ describe('dashboard route', () => {
 
   it('resolves a valid provider section and rejects invalid or missing ones', () => {
     expect(sanitizeDashboardRoute({ page: 'providers', section: 'deepseek' })).toEqual({ page: 'providers', section: 'deepseek' })
+    expect(sanitizeDashboardRoute({ page: 'providers', section: 'huggingface' })).toEqual({ page: 'providers', section: 'huggingface' })
     expect(sanitizeDashboardRoute({ page: 'providers', section: 'nope' })).toEqual({ page: 'providers', section: DEFAULT_PROVIDER_SECTION })
     expect(sanitizeDashboardRoute({ page: 'providers' })).toEqual({ page: 'providers', section: DEFAULT_PROVIDER_SECTION })
     expect(sanitizeDashboardRoute({ page: 'providers', section: 'usage' })).toEqual({ page: 'providers', section: DEFAULT_PROVIDER_SECTION })
+  })
+
+  it('defaults to the widget appearance page', () => {
+    expect(DEFAULT_DASHBOARD_ROUTE).toEqual({ page: 'widget', section: 'appearance' })
   })
 
   it('round-trips through the window query string', () => {

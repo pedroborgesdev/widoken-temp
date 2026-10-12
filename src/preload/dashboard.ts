@@ -1,7 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { DashboardRoute } from '@shared/dashboard'
 import type { DashboardDesktopApi } from '@shared/ipc'
-import type { UsageHistory } from '@shared/usageHistory'
 import type { ProviderView } from '@shared/provider'
 import type { AppSettings, SettingsPatch } from '@shared/settings'
 
@@ -13,12 +12,12 @@ const IPC = {
   providersUpdated: 'providers:updated',
   settingsGet: 'settings:get',
   settingsUpdate: 'settings:update',
+  settingsReset: 'settings:reset',
   settingsUpdated: 'settings:updated',
   dashboardWindowClose: 'dashboard-window:close',
   dashboardWindowMinimize: 'dashboard-window:minimize',
   dashboardWindowResizeToContent: 'dashboard-window:resize-to-content',
   dashboardNavigate: 'dashboard:navigate',
-  analyticsHistory: 'analytics:history',
   deepseekCredentialStatus: 'deepseek:credential-status',
   deepseekSaveApiKey: 'deepseek:save-api-key',
   deepseekClearApiKey: 'deepseek:clear-api-key',
@@ -39,6 +38,7 @@ const dashboardDesktopApi: DashboardDesktopApi = {
   settings: {
     get: () => ipcRenderer.invoke(IPC.settingsGet),
     update: (patch: SettingsPatch) => ipcRenderer.invoke(IPC.settingsUpdate, patch),
+    reset: () => ipcRenderer.invoke(IPC.settingsReset),
     onUpdated: (callback: (settings: AppSettings) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, settings: AppSettings): void => callback(settings)
       ipcRenderer.on(IPC.settingsUpdated, listener)
@@ -57,9 +57,6 @@ const dashboardDesktopApi: DashboardDesktopApi = {
   },
   themes: {
     syncVsCode: () => ipcRenderer.invoke(IPC.themeSyncVsCode)
-  },
-  analytics: {
-    history: (): Promise<UsageHistory> => ipcRenderer.invoke(IPC.analyticsHistory)
   },
   deepseek: {
     status: () => ipcRenderer.invoke(IPC.deepseekCredentialStatus),

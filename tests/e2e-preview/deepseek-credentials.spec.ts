@@ -11,10 +11,10 @@ test('manages the DeepSeek credential source from the preview settings', async (
 
   const sourceControl = panel.locator('.settings-control').filter({ hasText: 'DeepSeek credential source' })
   await expect(sourceControl.locator('.settings-select__trigger')).toHaveText('Automatic')
-  await expect(panel.getByText('Harness account', { exact: true })).toBeVisible()
+  await expect(panel.getByRole('term').filter({ hasText: 'Harness account' })).toBeVisible()
   await expect(panel.getByText('Detected')).toBeVisible()
   await expect(panel.getByText('Not saved')).toBeVisible()
-  await expect(page.getByTestId('provider-settings-status')).toContainText('Disabled in widget')
+  await expect(page.getByTestId('provider-settings-status')).toContainText('Connected')
 
   await sourceControl.locator('.settings-select__trigger').click()
   await page.getByRole('option', { name: 'API key' }).click()
@@ -50,11 +50,12 @@ test('manages the DeepSeek credential source from the preview settings', async (
   ).toHaveText('Automatic')
 })
 
-test('enables DeepSeek and keeps showing the balance and active source', async ({ page }) => {
-  await page.goto(WIDGET_PROVIDERS_PATH)
-  const row = page.locator('.provider-setting').filter({ hasText: 'DeepSeek' })
-  await row.locator('.settings-switch').click()
+test('keeps enabled DeepSeek visible with its balance and active source', async ({ page }) => {
+  await page.goto(PROVIDERS_PATH)
   await expect(page.getByRole('checkbox', { name: 'Disable DeepSeek' })).toBeChecked()
+
+  await page.goto(WIDGET_PROVIDERS_PATH)
+  await expect(page.getByRole('checkbox', { name: 'Hide DeepSeek in widget' })).toBeChecked()
 
   await page.goto(DASHBOARD_PATH)
   const card = page.getByRole('article', { name: 'DeepSeek' })

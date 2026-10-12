@@ -46,5 +46,6 @@ describe('provider usage display', () => {
     expect(PROVIDER_USAGE_LIMITS.claude.map(({ id }) => id)).toEqual(['session', 'weekly'])
     expect(PROVIDER_USAGE_LIMITS.antigravity.map(({ id }) => id)).toEqual(['gemini', 'partner', 'prompt-credits', 'flow-credits'])
     expect(PROVIDER_USAGE_LIMITS.deepseek.map(({ id }) => id)).toEqual(['balance-usd', 'balance-cny'])
+    expect(PROVIDER_USAGE_LIMITS.huggingface.map(({ id }) => id)).toEqual(['balance-usd'])
   })
 })

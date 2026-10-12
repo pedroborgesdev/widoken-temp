@@ -3,11 +3,9 @@ import { join } from 'node:path'
 import { IPC } from '@shared/ipc'
 import type { ProviderView } from '@shared/provider'
 import type { AppSettings } from '@shared/settings'
-import { AnalyticsService } from '../analytics/AnalyticsService'
 import { DeepSeekCredentialService } from '../credentials/DeepSeekCredentialService'
 import { ProviderCredentialRepository, repositoryApiKeyStore } from '../credentials/ProviderCredentialRepository'
 import { safeStorageCodec } from '../credentials/safeStorageCodec'
-import { registerAnalyticsIpc } from '../ipc/analytics.ipc'
 import { registerDeepSeekCredentialsIpc } from '../ipc/deepseekCredentials.ipc'
 import { registerOverlayIpc } from '../ipc/overlay.ipc'
 import { registerProvidersIpc } from '../ipc/providers.ipc'
@@ -17,9 +15,9 @@ import { createProviderRegistry } from '../providers/registry'
 import { SettingsRepository } from '../settings/SettingsRepository'
 import { DashboardWindowManager } from '../windows/DashboardWindowManager'
 import { WidgetWindowManager } from '../windows/WidgetWindowManager'
+import { completeInitialWidgetProviderDiscovery, hideProvidersUntilInitialDiscovery } from './initialWidgetProviderDiscovery'
 
 export class AppController {
-  private analyticsService: AnalyticsService | undefined
   private credentialRepository: ProviderCredentialRepository | undefined
   private providerManager: ProviderManager | undefined
   private widgetWindows: WidgetWindowManager | undefined
@@ -28,10 +26,15 @@ export class AppController {
   async start(): Promise<void> {
     const userDataPath = app.getPath('userData')
     const settingsRepository = new SettingsRepository(join(userDataPath, 'settings.json'))
-    const settings = await settingsRepository.get()
-    const analyticsDatabasePath = join(userDataPath, 'analytics.sqlite')
-    const analyticsService = new AnalyticsService(analyticsDatabasePath)
-    const credentialRepository = new ProviderCredentialRepository(analyticsDatabasePath, { codec: safeStorageCodec })
+    let settings = await settingsRepository.get()
+    if (!settings.widgetProviderDiscoveryCompleted) {
+      settings = await settingsRepository.update({
+        providers: hideProvidersUntilInitialDiscovery(settings).providers
+      })
+    }
+    // The sqlite file keeps its historical name; it now stores only credentials.
+    const credentialsDatabasePath = join(userDataPath, 'analytics.sqlite')
+    const credentialRepository = new ProviderCredentialRepository(credentialsDatabasePath, { codec: safeStorageCodec })
     const widgetWindows = new WidgetWindowManager(settingsRepository)
     const dashboardWindows = new DashboardWindowManager(
       settingsRepository,
@@ -41,20 +44,21 @@ export class AppController {
     const providerManager = new ProviderManager(
       createProviderRegistry({
         deepSeekStatePath: join(userDataPath, 'deepseek-balance.json'),
-        deepSeekApiKeys: repositoryApiKeyStore(credentialRepository)
+        deepSeekApiKeys: repositoryApiKeyStore(credentialRepository),
+        huggingFaceStatePath: join(userDataPath, 'huggingface-balance.json'),
+        huggingFaceScriptRoot: app.isPackaged
+          ? join(process.resourcesPath, 'huggingface')
+          : join(app.getAppPath(), 'resources', 'huggingface')
       }),
-      (providers) => this.publishProviders(providers),
-      analyticsService
+      (providers) => this.publishProviders(providers)
     )
 
-    this.analyticsService = analyticsService
     this.credentialRepository = credentialRepository
     this.widgetWindows = widgetWindows
     this.dashboardWindows = dashboardWindows
     this.providerManager = providerManager
 
     registerOverlayIpc(widgetWindows)
-    registerAnalyticsIpc(analyticsService)
     registerProvidersIpc(providerManager)
     registerDeepSeekCredentialsIpc(new DeepSeekCredentialService(credentialRepository), providerManager)
     registerSettingsIpc(
@@ -69,10 +73,13 @@ export class AppController {
       (updatedSettings) => this.applySettings(updatedSettings)
     )
 
-    providerManager.start(settings.providers, settings.refreshIntervalSeconds, settings.analytics.localInsights)
+    providerManager.start(settings.providers, settings.refreshIntervalSeconds)
     app.setLoginItemSettings({ openAtLogin: settings.launchAtStartup })
     await widgetWindows.applySettings(settings)
-    if (!settings.widget.enabled || settings.openDashboardAtStartup) await dashboardWindows.open()
+    if (!settings.widget.enabled) await dashboardWindows.open()
+    if (!settings.widgetProviderDiscoveryCompleted) {
+      void this.finishInitialWidgetProviderDiscovery(settingsRepository, providerManager)
+    }
   }
 
   async handleSecondInstance(): Promise<void> {
@@ -83,17 +90,36 @@ export class AppController {
     this.providerManager?.stop()
     this.dashboardWindows?.destroy()
     await this.widgetWindows?.destroy()
-    this.analyticsService?.close()
     this.credentialRepository?.close()
     this.providerManager = undefined
     this.dashboardWindows = undefined
     this.widgetWindows = undefined
-    this.analyticsService = undefined
     this.credentialRepository = undefined
   }
 
   private async applySettings(settings: AppSettings): Promise<AppSettings> {
     return (await this.widgetWindows?.applySettings(settings)) ?? settings
+  }
+
+  private async finishInitialWidgetProviderDiscovery(
+    settingsRepository: SettingsRepository,
+    providerManager: ProviderManager
+  ): Promise<void> {
+    try {
+      const providers = await providerManager.refresh()
+      const current = await settingsRepository.get()
+      if (current.widgetProviderDiscoveryCompleted) return
+
+      const discovered = completeInitialWidgetProviderDiscovery(current, providers)
+      const updated = await settingsRepository.update({
+        providers: discovered.providers,
+        widgetProviderDiscoveryCompleted: true
+      })
+      providerManager.configure(updated.providers, updated.refreshIntervalSeconds)
+      await this.applySettings(updated)
+    } catch (error) {
+      console.warn('Failed to complete initial widget provider discovery:', error)
+    }
   }
 
   private publishProviders(providers: ProviderView[]): void {

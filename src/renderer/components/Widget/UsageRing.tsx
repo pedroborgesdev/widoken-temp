@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { clampPercent, getUsageSeverity, type ProviderStatus, type UsageLimit } from '@shared/provider'
 
 interface UsageRingProps {
@@ -17,34 +18,73 @@ function severityClass(limit: UsageLimit): string {
   return `usage-ring__value--${getUsageSeverity(clampPercent(limit.percent))}`
 }
 
+function joinStopClass(limit: UsageLimit, side: 'left' | 'right'): string {
+  return `usage-ring__join-stop usage-ring__join-stop--${side} usage-ring__join-stop--${getUsageSeverity(clampPercent(limit.percent))}`
+}
+
 export function UsageRing({ active = false, usages, status }: UsageRingProps): React.JSX.Element {
+  const joinGradientId = `usage-ring-join-${useId().replaceAll(':', '')}`
   const isConnected = status === 'connected'
   const split = isConnected && usages.length === 2
+  const left = split ? usages.find(({ side }) => side === 'left') : undefined
+  const right = split ? usages.find(({ side }) => side === 'right') : undefined
+  const leftPercent = left ? clampPercent(left.limit.percent) : 0
+  const rightPercent = right ? clampPercent(right.limit.percent) : 0
+  const joinedAtStart = Boolean(left && right && leftPercent > 0 && rightPercent > 0)
+  const joinedAtEnd = Boolean(left && right && leftPercent === 100 && rightPercent === 100)
+  const sameColor = Boolean(
+    joinedAtStart &&
+    left &&
+    right &&
+    getUsageSeverity(leftPercent) === getUsageSeverity(rightPercent)
+  )
+  const singleLimit = !split && isConnected ? usages[0]?.limit : undefined
+  const singlePercent = singleLimit ? clampPercent(singleLimit.percent) : undefined
 
   return (
-    <svg className={`usage-ring${active ? ' usage-ring--active' : ''}${split ? ' usage-ring--split' : ''}`} viewBox="0 0 28 28" aria-hidden="true">
+    <svg className={`usage-ring${active ? ' usage-ring--active' : ''}${split ? ' usage-ring--split' : ''}${sameColor ? ' usage-ring--same-color' : ''}`} viewBox="0 0 28 28" aria-hidden="true">
       <circle className="usage-ring__track" cx="14" cy="14" r={RADIUS} />
-      {split ? usages.map(({ limit, side }) => (
-        <path
-          key={side}
-          className={`usage-ring__value usage-ring__value--${side} ${severityClass(limit)}`}
-          d={side === 'left'
-            ? 'M 14 1.5 A 12.5 12.5 0 0 0 14 26.5'
-            : 'M 14 1.5 A 12.5 12.5 0 0 1 14 26.5'}
-          pathLength="100"
-          strokeDasharray={`${clampPercent(limit.percent)} 100`}
-        />
-      )) : (
+      {joinedAtStart && left && right ? (
+        <>
+          <defs>
+            <linearGradient id={joinGradientId} x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" className={joinStopClass(left.limit, 'left')} />
+              <stop offset="0.5" className={joinStopClass(left.limit, 'left')} />
+              <stop offset="0.5" className={joinStopClass(right.limit, 'right')} />
+              <stop offset="1" className={joinStopClass(right.limit, 'right')} />
+            </linearGradient>
+          </defs>
+          <circle className="usage-ring__join" cx="14" cy="1.5" r="1.5" fill={`url(#${joinGradientId})`} />
+          {joinedAtEnd ? <circle className="usage-ring__join" cx="14" cy="26.5" r="1.5" fill={`url(#${joinGradientId})`} /> : null}
+        </>
+      ) : null}
+      {split ? usages.map(({ limit, side }) => {
+        const percent = clampPercent(limit.percent)
+        // Keep empty arcs out of the SVG so cap rendering can never create a
+        // phantom endpoint at the bottom of a split usage ring.
+        if (percent === 0) return null
+        return (
+          <path
+            key={side}
+            className={`usage-ring__value usage-ring__value--${side} ${severityClass(limit)}`}
+            d={side === 'left'
+              ? 'M 14 1.5 A 12.5 12.5 0 0 0 14 26.5'
+              : 'M 14 1.5 A 12.5 12.5 0 0 1 14 26.5'}
+            pathLength="100"
+            strokeDasharray={`${percent} 100`}
+          />
+        )
+      }) : singlePercent === 0 ? null : (
         <g transform="rotate(-90 14 14)">
           <circle
-            className={isConnected && usages[0]
-              ? `usage-ring__value ${severityClass(usages[0].limit)}`
-              : 'usage-ring__value usage-ring__value--muted'}
+            className={singleLimit
+              ? `usage-ring__value usage-ring__value--single ${severityClass(singleLimit)}`
+              : 'usage-ring__value usage-ring__value--single usage-ring__value--muted'}
             cx="14"
             cy="14"
             r={RADIUS}
             strokeDasharray={CIRCUMFERENCE}
-            strokeDashoffset={CIRCUMFERENCE * (1 - (isConnected && usages[0] ? clampPercent(usages[0].limit.percent) : 18) / 100)}
+            strokeDashoffset={CIRCUMFERENCE * (1 - (singlePercent ?? 18) / 100)}
           />
         </g>
       )}

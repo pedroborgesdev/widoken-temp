@@ -1,5 +1,5 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
-import type { ProviderSetting } from '@shared/settings'
+import { providerVisibleInWidget, type ProviderSetting } from '@shared/settings'
 import { providerLogos, providerName } from '../../utils/providerBranding'
 import { SettingsSection, SettingsToggle } from './SettingsControls'
 
@@ -92,18 +92,22 @@ export function ProviderSettingsList({
   }
 
   return (
-    <SettingsSection title="Providers" description="Drag the handle to change the order in the widget.">
+    <SettingsSection
+      title="Providers"
+      description="Choose what appears in the widget and drag to reorder. Collection is managed separately under Providers."
+    >
       <div className="grid border-t border-overlay-track">
         {ordered.map((provider) => {
           const name = providerName(provider.id)
+          const visible = providerVisibleInWidget(provider)
           return (
             <div
-              className={`provider-setting relative flex min-h-14 flex-wrap items-center gap-3 border-b border-overlay-track py-2 transition-[opacity,transform] duration-[120ms] ${draggedId === provider.id ? 'scale-[0.985] opacity-[0.38]' : ''} ${dropPosition?.id === provider.id && dropPosition.edge === 'before' ? 'before:absolute before:inset-x-0 before:top-[-1px] before:h-0.5 before:rounded-full before:bg-overlay-blue before:content-[""]' : ''} ${dropPosition?.id === provider.id && dropPosition.edge === 'after' ? 'after:absolute after:inset-x-0 after:bottom-[-1px] after:h-0.5 after:rounded-full after:bg-overlay-blue after:content-[""]' : ''}`}
+              className={`provider-setting relative flex min-h-14 flex-wrap items-center gap-3 border-b border-overlay-track py-2 transition-[opacity,transform] duration-[120ms] ${!provider.enabled ? 'opacity-60' : ''} ${draggedId === provider.id ? 'scale-[0.985] opacity-[0.38]' : ''} ${dropPosition?.id === provider.id && dropPosition.edge === 'before' ? 'before:absolute before:inset-x-0 before:top-[-1px] before:h-0.5 before:rounded-full before:bg-overlay-blue before:content-[""]' : ''} ${dropPosition?.id === provider.id && dropPosition.edge === 'after' ? 'after:absolute after:inset-x-0 after:bottom-[-1px] after:h-0.5 after:rounded-full after:bg-overlay-blue after:content-[""]' : ''}`}
               key={provider.id}
               data-provider-id={provider.id}
             >
               <button
-                className="grid h-8 w-5 shrink-0 cursor-grab touch-none place-content-center gap-[3px] rounded-[5px] opacity-60 transition-[background-color,opacity] duration-[120ms] [grid-template-columns:repeat(2,3px)] [grid-auto-rows:3px] hover:bg-overlay-hover hover:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-overlay-blue active:cursor-grabbing"
+                className="provider-setting__drag-handle grid h-8 w-5 shrink-0 cursor-grab touch-none place-content-center gap-[3px] rounded-[5px] opacity-60 transition-[background-color,opacity] duration-[120ms] [grid-template-columns:repeat(2,3px)] [grid-auto-rows:3px] hover:bg-overlay-hover hover:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-overlay-blue active:cursor-grabbing"
                 type="button"
                 aria-label={`Drag ${name} to reorder`}
                 aria-pressed={draggedId === provider.id}
@@ -116,16 +120,21 @@ export function ProviderSettingsList({
               >
                 <span className="size-[3px] rounded-full bg-overlay-muted" /><span className="size-[3px] rounded-full bg-overlay-muted" /><span className="size-[3px] rounded-full bg-overlay-muted" /><span className="size-[3px] rounded-full bg-overlay-muted" /><span className="size-[3px] rounded-full bg-overlay-muted" /><span className="size-[3px] rounded-full bg-overlay-muted" />
               </button>
-              <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-overlay-elevated" aria-hidden="true">
+              <span className="provider-setting__icon-shell grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-overlay-elevated" aria-hidden="true">
                 <img className="block size-6 object-contain" src={providerLogos[provider.id]} alt="" draggable={false} />
               </span>
-              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="provider-setting__identity flex min-w-0 flex-1 flex-col gap-0.5">
                 <strong className="truncate text-sm font-medium text-overlay-strong">{name}</strong>
-                <span className="text-[12.5px] text-overlay-muted">{provider.enabled ? 'Visible in widget' : 'Hidden'}</span>
+                <span className="text-[12.5px] text-overlay-muted">
+                  {!provider.enabled ? 'Disabled in Providers' : visible ? 'Visible in widget' : 'Hidden from widget'}
+                </span>
               </span>
               <SettingsToggle
-                checked={provider.enabled}
-                label={`${provider.enabled ? 'Disable' : 'Enable'} ${name}`}
+                checked={visible}
+                disabled={!provider.enabled}
+                label={provider.enabled
+                  ? `${visible ? 'Hide' : 'Show'} ${name} in widget`
+                  : `${name} is disabled in Providers`}
                 onChange={() => onToggle(provider.id)}
               />
             </div>

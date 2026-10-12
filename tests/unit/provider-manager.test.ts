@@ -50,6 +50,38 @@ describe('ProviderManager', () => {
     manager.stop()
   })
 
+  it('continues collecting a globally enabled provider hidden from the widget', async () => {
+    const getUsage = vi.fn(async (): Promise<ProviderSnapshot> => ({
+      providerId: 'hidden',
+      status: 'connected',
+      limits: [],
+      lastUpdatedAt: new Date().toISOString()
+    }))
+    const adapter: ProviderAdapter = {
+      id: 'hidden',
+      name: 'Hidden',
+      connect: async () => undefined,
+      disconnect: async () => undefined,
+      isConnected: async () => true,
+      getUsage
+    }
+    const manager = new ProviderManager(new Map([['hidden', adapter]]), () => undefined)
+
+    manager.configure([{
+      id: 'hidden',
+      enabled: true,
+      visibleInWidget: false,
+      order: 0,
+      usageDisplay
+    }], 30)
+
+    await expect(manager.refresh()).resolves.toMatchObject([
+      { id: 'hidden', snapshot: { status: 'connected' } }
+    ])
+    expect(getUsage).toHaveBeenCalledOnce()
+    manager.stop()
+  })
+
   it('refreshes providers enabled while an older refresh is still running', async () => {
     vi.useFakeTimers()
     let finishFirst!: () => void
@@ -127,6 +159,40 @@ describe('ProviderManager', () => {
     active = false
     await vi.advanceTimersByTimeAsync(750)
     expect(onUpdate.mock.calls.at(-1)?.[0]).toMatchObject([{ activity: 'idle' }])
+    manager.stop()
+  })
+
+  it('keeps an active provider stable through a transient activity probe failure', async () => {
+    vi.useFakeTimers()
+    let fails = false
+    const adapter: ProviderAdapter = {
+      id: 'active',
+      name: 'Active',
+      connect: async () => undefined,
+      disconnect: async () => undefined,
+      isConnected: async () => true,
+      isActive: async () => {
+        if (fails) throw new Error('temporary read failure')
+        return true
+      },
+      getUsage: async () => ({
+        providerId: 'active',
+        status: 'connected',
+        limits: [],
+        lastUpdatedAt: new Date().toISOString()
+      })
+    }
+    const onUpdate = vi.fn()
+    const manager = new ProviderManager(new Map([['active', adapter]]), onUpdate)
+    manager.start([{ id: 'active', enabled: true, order: 0, usageDisplay }], 30)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(manager.list()[0]?.activity).toBe('active')
+
+    fails = true
+    await vi.advanceTimersByTimeAsync(750)
+    expect(manager.list()[0]?.activity).toBe('active')
+    await vi.advanceTimersByTimeAsync(5_250)
+    expect(manager.list()[0]?.activity).toBe('idle')
     manager.stop()
   })
 

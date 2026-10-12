@@ -108,41 +108,46 @@ export const Widget = forwardRef<HTMLDivElement, WidgetProps>(function Widget(
 
     widgetAnimation.current?.cancel()
     const horizontal = orientation === 'horizontal'
+    // A parked board is held in the edge by a transform on this same element, so
+    // the keyframes fold that offset in. The entry/removal animation still plays
+    // in full, but it springs around the parked position instead of replacing the
+    // tuck and pulling the board back out of the edge.
+    const parkedX = collapsedEdge ? collapseX : 0
+    const parkedY = collapsedEdge ? collapseY : 0
+    const frame = (x: number, y: number, scaleX: number, scaleY = scaleX): string =>
+      `translate3d(${x + parkedX}px, ${y + parkedY}px, 0) scale(${scaleX}, ${scaleY})`
+    // Only the peek at the screen edge is visible while parked, so fading it would
+    // read as the whole widget flickering rather than as feedback. Keep the sliver
+    // solid and let the spring carry the animation.
+    const enterOpacity = collapsedEdge ? 1 : 0.68
+    const exitOpacity = collapsedEdge ? 1 : 0.78
     const keyframes: Keyframe[] = added
       ? [
           {
-            opacity: 0.68,
-            transform: horizontal
-              ? 'translate3d(-8px, 0, 0) scale(0.9, 0.96)'
-              : 'translate3d(0, -8px, 0) scale(0.96, 0.9)'
+            opacity: enterOpacity,
+            transform: horizontal ? frame(-8, 0, 0.9, 0.96) : frame(0, -8, 0.96, 0.9)
           },
           {
             opacity: 1,
             offset: 0.58,
-            transform: horizontal
-              ? 'translate3d(2px, 0, 0) scale(1.035, 1.01)'
-              : 'translate3d(0, 2px, 0) scale(1.01, 1.035)'
+            transform: horizontal ? frame(2, 0, 1.035, 1.01) : frame(0, 2, 1.01, 1.035)
           },
-          { opacity: 1, offset: 0.78, transform: 'translate3d(0, 0, 0) scale(0.992)' },
-          { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' }
+          { opacity: 1, offset: 0.78, transform: frame(0, 0, 0.992) },
+          { opacity: 1, transform: frame(0, 0, 1) }
         ]
       : [
-          { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' },
+          { opacity: 1, transform: frame(0, 0, 1) },
           {
-            opacity: 0.78,
+            opacity: exitOpacity,
             offset: 0.38,
-            transform: horizontal
-              ? 'translate3d(-3px, 0, 0) scale(0.94, 1.025)'
-              : 'translate3d(0, -3px, 0) scale(1.025, 0.94)'
+            transform: horizontal ? frame(-3, 0, 0.94, 1.025) : frame(0, -3, 1.025, 0.94)
           },
           {
             opacity: 1,
             offset: 0.74,
-            transform: horizontal
-              ? 'translate3d(2px, 0, 0) scale(1.018, 0.99)'
-              : 'translate3d(0, 2px, 0) scale(0.99, 1.018)'
+            transform: horizontal ? frame(2, 0, 1.018, 0.99) : frame(0, 2, 0.99, 1.018)
           },
-          { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' }
+          { opacity: 1, transform: frame(0, 0, 1) }
         ]
 
     const animation = visualRef.current.animate(keyframes, {
@@ -156,7 +161,7 @@ export const Widget = forwardRef<HTMLDivElement, WidgetProps>(function Widget(
       animation.cancel()
       widgetAnimation.current = undefined
     }).catch(() => undefined)
-  }, [orientation, providerIdsSignature])
+  }, [collapseX, collapseY, collapsedEdge, orientation, providerIdsSignature])
 
   return (
     <div

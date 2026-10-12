@@ -39,18 +39,46 @@ describe('CodexActivityProbe', () => {
     await appendFile(path, `${JSON.stringify({ type: 'event_msg', payload: { type: 'token_count' } })}\n`)
     await expect(probe.isActive(now)).resolves.toBe(true)
     await appendFile(path, event('task_complete'))
-    await expect(probe.isActive(now)).resolves.toBe(false)
+    await expect(probe.isActive(now)).resolves.toBe(true)
+    await expect(probe.isActive(now + 5_001)).resolves.toBe(false)
+  })
+
+  it('bridges short idle gaps between consecutive Codex task phases', async () => {
+    const now = Date.now()
+    const { path, root } = await rolloutFile(now)
+    await writeFile(path, event('task_started'))
+    const probe = new CodexActivityProbe(root)
+
+    await expect(probe.isActive(now)).resolves.toBe(true)
+    await appendFile(path, event('task_complete'))
+    await expect(probe.isActive(now + 1_000)).resolves.toBe(true)
+    await appendFile(path, event('task_started'))
+    await expect(probe.isActive(now + 4_000)).resolves.toBe(true)
+    await appendFile(path, event('task_complete'))
+    await expect(probe.isActive(now + 5_000)).resolves.toBe(true)
+    await expect(probe.isActive(now + 10_001)).resolves.toBe(false)
   })
 
   it('accepts the v2 turn names and expires abandoned rollouts', async () => {
     const now = Date.now()
     const { path, root } = await rolloutFile(now)
     await writeFile(path, event('turn_started'))
-    const probe = new CodexActivityProbe(root, 1_000)
+    const probe = new CodexActivityProbe(root, 1_000, 0)
 
     await expect(probe.isActive(now)).resolves.toBe(true)
     const staleDate = new Date(now - 2_000)
     await utimes(path, staleDate, staleDate)
     await expect(probe.isActive(now)).resolves.toBe(false)
+  })
+
+  it('finds a resumed thread even when its rollout lives in an older date directory', async () => {
+    const now = Date.now()
+    const threeDaysAgo = now - 3 * 24 * 60 * 60 * 1_000
+    const { path, root } = await rolloutFile(threeDaysAgo)
+    await writeFile(path, event('task_started'))
+    const current = new Date(now)
+    await utimes(path, current, current)
+
+    await expect(new CodexActivityProbe(root).isActive(now)).resolves.toBe(true)
   })
 })

@@ -1,6 +1,6 @@
 // Run from the repository root, with `vite --config vite.web.config.ts --port 5199` already up.
 // node assets/readme/image-gen/capture.mjs
-// Writes the final widget captures plus source/dashboard-raw.png for dashboard composition.
+// Writes the final widget and provider-settings captures.
 import { mkdir, readFile } from 'node:fs/promises'
 import { chromium } from '@playwright/test'
 
@@ -95,34 +95,8 @@ function fakeApi({ settings, providers }) {
       snapshot: { providerId: provider.id, lastUpdatedAt: new Date().toISOString(), limits: [], ...provider.snapshot }
     }))
 
-  const dayKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-  const days = Array.from({ length: 31 }, (_, index) => {
-    const date = new Date()
-    date.setHours(12, 0, 0, 0)
-    date.setDate(date.getDate() - (30 - index))
-    return dayKey(date)
-  })
-  const wave = (seed, scale) => days.flatMap((day, index) => {
-    const weekday = new Date(`${day}T12:00:00`).getDay()
-    if ((index * 7 + seed) % 11 === 0) return []
-    const quota = Math.round(Math.max(0, Math.sin((index + seed) / 3.1) * 0.5 + 0.7) * scale * (weekday === 0 || weekday === 6 ? 0.35 : 1) * 10) / 10
-    return quota > 0.4 ? [{ day, amount: quota, quota }] : []
-  })
-  const series = [
-    ['claude', 'session', 9, 14],
-    ['claude', 'weekly', 4, 6],
-    ['openai', 'primary', 2, 11],
-    ['cursor', 'auto', 6, 9],
-    ['antigravity', 'gemini', 1, 7]
-  ].map(([providerId, limitId, seed, scale]) => {
-    const points = wave(seed, scale)
-    const total = Math.round(points.reduce((sum, point) => sum + point.quota, 0) * 10) / 10
-    return { providerId, limitId, unit: 'percent', total, totalQuota: total, lastActivityAt: minutes(-(seed * 13)), points }
-  })
-  const since = new Date()
-  since.setDate(since.getDate() - 74)
-
   let current = settings
+  let hasDeepSeekApiKey = false
   const settingsListeners = new Set()
   const api = {
     overlay: {
@@ -142,7 +116,6 @@ function fakeApi({ settings, providers }) {
           ...current,
           ...patch,
           widget: { ...current.widget, ...patch.widget },
-          analytics: { ...current.analytics, ...patch.analytics },
           providers: patch.providers ?? current.providers
         }
         settingsListeners.forEach((listener) => listener(structuredClone(current)))
@@ -162,7 +135,29 @@ function fakeApi({ settings, providers }) {
       onNavigate: () => () => {}
     },
     themes: { syncVsCode: async () => { throw new Error('preview') } },
-    analytics: { history: async () => ({ days, series, since: since.toISOString() }) },
+    deepseek: {
+      status: async () => ({
+        storedApiKeyConfigured: hasDeepSeekApiKey,
+        environmentApiKeyAvailable: false,
+        harnessAccountAvailable: true
+      }),
+      saveApiKey: async () => {
+        hasDeepSeekApiKey = true
+        return {
+          storedApiKeyConfigured: true,
+          environmentApiKeyAvailable: false,
+          harnessAccountAvailable: true
+        }
+      },
+      clearApiKey: async () => {
+        hasDeepSeekApiKey = false
+        return {
+          storedApiKeyConfigured: false,
+          environmentApiKeyAvailable: false,
+          harnessAccountAvailable: true
+        }
+      }
+    },
     app: { quit: async () => {} }
   }
   window.widgetDesktop = api
@@ -174,7 +169,9 @@ const providerSettings = (overrides = {}) => [
   { id: 'openai', enabled: true, order: 1, usageDisplay: { split: true, primaryLimitId: 'primary', secondaryLimitId: 'secondary' } },
   { id: 'cursor', enabled: true, order: 2, usageDisplay: { split: true, primaryLimitId: 'auto', secondaryLimitId: 'api' } },
   { id: 'antigravity', enabled: true, order: 3, usageDisplay: { split: true, primaryLimitId: 'gemini', secondaryLimitId: 'partner' } },
-  { id: 'copilot', enabled: false, order: 4, usageDisplay: { split: true, primaryLimitId: 'premium_interactions', secondaryLimitId: 'chat' } }
+  { id: 'copilot', enabled: true, visibleInWidget: false, order: 4, usageDisplay: { split: true, primaryLimitId: 'premium_interactions', secondaryLimitId: 'chat' } },
+  { id: 'deepseek', enabled: true, visibleInWidget: false, order: 5, usageDisplay: { split: true, primaryLimitId: 'balance-usd', secondaryLimitId: 'balance-cny' }, credentialSource: 'auto' },
+  { id: 'huggingface', enabled: true, visibleInWidget: false, order: 6, usageDisplay: { split: false, primaryLimitId: 'balance-usd' }, huggingFaceBrowser: 'auto' }
 ].map((provider) => ({ ...provider, ...overrides[provider.id] }))
 
 const baseSettings = (widget = {}, providers = {}) => ({
@@ -196,11 +193,9 @@ const baseSettings = (widget = {}, providers = {}) => ({
     verticalPosition: 0.5,
     ...widget
   },
-  analytics: { localInsights: true },
   providers: providerSettings(providers),
   refreshIntervalSeconds: 45,
   launchAtStartup: true,
-  openDashboardAtStartup: false,
   dashboardFollowsWidgetTheme: false
 })
 
@@ -218,14 +213,7 @@ const baseProviders = (activity = {}) => [
         { id: 'session', label: 'Current session', percent: 38, resetsAt: '+134' },
         { id: 'weekly', label: 'Weekly limit', percent: 64, resetsAt: '+3950' }
       ],
-      analytics: {
-        listPrice: price(100),
-        trends: [
-          { limitId: 'session', observedSince: '2026-09-01', consumedLast24Hours: 21, burnRatePerHour: 6.4, estimatedExhaustionAt: '+580' },
-          { limitId: 'weekly', observedSince: '2026-09-01', averageDailyConsumption: 9, projectedPercentAtReset: 88 }
-        ],
-        localMetrics: [{ label: 'Messages today', value: '142' }, { label: 'Projects', value: '6' }]
-      }
+      listPrice: price(100)
     }
   },
   {
@@ -239,14 +227,7 @@ const baseProviders = (activity = {}) => [
         { id: 'primary', label: '5 hour window', percent: 22, resetsAt: '+212' },
         { id: 'secondary', label: 'Weekly window', percent: 47, resetsAt: '+6100' }
       ],
-      analytics: {
-        listPrice: price(20),
-        trends: [
-          { limitId: 'primary', observedSince: '2026-09-01', consumedLast24Hours: 12, burnRatePerHour: 2.1 },
-          { limitId: 'secondary', observedSince: '2026-09-01', averageDailyConsumption: 6, projectedPercentAtReset: 71 }
-        ],
-        localMetrics: [{ label: 'Codex turns today', value: '38' }]
-      }
+      listPrice: price(20)
     }
   },
   {
@@ -260,11 +241,7 @@ const baseProviders = (activity = {}) => [
         { id: 'auto', label: 'Cursor Models', percent: 81, resetsAt: '+15800', used: 405, limit: 500 },
         { id: 'api', label: 'Other Models', percent: 35, resetsAt: '+15800' }
       ],
-      analytics: {
-        listPrice: price(20),
-        trends: [{ limitId: 'auto', observedSince: '2026-09-01', consumedLast24Hours: 7, averageDailyConsumption: 4, estimatedExhaustionAt: '+6800' }],
-        localMetrics: [{ label: 'Agent requests today', value: '57' }]
-      }
+      listPrice: price(20)
     }
   },
   {
@@ -278,14 +255,7 @@ const baseProviders = (activity = {}) => [
         { id: 'gemini', label: 'Gemini models', percent: 44, resetsAt: '+2860' },
         { id: 'partner', label: 'Partner models', percent: 27, resetsAt: '+2860' }
       ],
-      analytics: {
-        listPrice: price(20),
-        trends: [
-          { limitId: 'gemini', observedSince: '2026-09-01', consumedLast24Hours: 15, averageDailyConsumption: 7, projectedPercentAtReset: 76 },
-          { limitId: 'partner', observedSince: '2026-09-01', consumedLast24Hours: 8, averageDailyConsumption: 4, projectedPercentAtReset: 49 }
-        ],
-        localMetrics: [{ label: 'Agent turns today', value: '46' }]
-      }
+      listPrice: price(20)
     }
   },
   {
@@ -299,7 +269,7 @@ const baseProviders = (activity = {}) => [
         { id: 'premium_interactions', label: 'Premium requests', percent: 56, resetsAt: '+15800', used: 168, limit: 300 },
         { id: 'chat', label: 'Chat requests', percent: 12, resetsAt: '+15800' }
       ],
-      analytics: { listPrice: price(10), trends: [{ limitId: 'premium_interactions', observedSince: '2026-09-01', averageDailyConsumption: 3 }] }
+      listPrice: price(10)
     }
   }
 ]
@@ -444,19 +414,6 @@ const shots = {
     await context.close()
   },
 
-  async dashboard(browser) {
-    const viewport = { width: 1180, height: 760 }
-    const { page, context } = await openPage(browser, {
-      path: '/dashboard.html?page=dashboard',
-      viewport,
-      scale: 2,
-      wallpaper: false,
-      settings: baseSettings(),
-      providers: baseProviders({ claude: 'active' })
-    })
-    await page.screenshot({ path: `${SOURCE}/dashboard-raw.png` })
-    await context.close()
-  }
 }
 
 await mkdir(OUT, { recursive: true })

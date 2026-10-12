@@ -5,10 +5,12 @@ import {
   DEFAULT_SETTINGS,
   APP_THEMES,
   CREDENTIAL_SOURCES,
+  HUGGING_FACE_BROWSERS,
   clampHorizontalPosition,
   clampVerticalPosition,
   type AppSettings,
   type CredentialSource,
+  type HuggingFaceBrowser,
   type ProviderSetting,
   type ProviderUsageDisplay,
   type SettingsPatch,
@@ -67,6 +69,10 @@ function sanitizeCredentialSource(value: unknown): CredentialSource {
   return CREDENTIAL_SOURCES.includes(value as CredentialSource) ? value as CredentialSource : 'auto'
 }
 
+function sanitizeHuggingFaceBrowser(value: unknown): HuggingFaceBrowser {
+  return HUGGING_FACE_BROWSERS.includes(value as HuggingFaceBrowser) ? value as HuggingFaceBrowser : 'auto'
+}
+
 function sanitizeProviders(value: unknown): ProviderSetting[] {
   if (!Array.isArray(value)) return DEFAULT_SETTINGS.providers
 
@@ -77,18 +83,23 @@ function sanitizeProviders(value: unknown): ProviderSetting[] {
     if (typeof item.id !== 'string' || !PROVIDER_IDS.has(item.id) || seen.has(item.id)) return []
     seen.add(item.id)
     const fallback = DEFAULT_SETTINGS.providers.find((provider) => provider.id === item.id)!
+    const enabled = item.enabled !== false
     const setting: ProviderSetting = {
       id: item.id,
-      enabled: item.enabled !== false,
+      enabled,
+      visibleInWidget: enabled && (typeof item.visibleInWidget === 'boolean'
+        ? item.visibleInWidget
+        : item.enabled !== false),
       order: Number.isFinite(item.order) ? Number(item.order) : index,
       usageDisplay: sanitizeProviderUsage(item.id, item.usageDisplay, fallback.usageDisplay)
     }
     if (item.id === 'deepseek') setting.credentialSource = sanitizeCredentialSource(item.credentialSource)
+    if (item.id === 'huggingface') setting.huggingFaceBrowser = sanitizeHuggingFaceBrowser(item.huggingFaceBrowser)
     return [setting]
   })
 
   for (const fallback of DEFAULT_SETTINGS.providers) {
-    if (!seen.has(fallback.id)) providers.push({ ...fallback })
+    if (!seen.has(fallback.id)) providers.push({ ...fallback, visibleInWidget: false })
   }
 
   return providers.sort((a, b) => a.order - b.order).map((provider, order) => ({ ...provider, order }))
@@ -142,13 +153,15 @@ function sanitizeSettings(value: unknown): AppSettings {
       candidate.display && Number.isFinite(candidate.display.id)
         ? { id: Number(candidate.display.id) }
         : undefined,
-    analytics: {
-      localInsights: candidate.analytics?.localInsights === true
-    },
     providers: sanitizeProviders(candidate.providers),
+    // A settings file without this field belongs to an existing installation.
+    // Only a genuinely missing settings file receives DEFAULT_SETTINGS with a
+    // pending first-run discovery.
+    widgetProviderDiscoveryCompleted: typeof candidate.widgetProviderDiscoveryCompleted === 'boolean'
+      ? candidate.widgetProviderDiscoveryCompleted
+      : true,
     refreshIntervalSeconds: Number.isFinite(refresh) ? Math.min(3600, Math.max(30, refresh)) : 45,
-    launchAtStartup: candidate.launchAtStartup === true,
-    openDashboardAtStartup: candidate.openDashboardAtStartup === true,
+    launchAtStartup: candidate.launchAtStartup !== false,
     dashboardFollowsWidgetTheme: candidate.dashboardFollowsWidgetTheme === true
   }
 }
@@ -177,10 +190,22 @@ export class SettingsRepository {
       ...current,
       ...patch,
       widget: { ...current.widget, ...patch.widget },
-      analytics: { ...current.analytics, ...patch.analytics },
       providers: patch.providers ?? current.providers
     }
     this.cache = sanitizeSettings(merged)
+    await this.persist(this.cache)
+    return structuredClone(this.cache)
+  }
+
+  async reset(): Promise<AppSettings> {
+    const current = await this.get()
+    // Widget discovery is an installation step rather than a user preference, so
+    // a reset keeps it settled: replaying it would hide every provider again on
+    // the next launch.
+    this.cache = sanitizeSettings({
+      ...structuredClone(DEFAULT_SETTINGS),
+      widgetProviderDiscoveryCompleted: current.widgetProviderDiscoveryCompleted
+    })
     await this.persist(this.cache)
     return structuredClone(this.cache)
   }

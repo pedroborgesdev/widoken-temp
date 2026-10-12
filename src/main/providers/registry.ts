@@ -5,6 +5,8 @@ import { ClaudeProviderAdapter } from './ClaudeProviderAdapter'
 import { GitHubCopilotProviderAdapter } from './GitHubCopilotProviderAdapter'
 import { AntigravityProviderAdapter } from './AntigravityProviderAdapter'
 import { DeepSeekProviderAdapter, type DeepSeekApiKeyStore } from './DeepSeekProviderAdapter'
+import { HuggingFaceProviderAdapter } from './HuggingFaceProviderAdapter'
+import { HuggingFacePythonBridge } from './HuggingFacePythonBridge'
 import type { ProviderAdapter } from './ProviderAdapter'
 
 const inMinutes = (minutes: number): string => new Date(Date.now() + minutes * 60_000).toISOString()
@@ -55,6 +57,11 @@ function createTestRegistry(): Map<string, ProviderAdapter> {
       name: 'DeepSeek',
       plan: 'Harness',
       limits: [{ id: 'balance-usd', label: 'USD balance', currency: 'USD', percent: 50, used: 5, limit: 10, remaining: 5 }]
+    }),
+    new MockProviderAdapter({
+      id: 'huggingface',
+      name: 'Hugging Face',
+      limits: [{ id: 'balance-usd', label: 'USD balance', currency: 'USD', percent: 25, used: 5, limit: 20, remaining: 15 }]
     })
   ]
   return new Map(adapters.map((adapter) => [adapter.id, adapter]))
@@ -63,6 +70,8 @@ function createTestRegistry(): Map<string, ProviderAdapter> {
 export interface ProviderRegistryOptions {
   deepSeekStatePath?: string
   deepSeekApiKeys?: DeepSeekApiKeyStore
+  huggingFaceStatePath?: string
+  huggingFaceScriptRoot?: string
 }
 
 export function createProviderRegistry(options: ProviderRegistryOptions = {}): Map<string, ProviderAdapter> {
@@ -77,6 +86,10 @@ export function createProviderRegistry(options: ProviderRegistryOptions = {}): M
     new DeepSeekProviderAdapter({
       statePath: options.deepSeekStatePath,
       apiKeys: options.deepSeekApiKeys
+    }),
+    new HuggingFaceProviderAdapter({
+      statePath: options.huggingFaceStatePath,
+      collector: new HuggingFacePythonBridge({ scriptRoot: options.huggingFaceScriptRoot })
     })
   ]
 

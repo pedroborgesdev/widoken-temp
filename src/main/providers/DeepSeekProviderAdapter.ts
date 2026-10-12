@@ -1,10 +1,12 @@
 import { promises as fs } from 'node:fs'
-import { dirname } from 'node:path'
+import { dirname, join } from 'node:path'
 import type { ProviderAuthSource, ProviderSnapshot, UsageLimit } from '@shared/provider'
 import type { CredentialSource, ProviderSetting } from '@shared/settings'
 import type { ProviderAdapter } from './ProviderAdapter'
+import { DeepSeekActivityProbe } from './DeepSeekActivityProbe'
 import {
   HARNESS_SUMMARY_ENDPOINT,
+  harnessDataRoot,
   harnessHeaders,
   parsePlatformSummary,
   platformResponseCode,
@@ -180,10 +182,12 @@ export class DeepSeekProviderAdapter implements ProviderAdapter {
   private preferred: ProviderAuthSource = 'harness-account'
   private readonly fetchImpl: typeof fetch
   private readonly env: NodeJS.ProcessEnv
+  private readonly activityProbe: DeepSeekActivityProbe
 
   constructor(private readonly options: DeepSeekAdapterOptions = {}) {
     this.fetchImpl = options.fetchImpl ?? fetch
     this.env = options.env ?? process.env
+    this.activityProbe = new DeepSeekActivityProbe(join(harnessDataRoot(this.env), 'sessions'))
   }
 
   configure(setting: ProviderSetting): void {
@@ -203,6 +207,11 @@ export class DeepSeekProviderAdapter implements ProviderAdapter {
 
   async isConnected(): Promise<boolean> {
     return this.connected
+  }
+
+  async isActive(): Promise<boolean> {
+    if (!this.connected || this.mode === 'api-key') return false
+    return this.activityProbe.isActive()
   }
 
   async getUsage(): Promise<ProviderSnapshot> {

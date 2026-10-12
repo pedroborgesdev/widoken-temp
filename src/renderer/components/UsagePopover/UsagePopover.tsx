@@ -1,8 +1,8 @@
 import { forwardRef } from 'react'
-import type { ProviderView, UsageTrend } from '@shared/provider'
+import type { ProviderView } from '@shared/provider'
 import { displayedUsageLimits } from '@shared/providerUsage'
 import type { DockSide, ProviderUsageDisplay } from '@shared/settings'
-import { amountDescription, listPriceDescription, percentDescription, readableName, relativeFuture, resetDescription } from '../../utils/usageFormat'
+import { amountDescription, listPriceDescription, percentDescription, readableName, resetDescription } from '../../utils/usageFormat'
 import { UnavailablePopover } from './UnavailablePopover'
 import { UsageBar } from './UsageBar'
 
@@ -17,28 +17,6 @@ function updateDescription(value: string): string {
     second: '2-digit'
   }).format(updated)
   return `Updated at ${formatted}`
-}
-
-function TrendDetails({ trend }: { trend?: UsageTrend }): React.JSX.Element {
-  if (!trend) return <p className="usage-popover__trend">Collecting usage history</p>
-  const primary = [
-    trend.consumedLast24Hours === undefined ? undefined : `24h +${trend.consumedLast24Hours}%`,
-    trend.averageDailyConsumption === undefined ? undefined : `avg ${trend.averageDailyConsumption}%/day`,
-    trend.burnRatePerHour === undefined ? undefined : `${trend.burnRatePerHour}%/h`
-  ].filter(Boolean)
-  const forecast = [
-    trend.estimatedExhaustionAt ? `full ${relativeFuture(trend.estimatedExhaustionAt)}` : undefined,
-    trend.projectedPercentAtReset === undefined ? undefined : `${trend.projectedPercentAtReset}% at reset`
-  ].filter(Boolean)
-  if (primary.length === 0 && forecast.length === 0) {
-    return <p className="usage-popover__trend">Collecting usage history</p>
-  }
-  return (
-    <div className="usage-popover__trend">
-      {primary.length > 0 && <span>{primary.join(' · ')}</span>}
-      {forecast.length > 0 && <span>{forecast.join(' · ')}</span>}
-    </div>
-  )
 }
 
 interface UsagePopoverProps {
@@ -79,8 +57,8 @@ export const UsagePopover = forwardRef<HTMLDivElement, UsagePopoverProps>(functi
           {(provider.snapshot.plan || provider.snapshot.isUnlimited) && (
             <div className="usage-popover__metadata">
               {provider.snapshot.plan && <span>{readableName(provider.snapshot.plan)} plan</span>}
-              {provider.snapshot.analytics?.listPrice && (
-                <span>{listPriceDescription(provider.snapshot.analytics.listPrice)}</span>
+              {provider.snapshot.listPrice && (
+                <span>{listPriceDescription(provider.snapshot.listPrice)}</span>
               )}
               {provider.snapshot.isUnlimited && <strong>Unlimited</strong>}
             </div>
@@ -88,7 +66,6 @@ export const UsagePopover = forwardRef<HTMLDivElement, UsagePopoverProps>(functi
           <div className="usage-popover__limits">
             {provider.snapshot.limits.map((limit) => {
               const amount = amountDescription(limit)
-              const trend = provider.snapshot.analytics?.trends.find((candidate) => candidate.limitId === limit.id)
               return (
                 <div className="usage-popover__limit" key={limit.id}>
                   <div className="usage-popover__heading">
@@ -107,24 +84,10 @@ export const UsagePopover = forwardRef<HTMLDivElement, UsagePopoverProps>(functi
                   {!limit.unlimited && <UsageBar percent={limit.percent} />}
                   {amount && <p className="usage-popover__amount">{amount}</p>}
                   <p className="usage-popover__reset">{resetDescription(limit.resetsAt)}</p>
-                  <TrendDetails trend={trend} />
                 </div>
               )
             })}
           </div>
-          {provider.snapshot.analytics?.localMetrics && provider.snapshot.analytics.localMetrics.length > 0 && (
-            <div className="usage-popover__local">
-              <strong>Local analytics</strong>
-              <dl>
-                {provider.snapshot.analytics.localMetrics.map((metric) => (
-                  <div key={metric.label}>
-                    <dt>{metric.label}</dt>
-                    <dd>{metric.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          )}
           <p className="usage-popover__updated">{updateDescription(provider.snapshot.lastUpdatedAt)}</p>
         </div>
       ) : (

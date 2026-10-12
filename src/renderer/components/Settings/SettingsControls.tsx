@@ -60,25 +60,28 @@ export function SettingsRange({
 
 export function SettingsToggle({
   checked,
+  disabled = false,
   label,
   onChange
 }: {
   checked: boolean
+  disabled?: boolean
   label: string
   onChange: (checked: boolean) => void
 }): React.JSX.Element {
   return (
-    <span className="settings-switch relative inline-flex h-5 w-[34px] shrink-0 cursor-pointer">
+    <span className={`settings-switch relative inline-flex h-5 w-[34px] shrink-0 ${disabled ? 'cursor-not-allowed opacity-45' : 'cursor-pointer'}`}>
       <input
-        className="settings-switch__input peer absolute inset-0 z-[1] m-0 size-full cursor-pointer opacity-0"
+        className={`settings-switch__input peer absolute inset-0 z-[1] m-0 size-full opacity-0 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         type="checkbox"
         checked={checked}
+        disabled={disabled}
         aria-label={label}
         onChange={(event) => onChange(event.target.checked)}
       />
       <span
         aria-hidden="true"
-        className="absolute inset-0 rounded-full border border-overlay-track bg-overlay-hover transition-[background-color,border-color] duration-[140ms] peer-checked:border-overlay-blue peer-checked:bg-overlay-blue peer-focus-visible:outline peer-focus-visible:outline-1 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-overlay-blue after:absolute after:top-[3px] after:left-[3px] after:size-3 after:rounded-full after:bg-overlay-muted after:transition-[background-color,transform] after:duration-[160ms] after:ease-[cubic-bezier(0.2,0.85,0.3,1.15)] after:content-[''] peer-checked:after:translate-x-[14px] peer-checked:after:bg-(--color-settings-accent-foreground)"
+        className="absolute inset-0 rounded-full border border-overlay-track bg-overlay-hover transition-[background-color,border-color] duration-[140ms] peer-checked:border-overlay-blue peer-checked:bg-overlay-blue peer-focus-visible:outline peer-focus-visible:outline-1 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-overlay-blue peer-disabled:border-overlay-track peer-disabled:bg-overlay-elevated after:absolute after:top-[3px] after:left-[3px] after:size-3 after:rounded-full after:bg-overlay-muted after:transition-[background-color,transform] after:duration-[160ms] after:ease-[cubic-bezier(0.2,0.85,0.3,1.15)] after:content-[''] peer-checked:after:translate-x-[14px] peer-checked:after:bg-(--color-settings-accent-foreground)"
       />
     </span>
   )

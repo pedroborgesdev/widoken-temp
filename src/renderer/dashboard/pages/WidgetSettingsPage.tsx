@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowsRotate } from '@fortawesome/free-solid-svg-icons'
 import type { WidgetSettingsSection } from '@shared/dashboard'
 import type { ProviderView } from '@shared/provider'
-import type { AppSettings, DockSide, ProviderUsageDisplay, SettingsPatch } from '@shared/settings'
+import { providerVisibleInWidget, type AppSettings, type DockSide, type ProviderUsageDisplay, type SettingsPatch } from '@shared/settings'
 import { ProviderSettingsList } from '../../components/Settings/ProviderSettingsList'
 import { SettingsCheckbox, SettingsRange, SettingsSection } from '../../components/Settings/SettingsControls'
 import { SettingsSelect } from '../../components/Settings/SettingsSelect'
@@ -43,7 +43,9 @@ export function WidgetSettingsPage({
   const toggleProvider = (id: string): void => {
     onUpdate({
       providers: settings.providers.map((provider) =>
-        provider.id === id ? { ...provider, enabled: !provider.enabled } : provider
+        provider.id === id && provider.enabled
+          ? { ...provider, visibleInWidget: !providerVisibleInWidget(provider) }
+          : provider
       )
     })
   }

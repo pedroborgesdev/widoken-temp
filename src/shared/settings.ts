@@ -49,12 +49,17 @@ export interface ProviderUsageDisplay {
 export const CREDENTIAL_SOURCES = ['auto', 'harness-account', 'api-key'] as const
 export type CredentialSource = (typeof CREDENTIAL_SOURCES)[number]
 
+export const HUGGING_FACE_BROWSERS = ['auto', 'chrome', 'chromium', 'firefox', 'brave', 'edge'] as const
+export type HuggingFaceBrowser = (typeof HUGGING_FACE_BROWSERS)[number]
+
 export interface ProviderSetting {
   id: string
   enabled: boolean
+  visibleInWidget?: boolean
   order: number
   usageDisplay: ProviderUsageDisplay
   credentialSource?: CredentialSource
+  huggingFaceBrowser?: HuggingFaceBrowser
 }
 
 export interface AppSettings {
@@ -79,13 +84,10 @@ export interface AppSettings {
   display?: {
     id: number
   }
-  analytics: {
-    localInsights: boolean
-  }
   providers: ProviderSetting[]
+  widgetProviderDiscoveryCompleted: boolean
   refreshIntervalSeconds: number
   launchAtStartup: boolean
-  openDashboardAtStartup: boolean
   dashboardFollowsWidgetTheme: boolean
 }
 
@@ -107,31 +109,32 @@ export const DEFAULT_SETTINGS: AppSettings = {
     side: 'left',
     verticalPosition: 0.42
   },
-  analytics: {
-    localInsights: false
-  },
   providers: [
-    { id: 'claude', enabled: true, order: 0, usageDisplay: { split: true, primaryLimitId: 'session', secondaryLimitId: 'weekly' } },
-    { id: 'openai', enabled: true, order: 1, usageDisplay: { split: true, primaryLimitId: 'primary', secondaryLimitId: 'secondary' } },
-    { id: 'cursor', enabled: true, order: 2, usageDisplay: { split: true, primaryLimitId: 'auto', secondaryLimitId: 'api' } },
-    { id: 'antigravity', enabled: true, order: 3, usageDisplay: { split: true, primaryLimitId: 'gemini', secondaryLimitId: 'partner' } },
-    { id: 'copilot', enabled: false, order: 4, usageDisplay: { split: true, primaryLimitId: 'premium_interactions', secondaryLimitId: 'chat' } },
-    { id: 'deepseek', enabled: false, order: 5, usageDisplay: { split: true, primaryLimitId: 'balance-usd', secondaryLimitId: 'balance-cny' }, credentialSource: 'auto' }
+    { id: 'claude', enabled: true, visibleInWidget: true, order: 0, usageDisplay: { split: true, primaryLimitId: 'session', secondaryLimitId: 'weekly' } },
+    { id: 'openai', enabled: true, visibleInWidget: true, order: 1, usageDisplay: { split: true, primaryLimitId: 'primary', secondaryLimitId: 'secondary' } },
+    { id: 'cursor', enabled: true, visibleInWidget: true, order: 2, usageDisplay: { split: true, primaryLimitId: 'auto', secondaryLimitId: 'api' } },
+    { id: 'antigravity', enabled: true, visibleInWidget: true, order: 3, usageDisplay: { split: true, primaryLimitId: 'gemini', secondaryLimitId: 'partner' } },
+    { id: 'copilot', enabled: true, visibleInWidget: true, order: 4, usageDisplay: { split: true, primaryLimitId: 'premium_interactions', secondaryLimitId: 'chat' } },
+    { id: 'deepseek', enabled: true, visibleInWidget: true, order: 5, usageDisplay: { split: true, primaryLimitId: 'balance-usd', secondaryLimitId: 'balance-cny' }, credentialSource: 'auto' },
+    { id: 'huggingface', enabled: true, visibleInWidget: true, order: 6, usageDisplay: { split: false, primaryLimitId: 'balance-usd' }, huggingFaceBrowser: 'auto' }
   ],
+  widgetProviderDiscoveryCompleted: false,
   refreshIntervalSeconds: 45,
-  launchAtStartup: false,
-  openDashboardAtStartup: false,
+  launchAtStartup: true,
   dashboardFollowsWidgetTheme: false
 }
 
 export type SettingsPatch = Partial<Pick<
   AppSettings,
-  'refreshIntervalSeconds' | 'launchAtStartup' | 'openDashboardAtStartup' | 'dashboardFollowsWidgetTheme'
+  'widgetProviderDiscoveryCompleted' | 'refreshIntervalSeconds' | 'launchAtStartup' | 'dashboardFollowsWidgetTheme'
 >> & {
   widget?: Partial<AppSettings['widget']>
-  analytics?: Partial<AppSettings['analytics']>
   providers?: ProviderSetting[]
   display?: { id: number }
+}
+
+export function providerVisibleInWidget(provider: ProviderSetting): boolean {
+  return provider.enabled && provider.visibleInWidget !== false
 }
 
 export function clampVerticalPosition(value: number): number {

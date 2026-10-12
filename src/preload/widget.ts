@@ -20,6 +20,7 @@ const IPC = {
   providersUpdated: 'providers:updated',
   settingsGet: 'settings:get',
   settingsUpdate: 'settings:update',
+  settingsReset: 'settings:reset',
   settingsUpdated: 'settings:updated',
   dashboardWindowOpen: 'dashboard-window:open',
   dashboardWindowState: 'dashboard-window:state'
@@ -67,6 +68,7 @@ const widgetDesktopApi: WidgetDesktopApi = {
   settings: {
     get: () => ipcRenderer.invoke(IPC.settingsGet),
     update: (patch: SettingsPatch) => ipcRenderer.invoke(IPC.settingsUpdate, patch),
+    reset: () => ipcRenderer.invoke(IPC.settingsReset),
     onUpdated: (callback: (settings: AppSettings) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, settings: AppSettings): void => callback(settings)
       ipcRenderer.on(IPC.settingsUpdated, listener)

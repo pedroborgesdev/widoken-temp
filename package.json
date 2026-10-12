@@ -77,6 +77,13 @@
       {
         "from": "resources/widoken.png",
         "to": "widoken.png"
+      },
+      {
+        "from": "resources/huggingface",
+        "to": "huggingface",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "linux": {
