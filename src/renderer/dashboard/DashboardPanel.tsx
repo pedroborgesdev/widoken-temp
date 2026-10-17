@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faCircleNotch,
@@ -91,9 +91,12 @@ export function DashboardPanel({
   const providersOpen = route.page === 'providers'
 
   const widgetSection = widgetOpen && isWidgetSection(route.section) ? route.section : lastWidgetSection
-  if (widgetSection !== lastWidgetSection) setLastWidgetSection(widgetSection)
   const providerSection = providersOpen && isProviderSection(route.section) ? route.section : lastProviderSection
-  if (providerSection !== lastProviderSection) setLastProviderSection(providerSection)
+
+  useEffect(() => {
+    if (widgetOpen && isWidgetSection(route.section)) setLastWidgetSection(route.section)
+    if (providersOpen && isProviderSection(route.section)) setLastProviderSection(route.section)
+  }, [providersOpen, route.section, widgetOpen])
 
   const openWidgetSection = (section: WidgetSettingsSection): void => onNavigate({ page: 'widget', section })
   const openProviderSection = (section: ProviderSettingsSection): void => onNavigate({ page: 'providers', section })

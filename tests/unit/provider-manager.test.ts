@@ -7,6 +7,170 @@ afterEach(() => vi.useRealTimers())
 const usageDisplay = { split: false }
 
 describe('ProviderManager', () => {
+  it('does not claim idle activity when an adapter has no activity probe', () => {
+    const adapter: ProviderAdapter = {
+      id: 'quota-only',
+      name: 'Quota only',
+      connect: async () => undefined,
+      disconnect: async () => undefined,
+      isConnected: async () => true,
+      getUsage: async () => ({
+        providerId: 'quota-only',
+        status: 'connected',
+        limits: [],
+        lastUpdatedAt: new Date().toISOString()
+      })
+    }
+    const manager = new ProviderManager(new Map([[adapter.id, adapter]]), () => undefined)
+
+    manager.configure([{ id: adapter.id, enabled: true, order: 0, usageDisplay }], 30)
+
+    expect(manager.list()[0]).not.toHaveProperty('activity')
+    manager.stop()
+  })
+
+  it('connects and disconnects adapters as provider settings change', async () => {
+    const connect = vi.fn(async () => undefined)
+    const disconnect = vi.fn(async () => undefined)
+    const adapter: ProviderAdapter = {
+      id: 'lifecycle',
+      name: 'Lifecycle',
+      connect,
+      disconnect,
+      isConnected: async () => true,
+      getUsage: async () => ({
+        providerId: 'lifecycle',
+        status: 'connected',
+        limits: [],
+        lastUpdatedAt: new Date().toISOString()
+      })
+    }
+    const manager = new ProviderManager(new Map([[adapter.id, adapter]]), () => undefined)
+
+    manager.configure([{ id: adapter.id, enabled: true, order: 0, usageDisplay }], 30)
+    manager.configure([{ id: adapter.id, enabled: false, order: 0, usageDisplay }], 30)
+    manager.configure([{ id: adapter.id, enabled: true, order: 0, usageDisplay }], 30)
+    await Promise.resolve()
+
+    expect(connect).toHaveBeenCalledTimes(2)
+    expect(disconnect).toHaveBeenCalledTimes(1)
+    manager.stop()
+  })
+
+  it('does not restart quota polling when an in-flight refresh finishes after stop', async () => {
+    vi.useFakeTimers()
+    let finishRefresh!: () => void
+    const adapter: ProviderAdapter = {
+      id: 'slow',
+      name: 'Slow',
+      connect: async () => undefined,
+      disconnect: async () => undefined,
+      isConnected: async () => true,
+      getUsage: async () => {
+        await new Promise<void>((resolve) => { finishRefresh = resolve })
+        return {
+          providerId: 'slow',
+          status: 'connected' as const,
+          limits: [],
+          lastUpdatedAt: new Date().toISOString()
+        }
+      }
+    }
+    const manager = new ProviderManager(new Map([[adapter.id, adapter]]), () => undefined)
+
+    manager.start([{ id: adapter.id, enabled: true, order: 0, usageDisplay }], 30)
+    await vi.advanceTimersByTimeAsync(0)
+    manager.stop()
+    finishRefresh()
+    await vi.runAllTimersAsync()
+
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('does not let an older overlapping refresh overwrite a newer snapshot', async () => {
+    let finishFirst!: (snapshot: ProviderSnapshot) => void
+    let markFirstStarted!: () => void
+    const firstStarted = new Promise<void>((resolve) => { markFirstStarted = resolve })
+    let calls = 0
+    const adapter: ProviderAdapter = {
+      id: 'overlap',
+      name: 'Overlap',
+      connect: async () => undefined,
+      disconnect: async () => undefined,
+      isConnected: async () => true,
+      getUsage: async () => {
+        calls += 1
+        if (calls === 1) {
+          markFirstStarted()
+          return new Promise<ProviderSnapshot>((resolve) => { finishFirst = resolve })
+        }
+        return {
+          providerId: 'overlap',
+          status: 'connected',
+          limits: [{ id: 'quota', label: 'Quota', percent: 20 }],
+          lastUpdatedAt: '2026-10-14T12:00:01.000Z'
+        }
+      }
+    }
+    const manager = new ProviderManager(new Map([[adapter.id, adapter]]), () => undefined)
+    manager.configure([{ id: adapter.id, enabled: true, order: 0, usageDisplay }], 30)
+
+    const older = manager.refresh(adapter.id)
+    await firstStarted
+    const newer = manager.refresh(adapter.id)
+    finishFirst({
+      providerId: adapter.id,
+      status: 'connected',
+      limits: [{ id: 'quota', label: 'Quota', percent: 10 }],
+      lastUpdatedAt: '2026-10-14T12:00:00.000Z'
+    })
+    await Promise.all([older, newer])
+
+    expect(manager.list()[0]?.snapshot.limits[0]?.percent).toBe(20)
+    manager.stop()
+  })
+
+  it('keeps the full refresh cadence after a targeted refresh', async () => {
+    vi.useFakeTimers()
+    const firstUsage = vi.fn(async () => ({
+      providerId: 'first',
+      status: 'connected' as const,
+      limits: [],
+      lastUpdatedAt: new Date().toISOString()
+    }))
+    const secondUsage = vi.fn(async () => ({
+      providerId: 'second',
+      status: 'connected' as const,
+      limits: [],
+      lastUpdatedAt: new Date().toISOString()
+    }))
+    const adapter = (id: string, getUsage: ProviderAdapter['getUsage']): ProviderAdapter => ({
+      id,
+      name: id,
+      connect: async () => undefined,
+      disconnect: async () => undefined,
+      isConnected: async () => true,
+      getUsage
+    })
+    const manager = new ProviderManager(new Map([
+      ['first', adapter('first', firstUsage)],
+      ['second', adapter('second', secondUsage)]
+    ]), () => undefined)
+    manager.start([
+      { id: 'first', enabled: true, order: 0, usageDisplay },
+      { id: 'second', enabled: true, order: 1, usageDisplay }
+    ], 30)
+    await vi.advanceTimersByTimeAsync(0)
+
+    await vi.advanceTimersByTimeAsync(20_000)
+    await manager.refresh('first')
+    await vi.advanceTimersByTimeAsync(10_000)
+
+    expect(firstUsage).toHaveBeenCalledTimes(3)
+    expect(secondUsage).toHaveBeenCalledTimes(2)
+    manager.stop()
+  })
+
   it('publishes newly enabled providers immediately without waiting for a refresh', () => {
     vi.useFakeTimers()
     const adapter: ProviderAdapter = {

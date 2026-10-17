@@ -47,6 +47,43 @@ describe('widget lifecycle settings', () => {
     expect(updated.display).toEqual({ id: 42 })
     expect(reloaded.display).toEqual({ id: 42 })
   })
+
+  it('keeps the default position when older settings omit position fields', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'widoken-settings-'))
+    temporaryDirectories.push(directory)
+    const path = join(directory, 'settings.json')
+    await writeFile(path, JSON.stringify({ widget: { theme: 'dark' } }))
+
+    const settings = await new SettingsRepository(path).get()
+
+    expect(settings.widget.horizontalPosition).toBe(DEFAULT_SETTINGS.widget.horizontalPosition)
+    expect(settings.widget.verticalPosition).toBe(DEFAULT_SETTINGS.widget.verticalPosition)
+  })
+
+  it('uses defaults instead of coercing null numeric settings to zero', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'widoken-settings-'))
+    temporaryDirectories.push(directory)
+    const path = join(directory, 'settings.json')
+    await writeFile(path, JSON.stringify({
+      refreshIntervalSeconds: null,
+      widget: {
+        horizontalPosition: null,
+        verticalPosition: null,
+        itemGap: null,
+        scale: null,
+        shadowOpacity: null
+      }
+    }))
+
+    const settings = await new SettingsRepository(path).get()
+
+    expect(settings.refreshIntervalSeconds).toBe(DEFAULT_SETTINGS.refreshIntervalSeconds)
+    expect(settings.widget.horizontalPosition).toBe(DEFAULT_SETTINGS.widget.horizontalPosition)
+    expect(settings.widget.verticalPosition).toBe(DEFAULT_SETTINGS.widget.verticalPosition)
+    expect(settings.widget.itemGap).toBe(DEFAULT_SETTINGS.widget.itemGap)
+    expect(settings.widget.scale).toBe(DEFAULT_SETTINGS.widget.scale)
+    expect(settings.widget.shadowOpacity).toBe(DEFAULT_SETTINGS.widget.shadowOpacity)
+  })
 })
 
 describe('general settings', () => {
@@ -70,6 +107,25 @@ describe('general settings', () => {
     const sanitized = await new SettingsRepository(path).get()
     expect(sanitized.launchAtStartup).toBe(true)
     expect(sanitized.dashboardFollowsWidgetTheme).toBe(false)
+  })
+
+  it('serializes concurrent updates without losing unrelated fields', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'widoken-settings-'))
+    temporaryDirectories.push(directory)
+    const path = join(directory, 'settings.json')
+    const repository = new SettingsRepository(path)
+    await repository.get()
+
+    await Promise.all([
+      repository.update({ widget: { theme: 'dracula' } }),
+      repository.update({ widget: { itemGap: 14 } }),
+      repository.update({ refreshIntervalSeconds: 300 })
+    ])
+
+    const settings = await new SettingsRepository(path).get()
+    expect(settings.widget.theme).toBe('dracula')
+    expect(settings.widget.itemGap).toBe(14)
+    expect(settings.refreshIntervalSeconds).toBe(300)
   })
 })
 

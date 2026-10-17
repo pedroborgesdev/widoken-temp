@@ -106,6 +106,7 @@ describe('ProviderCredentialRepository', () => {
     await expect(repository.setSecret(DEEPSEEK_PROVIDER_ID, '   ')).rejects.toBeInstanceOf(CredentialValidationError)
     await expect(repository.setSecret(DEEPSEEK_PROVIDER_ID, 42)).rejects.toBeInstanceOf(CredentialValidationError)
     await expect(repository.setSecret(DEEPSEEK_PROVIDER_ID, 'a'.repeat(4097))).rejects.toBeInstanceOf(CredentialValidationError)
+    await expect(repository.setSecret(DEEPSEEK_PROVIDER_ID, 'key\r\ninjected')).rejects.toBeInstanceOf(CredentialValidationError)
     expect(normalizeCredentialSecret('  trimmed  ')).toBe('trimmed')
     repository.close()
   })

@@ -34,6 +34,9 @@ export function normalizeCredentialSecret(value: unknown, maxLength = MAX_CREDEN
   if (trimmed.length > maxLength) {
     throw new CredentialValidationError(`API key cannot exceed ${maxLength} characters.`)
   }
+  if (/[\u0000-\u001f\u007f]/.test(trimmed)) {
+    throw new CredentialValidationError('API key cannot contain control characters.')
+  }
   return trimmed
 }
 

@@ -187,4 +187,30 @@ describe('VS Code theme discovery', () => {
       extensionRoots: []
     })).rejects.toThrow('Missing Theme')
   })
+
+  it('does not follow theme paths outside the selected extension', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'widoken-vscode-escaped-theme-'))
+    temporaryDirectories.push(root)
+    const configurationRoot = join(root, 'Code')
+    const extensionRoot = join(root, 'extensions')
+    const extension = join(extensionRoot, 'escaped.theme-1.0.0')
+    await mkdir(join(configurationRoot, 'User'), { recursive: true })
+    await mkdir(extension, { recursive: true })
+    await writeFile(join(configurationRoot, 'User', 'settings.json'), JSON.stringify({
+      'workbench.colorTheme': 'Escaped Theme'
+    }))
+    await writeFile(join(extension, 'package.json'), JSON.stringify({
+      contributes: {
+        themes: [{ label: 'Escaped Theme', path: '../../outside.json', uiTheme: 'vs-dark' }]
+      }
+    }))
+    await writeFile(join(root, 'outside.json'), JSON.stringify({
+      colors: { 'editor.background': '#000000' }
+    }))
+
+    await expect(syncVsCodeTheme({
+      configurationRoots: [configurationRoot],
+      extensionRoots: [extensionRoot]
+    })).rejects.toThrow(/inside its extension/i)
+  })
 })

@@ -48,7 +48,11 @@ function ProviderStatusSummary({ providerView, enabled }: { providerView?: Provi
   const plan = providerView?.snapshot.plan
   const error = providerView?.snapshot.error
   const lastUpdatedAt = providerView?.snapshot.lastUpdatedAt
-  const activity = providerView?.activity === 'active' ? 'Working now' : 'Idle'
+  const activity = providerView?.activity === 'active'
+    ? 'Working now'
+    : providerView?.activity === 'idle'
+      ? 'Idle'
+      : 'Not available'
   const statusStyle = STATUS_STYLES[status]
   const updated = lastUpdatedAt && new Date(lastUpdatedAt).getTime() > 0
     ? new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date(lastUpdatedAt))

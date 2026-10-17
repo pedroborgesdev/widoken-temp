@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs'
 import type { Dirent } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join, posix, resolve, win32 } from 'node:path'
+import { dirname, isAbsolute, join, posix, relative, resolve, sep, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { SyncedThemeColors, SyncedVsCodeTheme } from '@shared/settings'
 
@@ -365,14 +365,32 @@ function contributionMatches(contribution: ThemeContribution, selectedTheme: str
     .some((value) => value.trim().toLocaleLowerCase() === normalized)
 }
 
-async function loadThemeFile(path: string, visited = new Set<string>()): Promise<JsonObject> {
+function isInside(root: string, path: string): boolean {
+  const child = relative(root, path)
+  return child === '' || (!isAbsolute(child) && child !== '..' && !child.startsWith(`..${sep}`))
+}
+
+async function loadThemeFile(path: string, root: string, visited = new Set<string>()): Promise<JsonObject> {
   const absolutePath = resolve(path)
-  if (visited.has(absolutePath)) return {}
-  visited.add(absolutePath)
-  const theme = await readJsonObject(absolutePath)
-  if (!theme) throw new Error(`The VS Code theme file could not be read: ${absolutePath}`)
+  let canonicalPath: string
+  let canonicalRoot: string
+  try {
+    ;[canonicalPath, canonicalRoot] = await Promise.all([
+      fs.realpath(absolutePath),
+      fs.realpath(resolve(root))
+    ])
+  } catch {
+    throw new Error(`The VS Code theme file could not be read: ${absolutePath}`)
+  }
+  if (!isInside(canonicalRoot, canonicalPath)) {
+    throw new Error('The VS Code theme file must stay inside its extension directory.')
+  }
+  if (visited.has(canonicalPath)) return {}
+  visited.add(canonicalPath)
+  const theme = await readJsonObject(canonicalPath)
+  if (!theme) throw new Error(`The VS Code theme file could not be read: ${canonicalPath}`)
   const inherited = typeof theme.include === 'string'
-    ? await loadThemeFile(resolve(dirname(absolutePath), theme.include), visited)
+    ? await loadThemeFile(resolve(dirname(canonicalPath), theme.include), canonicalRoot, visited)
     : {}
   return {
     ...inherited,
@@ -513,7 +531,10 @@ export async function syncVsCodeTheme(options: VsCodeThemeSyncOptions = {}): Pro
     throw new Error(`VS Code theme “${name}” is active, but its theme file was not found.`)
   }
 
-  const theme = await loadThemeFile(resolve(candidate.extensionPath, candidate.contribution.path))
+  const theme = await loadThemeFile(
+    resolve(candidate.extensionPath, candidate.contribution.path),
+    candidate.extensionPath
+  )
   const baseColors = isObject(theme.colors) ? theme.colors : {}
   const customColors = scopedCustomizations(settings['workbench.colorCustomizations'], name)
   const uiTheme = candidate.contribution.uiTheme ?? ''

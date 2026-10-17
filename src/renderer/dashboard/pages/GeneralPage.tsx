@@ -73,7 +73,7 @@ export function GeneralPage({ settings, onUpdate, onReset }: GeneralPageProps): 
               <span className="grid min-w-0 flex-1 gap-0.5">
                 <strong className="text-[13.5px] font-medium text-overlay-strong">Reset to defaults</strong>
                 <small className="text-[12.5px] leading-[1.4] text-overlay-muted">
-                  Restore every app, widget, and provider setting. Saved credentials and usage history are kept.
+                  Restore every app, widget, and provider setting. Saved credentials are kept.
                 </small>
               </span>
               {confirmingReset ? (

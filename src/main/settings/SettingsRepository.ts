@@ -37,9 +37,15 @@ const THEME_COLOR_KEYS = [
 ] as const satisfies readonly (keyof SyncedThemeColors)[]
 const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i
 
-function clampNumber(value: unknown, minimum: number, maximum: number, fallback: number): number {
+function finiteNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) return undefined
   const number = Number(value)
-  return Number.isFinite(number) ? Math.min(maximum, Math.max(minimum, number)) : fallback
+  return Number.isFinite(number) ? number : undefined
+}
+
+function clampNumber(value: unknown, minimum: number, maximum: number, fallback: number): number {
+  const number = finiteNumber(value)
+  return number === undefined ? fallback : Math.min(maximum, Math.max(minimum, number))
 }
 
 function sanitizeProviderUsage(
@@ -125,7 +131,7 @@ function sanitizeSyncedTheme(value: unknown): SyncedVsCodeTheme | undefined {
 function sanitizeSettings(value: unknown): AppSettings {
   const candidate = value && typeof value === 'object' ? (value as Partial<AppSettings>) : {}
   const widget = candidate.widget && typeof candidate.widget === 'object' ? candidate.widget : DEFAULT_SETTINGS.widget
-  const refresh = Number(candidate.refreshIntervalSeconds)
+  const refresh = finiteNumber(candidate.refreshIntervalSeconds)
   const vscodeTheme = sanitizeSyncedTheme(widget.vscodeTheme)
 
   return {
@@ -145,9 +151,13 @@ function sanitizeSettings(value: unknown): AppSettings {
       orientation: widget.orientation === 'horizontal' ? 'horizontal' : 'vertical',
       unavailableStyle: widget.unavailableStyle === 'normal' ? 'normal' : 'dim',
       docked: widget.docked !== false,
-      horizontalPosition: clampHorizontalPosition(Number(widget.horizontalPosition) || 0),
+      horizontalPosition: clampHorizontalPosition(
+        finiteNumber(widget.horizontalPosition) ?? DEFAULT_SETTINGS.widget.horizontalPosition
+      ),
       side: widget.side === 'right' || widget.side === 'top' || widget.side === 'bottom' ? widget.side : 'left',
-      verticalPosition: clampVerticalPosition(Number(widget.verticalPosition) || 0)
+      verticalPosition: clampVerticalPosition(
+        finiteNumber(widget.verticalPosition) ?? DEFAULT_SETTINGS.widget.verticalPosition
+      )
     },
     display:
       candidate.display && Number.isFinite(candidate.display.id)
@@ -160,7 +170,7 @@ function sanitizeSettings(value: unknown): AppSettings {
     widgetProviderDiscoveryCompleted: typeof candidate.widgetProviderDiscoveryCompleted === 'boolean'
       ? candidate.widgetProviderDiscoveryCompleted
       : true,
-    refreshIntervalSeconds: Number.isFinite(refresh) ? Math.min(3600, Math.max(30, refresh)) : 45,
+    refreshIntervalSeconds: refresh === undefined ? 45 : Math.min(3600, Math.max(30, refresh)),
     launchAtStartup: candidate.launchAtStartup !== false,
     dashboardFollowsWidgetTheme: candidate.dashboardFollowsWidgetTheme === true
   }
@@ -168,10 +178,16 @@ function sanitizeSettings(value: unknown): AppSettings {
 
 export class SettingsRepository {
   private cache?: AppSettings
+  private mutations: Promise<void> = Promise.resolve()
 
   constructor(private readonly filePath: string) {}
 
   async get(): Promise<AppSettings> {
+    await this.mutations
+    return this.load()
+  }
+
+  private async load(): Promise<AppSettings> {
     if (this.cache) return structuredClone(this.cache)
 
     try {
@@ -184,30 +200,40 @@ export class SettingsRepository {
     return structuredClone(this.cache)
   }
 
-  async update(patch: SettingsPatch): Promise<AppSettings> {
-    const current = await this.get()
-    const merged: AppSettings = {
-      ...current,
-      ...patch,
-      widget: { ...current.widget, ...patch.widget },
-      providers: patch.providers ?? current.providers
-    }
-    this.cache = sanitizeSettings(merged)
-    await this.persist(this.cache)
-    return structuredClone(this.cache)
+  update(patch: SettingsPatch): Promise<AppSettings> {
+    return this.mutate(async () => {
+      const current = await this.load()
+      return sanitizeSettings({
+        ...current,
+        ...patch,
+        widget: { ...current.widget, ...patch.widget },
+        providers: patch.providers ?? current.providers
+      })
+    })
   }
 
-  async reset(): Promise<AppSettings> {
-    const current = await this.get()
-    // Widget discovery is an installation step rather than a user preference, so
-    // a reset keeps it settled: replaying it would hide every provider again on
-    // the next launch.
-    this.cache = sanitizeSettings({
-      ...structuredClone(DEFAULT_SETTINGS),
-      widgetProviderDiscoveryCompleted: current.widgetProviderDiscoveryCompleted
+  reset(): Promise<AppSettings> {
+    return this.mutate(async () => {
+      const current = await this.load()
+      // Widget discovery is an installation step rather than a user preference, so
+      // a reset keeps it settled: replaying it would hide every provider again on
+      // the next launch.
+      return sanitizeSettings({
+        ...structuredClone(DEFAULT_SETTINGS),
+        widgetProviderDiscoveryCompleted: current.widgetProviderDiscoveryCompleted
+      })
     })
-    await this.persist(this.cache)
-    return structuredClone(this.cache)
+  }
+
+  private mutate(createNext: () => Promise<AppSettings>): Promise<AppSettings> {
+    const operation = this.mutations.then(async () => {
+      const next = await createNext()
+      await this.persist(next)
+      this.cache = next
+      return structuredClone(next)
+    })
+    this.mutations = operation.then(() => undefined, () => undefined)
+    return operation
   }
 
   private async persist(settings: AppSettings): Promise<void> {

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 const PROVIDERS_PATH = '/dashboard.html?page=providers&section=deepseek'
 const WIDGET_PROVIDERS_PATH = '/dashboard.html?page=widget&section=providers'
-const DASHBOARD_PATH = '/dashboard.html?page=dashboard'
+const WIDGET_PATH = '/widget.html'
 
 test('manages the DeepSeek credential source from the preview settings', async ({ page }) => {
   await page.goto(PROVIDERS_PATH)
@@ -57,13 +57,20 @@ test('keeps enabled DeepSeek visible with its balance and active source', async 
   await page.goto(WIDGET_PROVIDERS_PATH)
   await expect(page.getByRole('checkbox', { name: 'Hide DeepSeek in widget' })).toBeChecked()
 
-  await page.goto(DASHBOARD_PATH)
-  const card = page.getByRole('article', { name: 'DeepSeek' })
-  await expect(card).toBeVisible()
-  await expect(card.getByText('USD balance')).toBeVisible()
-  await expect(card.getByText(/remaining/).first()).toBeVisible()
-  await expect(card.getByText('80%')).toBeVisible()
-  await expect(card.getByText(/used/).first()).toBeVisible()
+  await page.goto(WIDGET_PATH)
+  const item = page.getByRole('button', { name: /^DeepSeek:/ })
+  await expect(item).toBeVisible()
+  await item.hover()
+  await page.locator('.widget__visual').evaluate(async (visual) => {
+    await Promise.all(visual.getAnimations().map(async (animation) => animation.finished))
+  })
+  await item.hover()
+  const popover = page.locator('.usage-popover')
+  await expect(popover).toBeVisible()
+  await expect(popover.getByText('USD balance')).toBeVisible()
+  await expect(popover.getByText(/remaining/).first()).toBeVisible()
+  await expect(popover.getByText('80%')).toBeVisible()
+  await expect(popover.getByText(/used/).first()).toBeVisible()
 
   await page.goto(PROVIDERS_PATH)
   const activeSource = page.getByTestId('deepseek-active-source')
