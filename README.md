@@ -18,11 +18,31 @@
 <p align="center">
   <a href="#the-widget">The widget</a> ·
   <a href="#providers">Providers</a> ·
+  <a href="#download">Download</a> ·
   <a href="#getting-started">Getting started</a> ·
   <a href="#platform-support">Platforms</a> ·
   <a href="#privacy-and-local-data">Privacy</a> ·
   <a href="#development">Development</a>
 </p>
+
+## Download
+
+Download the latest stable version from GitHub Releases. Both buttons use the permanent `releases/latest` address, so they always open the newest published release without tying the README to a versioned filename.
+
+<p align="center">
+  <a href="https://github.com/pedroborgesdev/widoken/releases/latest" title="Download the latest Widoken release for Windows">
+    <img src="assets/readme/download-windows.png" width="360" alt="Download the latest Widoken release for Windows as an EXE installer">
+  </a>
+  <a href="https://github.com/pedroborgesdev/widoken/releases/latest" title="Download the latest Widoken release for Linux">
+    <img src="assets/readme/download-linux.png" width="360" alt="Download the latest Widoken release for Linux as a DEB package">
+  </a>
+</p>
+
+- **Windows:** choose the `.exe` asset and run the NSIS installer. Windows may ask you to confirm the installation because Widoken is not distributed through the Microsoft Store.
+- **Linux:** choose the `.deb` asset for Debian, Ubuntu, and compatible distributions, then open it with your package manager. The same release may also include an AppImage for a portable installation.
+- **Architecture:** if a release offers more than one build, choose the asset that matches your system, usually `x64`/`amd64` on current desktop computers.
+
+Widoken does not require its own account. After installation, it reads supported provider sessions already available on your computer; see [Providers](#providers) for the requirements of each integration. macOS packaging is not available yet.
 
 ## Provider integrations
 
@@ -40,7 +60,7 @@ Widoken brings those readings into one persistent, compact view. The widget is t
 
 ## The widget
 
-Each provider has a place on the strip. Its usage ring shows the percentage of a limit already used; when a provider exposes two limits, the left and right halves can show both at once. A single-limit ring starts at the top and advances clockwise. When two visible limits share the same status color, the right half is 25% dimmer so the limits remain distinguishable; limits with different status colors keep their original brightness. Choose the limits and their order in the dashboard.
+Each provider has a place on the strip. Its usage ring shows the percentage of a limit already used; when a provider exposes two limits, the left and right halves can show both at once. Providers that expose a monetary balance instead of a usage quota use a fully filled ring in a theme-specific purple. A single-limit usage ring starts at the top and advances clockwise. When two visible limits share the same status color, the right half is 25% dimmer so the limits remain distinguishable; limits with different status colors keep their original brightness. Choose the limits and their order in the dashboard.
 
 <p align="center">
   <img src="assets/readme/widget-closeup.png" width="280" alt="Close-up of the Widoken widget and its usage rings">
@@ -96,9 +116,9 @@ Widoken uses sessions that already exist on your computer and does not ask you t
 
 All providers are globally enabled by default. On the very first launch of a new installation, Widoken probes each integration once and adds to the widget only the providers that successfully return usage data. This automatic widget discovery is then marked complete and never runs again, so later manual visibility choices are preserved across launches. The top-level **Providers** pages control collection and dashboard data; a disabled provider is not polled and is also removed from the widget. **Widget → Providers** controls only widget visibility and order, so hiding an enabled provider there does not stop collection or remove it from the dashboard. If a service changes its usage response or a session expires, Widoken shows an unavailable or error state rather than treating the limit as zero.
 
-DeepSeek offers an explicit panel to choose between the existing Harness account and an API key. The **DeepSeek credential source** selector offers Automatic, Harness account, and API key. Automatic tries the Harness account first and falls back to the saved (or environment) API key when the harness is missing or the request fails, remembering which source worked so later polls try it first and switch back only if it breaks. Fixed modes never fall back. The adapter reads the harness grant from `~/.dsh/.credentials.yaml` (or `DSH_HOME/.credentials.yaml`) only, accepts only the `https://platform.deepseek.com` issuer, and never writes to that file. Because a DeepSeek balance is a prepaid amount rather than a quota window, the ring is measured against the first balance observed for that source and currency: that reading becomes the capacity and usage is `(capacity - remaining) / capacity`. While the balance falls or stays equal, the capacity is kept. When the balance grows above the previous reading, the whole capacity is replaced by the new balance—a recharge resets usage to 0% instead of adding the difference—so the ring stays a fair proxy for how much of the observed baseline has been spent. The DeepSeek limit exposes the remaining balance, its currency, and the baseline-derived used and capacity, so the popover shows both the remaining amount and how much of the observed baseline has been spent.
+DeepSeek offers an explicit panel to choose between the existing Harness account and an API key. The **DeepSeek credential source** selector offers Automatic, Harness account, and API key. Automatic tries the Harness account first and falls back to the saved (or environment) API key when the harness is missing or the request fails, remembering which source worked so later polls try it first and switch back only if it breaks. Fixed modes never fall back. The adapter reads the harness grant from `~/.dsh/.credentials.yaml` (or `DSH_HOME/.credentials.yaml`) only, accepts only the `https://platform.deepseek.com` issuer, and never writes to that file. Because a DeepSeek balance is a prepaid amount rather than a quota window, its ring stays fully filled in the theme's monetary-balance purple and its popover shows only the remaining monetary amount instead of a usage percentage or progress bar.
 
-Hugging Face uses the same observed-balance rule and USD popover presentation as DeepSeek, but collection comes from the selected browser session. Its bundled Python collectors require Python 3 plus `browser-cookie3`, `beautifulsoup4`, and `requests`; install them with `python3 -m pip install -r resources/huggingface/requirements.txt`. `WIDOKEN_PYTHON` can point to a specific Python executable. Automatic browser discovery checks Chrome, Chromium, Firefox, Brave, and Edge in that order.
+Hugging Face uses the same USD balance presentation as DeepSeek, but collection comes from the selected browser session. Its bundled Python collectors require Python 3 plus `browser-cookie3`, `beautifulsoup4`, and `requests`; install them with `python3 -m pip install -r resources/huggingface/requirements.txt`. `WIDOKEN_PYTHON` can point to a specific Python executable. Automatic browser discovery checks Chrome, Chromium, Firefox, Brave, and Edge in that order.
 
 For integration details and current limitations, see [Provider adapters](docs/PROVIDER_ADAPTERS.md).
 
@@ -146,7 +166,7 @@ Multi-monitor behavior and platform-specific overlay constraints are described i
 
 Widoken has no separate account or cloud-sync service. Provider adapters read existing local sign-in material in the main process and use it to request usage directly from the corresponding provider endpoint. Cursor's adapter reads session fields from Cursor's local database and sends them as an authentication cookie to Cursor; Antigravity is queried through its local language server. DeepSeek differs by offering two explicit sources and a dashboard-managed API key: it can use the existing Harness account, whose grant is read without modification from `~/.dsh/.credentials.yaml` (or `DSH_HOME/.credentials.yaml`), or an API key you save in the dashboard, which is encrypted with Electron `safeStorage` and stored only as ciphertext in the `provider_credentials` table of `analytics.sqlite`; `DEEPSEEK_API_KEY` remains as a compatibility fallback. Hugging Face runs a bundled collector in the main process and reads only `huggingface.co` cookies from the explicitly selected local browser; cookies are used for direct Hugging Face requests and are never persisted or sent to a renderer. These integrations require access to the clients' existing sessions, so enable only the providers you want Widoken to watch.
 
-Settings are stored under Electron's per-user application-data directory as `settings.json`; `analytics.sqlite` holds only provider credentials. A DeepSeek API key you save is encrypted with Electron `safeStorage` and stored only as a ciphertext BLOB in the `provider_credentials` table of `analytics.sqlite`; it is never written in plain text and the dashboard only ever learns whether a key is stored. The DeepSeek adapter also keeps `deepseek-balance.json` there with the observed baseline per source and currency—the capacity, the last remaining balance, and a format marker—so the ring survives a restart; it holds no credential. `settings.json` and `deepseek-balance.json` are replaced atomically and written with owner-only file permissions where the platform supports it; `analytics.sqlite` remains a local database and never leaves the machine.
+Settings are stored under Electron's per-user application-data directory as `settings.json`; `analytics.sqlite` holds only provider credentials. A DeepSeek API key you save is encrypted with Electron `safeStorage` and stored only as a ciphertext BLOB in the `provider_credentials` table of `analytics.sqlite`; it is never written in plain text and the dashboard only ever learns whether a key is stored. The DeepSeek adapter also keeps `deepseek-balance.json` there with local balance bookkeeping per source and currency—the capacity, the last remaining balance, and a format marker; it holds no credential. `settings.json` and `deepseek-balance.json` are replaced atomically and written with owner-only file permissions where the platform supports it; `analytics.sqlite` remains a local database and never leaves the machine.
 
 The widget and dashboard have separate, sandboxed renderer processes. Provider credentials stay out of their exposed interfaces: the dashboard credential panel receives only non-secret availability flags, and the stored key never crosses the IPC boundary. The DeepSeek **Harness account** source reads this credential file: the dashboard performs a local, read-only check of `~/.dsh/.credentials.yaml` (or `DSH_HOME/.credentials.yaml`) to show whether a grant is available when it opens, while the token stays in the main process and is used to request the balance only while DeepSeek is enabled; Widoken never writes to that file. Hugging Face browser-cookie access happens only after that disabled-by-default provider is enabled and is scoped to `huggingface.co`. See [Security](docs/SECURITY.md) for the process and IPC boundaries.
 

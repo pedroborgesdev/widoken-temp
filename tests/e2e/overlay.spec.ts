@@ -439,6 +439,7 @@ test('opens the dashboard in a separate native window with an isolated preload',
           name: 'Fixture VS Code Theme',
           colors: {
             accent: '#123456',
+            balance: '#cc88ff',
             danger: '#ff5555',
             elevated: '#223344',
             hover: '#334455',
@@ -1057,7 +1058,7 @@ test('reorders providers and changes only their widget visibility', async () => 
   await page.emulateMedia({ reducedMotion: 'no-preference' })
 })
 
-test('shows discovered DeepSeek usage and global disable overrides widget visibility', async () => {
+test('shows the discovered DeepSeek balance and global disable overrides widget visibility', async () => {
   const settingsWindow = await openSettingsWindow()
   await selectSettingsPage(settingsWindow, 'Providers')
   const providerNavigation = settingsWindow.getByRole('navigation', { name: 'Provider settings' })
@@ -1073,18 +1074,20 @@ test('shows discovered DeepSeek usage and global disable overrides widget visibi
   const deepSeekItem = page.getByRole('button', { name: /DeepSeek/ })
   await expect(deepSeekItem).toHaveAttribute('data-provider-id', 'deepseek')
   await expect(deepSeekItem).toHaveClass(/provider-item--connected/)
+  await expect(deepSeekItem.locator('.usage-ring__value--balance')).toHaveCSS('stroke', 'rgb(174, 129, 255)')
   await deepSeekItem.hover()
 
   const popover = page.locator('.usage-popover-anchor > .usage-popover')
   await expect(popover).toBeVisible()
   await expect(popover.locator('.usage-popover__label')).toHaveText('USD balance')
-  await expect(popover.locator('.usage-popover__percent')).toHaveText('50%')
-  const amount = popover.locator('.usage-popover__amount')
-  const amountText = await amount.innerText()
+  await expect(popover.locator('.usage-bar')).toHaveCount(0)
+  await expect(popover.locator('.usage-popover__amount')).toHaveCount(0)
+  await expect(popover.locator('.usage-popover__reset')).toHaveCount(0)
+  await expect(popover.locator('.usage-popover__percent')).toHaveCount(0)
+  const amountText = await popover.locator('.usage-popover__balance').innerText()
   expect(amountText).toMatch(/\p{Sc}/u)
   expect(amountText).toMatch(/5(?:[.,]00)?[^\d]*remaining/)
-  expect(amountText).toMatch(/5(?:[.,]00)?[^\d]{0,8}\/[^\d]{0,8}10(?:[.,]00)?[^\d]{0,8}used/)
-  expect(amountText.indexOf('remaining')).toBeLessThan(amountText.indexOf('used'))
+  expect(amountText).not.toContain('used')
 
   await selectSettingsPage(settingsWindow, 'Providers')
   await providerNavigation.getByRole('button', { name: 'DeepSeek', exact: true }).click()

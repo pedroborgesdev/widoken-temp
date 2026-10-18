@@ -21,6 +21,7 @@ import {
 const PROVIDER_IDS = new Set(DEFAULT_SETTINGS.providers.map((provider) => provider.id))
 const THEME_COLOR_KEYS = [
   'accent',
+  'balance',
   'danger',
   'elevated',
   'hover',
@@ -117,7 +118,8 @@ function sanitizeSyncedTheme(value: unknown): SyncedVsCodeTheme | undefined {
   if (typeof candidate.name !== 'string' || !candidate.name.trim() || !candidate.colors) return undefined
   const colors = {} as SyncedThemeColors
   for (const key of THEME_COLOR_KEYS) {
-    const color = candidate.colors[key]
+    const savedColor = candidate.colors[key]
+    const color = key === 'balance' && savedColor === undefined ? candidate.colors.accent : savedColor
     if (typeof color !== 'string' || !HEX_COLOR.test(color)) return undefined
     colors[key] = color
   }

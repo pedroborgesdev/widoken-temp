@@ -67,7 +67,8 @@ describe('VS Code theme discovery', () => {
         'editor.background': '#202122',
         'editor.foreground': '#f0f1f2',
         'sideBar.background': '#303132',
-        'terminal.ansiGreen': '#00ff00'
+        'terminal.ansiGreen': '#00ff00',
+        'terminal.ansiMagenta': '#cc88ff'
       }
     }))
     await writeFile(join(extension, 'themes', 'fixture.json'), `{
@@ -88,6 +89,7 @@ describe('VS Code theme discovery', () => {
       name: 'Fixture Theme',
       colors: {
         accent: '#abcdef',
+        balance: '#cc88ff',
         hover: '#404142',
         strong: '#f0f1f2',
         success: '#00ff00',

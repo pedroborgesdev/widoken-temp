@@ -99,4 +99,39 @@ describe('UsageRing activity indicator', () => {
     expect(markup).not.toContain('usage-ring__value')
     expect(markup).not.toContain('<g')
   })
+
+  it('renders monetary balances as a full ring in the theme title color', () => {
+    const markup = renderToStaticMarkup(createElement(UsageRing, {
+      usages: [
+        {
+          limit: {
+            id: 'balance-usd',
+            label: 'USD balance',
+            percent: 80,
+            currency: 'USD',
+            remaining: 2
+          },
+          side: 'left'
+        },
+        {
+          limit: {
+            id: 'balance-cny',
+            label: 'CNY balance',
+            percent: 20,
+            currency: 'CNY',
+            remaining: 8
+          },
+          side: 'right'
+        }
+      ],
+      status: 'connected'
+    }))
+
+    expect(markup).toContain('usage-ring--balance')
+    expect(markup).not.toContain('usage-ring--split')
+    expect(markup).toContain('usage-ring__value--balance')
+    expect(markup.match(/class="usage-ring__value /g)).toHaveLength(1)
+    expect(markup).not.toContain('stroke-dashoffset')
+    expect(markup).not.toContain('usage-ring__value--danger')
+  })
 })

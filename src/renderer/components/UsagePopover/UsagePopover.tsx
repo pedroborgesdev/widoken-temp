@@ -1,5 +1,5 @@
 import { forwardRef } from 'react'
-import type { ProviderView } from '@shared/provider'
+import { isMonetaryBalance, type ProviderView } from '@shared/provider'
 import { displayedUsageLimits } from '@shared/providerUsage'
 import type { DockSide, ProviderUsageDisplay } from '@shared/settings'
 import { amountDescription, listPriceDescription, percentDescription, readableName, resetDescription } from '../../utils/usageFormat'
@@ -66,24 +66,25 @@ export const UsagePopover = forwardRef<HTMLDivElement, UsagePopoverProps>(functi
           <div className="usage-popover__limits">
             {provider.snapshot.limits.map((limit) => {
               const amount = amountDescription(limit)
+              const monetaryBalance = isMonetaryBalance(limit)
               return (
                 <div className="usage-popover__limit" key={limit.id}>
                   <div className="usage-popover__heading">
                     <p className="usage-popover__label">
                       {limit.label}
-                      {displayedSides.has(limit.id) && (
+                      {!monetaryBalance && displayedSides.has(limit.id) && (
                         <span className={`usage-popover__side usage-popover__side--${displayedSides.get(limit.id)}`}>
                           {displayedSides.get(limit.id)}
                         </span>
                       )}
                     </p>
-                    <strong className="usage-popover__percent">
-                      {limit.unlimited ? 'Unlimited' : percentDescription(limit.percent)}
+                    <strong className={monetaryBalance ? 'usage-popover__balance' : 'usage-popover__percent'}>
+                      {limit.unlimited ? 'Unlimited' : monetaryBalance ? amount : percentDescription(limit.percent)}
                     </strong>
                   </div>
-                  {!limit.unlimited && <UsageBar percent={limit.percent} />}
-                  {amount && <p className="usage-popover__amount">{amount}</p>}
-                  <p className="usage-popover__reset">{resetDescription(limit.resetsAt)}</p>
+                  {!limit.unlimited && !monetaryBalance && <UsageBar percent={limit.percent} />}
+                  {!monetaryBalance && amount && <p className="usage-popover__amount">{amount}</p>}
+                  {!monetaryBalance && <p className="usage-popover__reset">{resetDescription(limit.resetsAt)}</p>}
                 </div>
               )
             })}

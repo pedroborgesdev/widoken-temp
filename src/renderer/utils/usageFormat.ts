@@ -17,14 +17,7 @@ export function amountDescription(limit: UsageLimit): string | undefined {
   const { used, remaining, currency } = limit
   const maximum = limit.limit
   if (currency) {
-    const parts: string[] = []
-    if (typeof remaining === 'number') parts.push(`${formatAmount(remaining, currency)} remaining`)
-    if (typeof used === 'number' && typeof maximum === 'number') {
-      parts.push(`${formatAmount(used, currency)} / ${formatAmount(maximum, currency)} used`)
-    } else if (typeof used === 'number') {
-      parts.push(`${formatAmount(used, currency)} used`)
-    }
-    return parts.length > 0 ? parts.join(' · ') : undefined
+    return typeof remaining === 'number' ? `${formatAmount(remaining, currency)} remaining` : undefined
   }
   if (typeof used === 'number' && typeof maximum === 'number') {
     return `${formatAmount(used)} / ${formatAmount(maximum)} used`

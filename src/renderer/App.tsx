@@ -3,6 +3,7 @@ import type { Rectangle } from 'electron'
 import { DEFAULT_WIDGET_SECTION } from '@shared/dashboard'
 import type { OverlayDragRelay } from '@shared/ipc'
 import { shadowPaintOutset } from '@shared/overlay'
+import { isMonetaryBalance } from '@shared/provider'
 import { providerVisibleInWidget } from '@shared/settings'
 import { activeSyncedTheme, syncedThemeStyle } from './utils/theme'
 import { SelectionGrid } from './components/SelectionGrid/SelectionGrid'
@@ -226,9 +227,12 @@ export default function App(): React.JSX.Element {
   const hoveredProviderSetting = providerSettings.find((setting) => setting.id === hoveredProvider?.id)
   const popoverIndex = appMenuOpen ? providers.length : hoveredIndex
   const hasUsage = hoveredProvider?.snapshot.status === 'connected' && hoveredProvider.snapshot.limits.length > 0
+  const hasOnlyMonetaryBalances = hasUsage && hoveredProvider.snapshot.limits.every(isMonetaryBalance)
   const popoverHeight = !hasUsage
     ? POPOVER_HEIGHT_UNAVAILABLE
-    : Math.min(
+    : hasOnlyMonetaryBalances
+      ? 96 + Math.max(0, hoveredProvider.snapshot.limits.length - 2) * 29
+      : Math.min(
         360,
         96
           + Math.max(0, hoveredProvider.snapshot.limits.length - 1) * 64

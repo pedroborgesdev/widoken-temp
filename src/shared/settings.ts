@@ -17,6 +17,7 @@ export type ThemeMode = 'preset' | 'vscode'
 
 export interface SyncedThemeColors {
   accent: string
+  balance: string
   danger: string
   elevated: string
   hover: string

@@ -50,6 +50,12 @@ export interface ProviderView extends ProviderDescriptor {
   activity?: 'idle' | 'active'
 }
 
+export function isMonetaryBalance(limit: UsageLimit): boolean {
+  return typeof limit.currency === 'string'
+    && limit.currency.length > 0
+    && typeof limit.remaining === 'number'
+}
+
 export function clampPercent(percent: number): number {
   return Math.min(100, Math.max(0, percent))
 }

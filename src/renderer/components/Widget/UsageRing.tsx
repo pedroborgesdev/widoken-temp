@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { clampPercent, getUsageSeverity, type ProviderStatus, type UsageLimit } from '@shared/provider'
+import { clampPercent, getUsageSeverity, isMonetaryBalance, type ProviderStatus, type UsageLimit } from '@shared/provider'
 
 interface UsageRingProps {
   active?: boolean
@@ -25,7 +25,8 @@ function joinStopClass(limit: UsageLimit, side: 'left' | 'right'): string {
 export function UsageRing({ active = false, usages, status }: UsageRingProps): React.JSX.Element {
   const joinGradientId = `usage-ring-join-${useId().replaceAll(':', '')}`
   const isConnected = status === 'connected'
-  const split = isConnected && usages.length === 2
+  const balance = isConnected && usages.length > 0 && usages.every(({ limit }) => isMonetaryBalance(limit))
+  const split = !balance && isConnected && usages.length === 2
   const left = split ? usages.find(({ side }) => side === 'left') : undefined
   const right = split ? usages.find(({ side }) => side === 'right') : undefined
   const leftPercent = left ? clampPercent(left.limit.percent) : 0
@@ -38,11 +39,11 @@ export function UsageRing({ active = false, usages, status }: UsageRingProps): R
     right &&
     getUsageSeverity(leftPercent) === getUsageSeverity(rightPercent)
   )
-  const singleLimit = !split && isConnected ? usages[0]?.limit : undefined
+  const singleLimit = !balance && !split && isConnected ? usages[0]?.limit : undefined
   const singlePercent = singleLimit ? clampPercent(singleLimit.percent) : undefined
 
   return (
-    <svg className={`usage-ring${active ? ' usage-ring--active' : ''}${split ? ' usage-ring--split' : ''}${sameColor ? ' usage-ring--same-color' : ''}`} viewBox="0 0 28 28" aria-hidden="true">
+    <svg className={`usage-ring${active ? ' usage-ring--active' : ''}${balance ? ' usage-ring--balance' : ''}${split ? ' usage-ring--split' : ''}${sameColor ? ' usage-ring--same-color' : ''}`} viewBox="0 0 28 28" aria-hidden="true">
       <circle className="usage-ring__track" cx="14" cy="14" r={RADIUS} />
       {joinedAtStart && left && right ? (
         <>
@@ -58,7 +59,14 @@ export function UsageRing({ active = false, usages, status }: UsageRingProps): R
           {joinedAtEnd ? <circle className="usage-ring__join" cx="14" cy="26.5" r="1.5" fill={`url(#${joinGradientId})`} /> : null}
         </>
       ) : null}
-      {split ? usages.map(({ limit, side }) => {
+      {balance ? (
+        <circle
+          className="usage-ring__value usage-ring__value--single usage-ring__value--balance"
+          cx="14"
+          cy="14"
+          r={RADIUS}
+        />
+      ) : split ? usages.map(({ limit, side }) => {
         const percent = clampPercent(limit.percent)
         // Keep empty arcs out of the SVG so cap rendering can never create a
         // phantom endpoint at the bottom of a split usage ring.

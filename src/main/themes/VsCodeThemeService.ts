@@ -499,6 +499,7 @@ function toPalette(colors: JsonObject, dark: boolean): SyncedThemeColors {
   const accent = color(colors, ['focusBorder', 'button.background', 'activityBarBadge.background'], '#007acc')
   return {
     accent,
+    balance: color(colors, ['terminal.ansiMagenta'], dark ? '#c586c0' : '#af00db'),
     danger: color(colors, ['errorForeground', 'terminal.ansiRed', 'editorError.foreground'], '#f14c4c'),
     elevated: color(colors, ['dropdown.background', 'input.background', 'quickInput.background'], surface),
     hover: color(colors, ['list.hoverBackground', 'toolbar.hoverBackground'], dark ? '#2a2d2e' : '#e8e8e8'),

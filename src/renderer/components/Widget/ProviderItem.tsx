@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { clampPercent, type ProviderView } from '@shared/provider'
+import { clampPercent, isMonetaryBalance, type ProviderView } from '@shared/provider'
 import { displayedUsageLimits } from '@shared/providerUsage'
 import type { ProviderUsageDisplay } from '@shared/settings'
 import { providerLogos } from '../../utils/providerBranding'
+import { amountDescription } from '../../utils/usageFormat'
 import { UsageRing } from './UsageRing'
 
 interface ProviderItemProps {
@@ -15,9 +16,12 @@ interface ProviderItemProps {
 
 export function ProviderItem({ provider, usageDisplay, animateEntry, onEnter, onLeave }: ProviderItemProps): React.JSX.Element {
   const usages = displayedUsageLimits(provider.id, provider.snapshot.limits, usageDisplay)
-  const usageDescription = usages.map(({ limit, side }) =>
-    `${side ? `${side} ` : ''}${limit.label} ${clampPercent(limit.percent)}%`
-  ).join(', ')
+  const usageDescription = usages.map(({ limit, side }) => {
+    const value = isMonetaryBalance(limit)
+      ? amountDescription(limit)
+      : `${clampPercent(limit.percent)}%`
+    return `${side && !isMonetaryBalance(limit) ? `${side} ` : ''}${limit.label} ${value}`
+  }).join(', ')
   const [shouldAnimateEntry] = useState(animateEntry)
   const status = provider.snapshot.status
   const active = provider.activity === 'active'

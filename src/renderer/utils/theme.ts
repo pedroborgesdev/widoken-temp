@@ -3,6 +3,7 @@ import type { AppSettings, SyncedVsCodeTheme } from '@shared/settings'
 
 const CSS_VARIABLES = {
   accent: '--color-overlay-blue',
+  balance: '--color-overlay-balance',
   danger: '--color-overlay-danger',
   elevated: '--color-overlay-elevated',
   hover: '--color-overlay-hover',

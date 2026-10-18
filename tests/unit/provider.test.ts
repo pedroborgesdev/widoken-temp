@@ -15,7 +15,7 @@ describe('usage severity', () => {
 })
 
 describe('usage amounts', () => {
-  it('formats monetary quotas with the remaining balance first', () => {
+  it('formats monetary balances with only the available amount', () => {
     const value = amountDescription({
       id: 'balance-usd',
       label: 'USD balance',
@@ -28,8 +28,8 @@ describe('usage amounts', () => {
 
     expect(value).toMatch(/\$|USD|US\$/)
     expect(value).toMatch(/15(?:[.,]00)?[^\d]*remaining/)
-    expect(value).toMatch(/5(?:[.,]00)?[^\d]{0,8}\/[^\d]{0,8}20(?:[.,]00)?[^\d]{0,8}used/)
-    expect(value!.indexOf('remaining')).toBeLessThan(value!.indexOf('used'))
+    expect(value).not.toContain('used')
+    expect(value).not.toContain('/')
   })
 
   it('shows only the remaining balance when no used/limit quota is provided', () => {
