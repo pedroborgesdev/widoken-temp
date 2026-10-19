@@ -55,8 +55,8 @@ export function UsageRing({ active = false, usages, status }: UsageRingProps): R
               <stop offset="1" className={joinStopClass(right.limit, 'right')} />
             </linearGradient>
           </defs>
-          <circle className="usage-ring__join" cx="14" cy="1.5" r="1.5" fill={`url(#${joinGradientId})`} />
-          {joinedAtEnd ? <circle className="usage-ring__join" cx="14" cy="26.5" r="1.5" fill={`url(#${joinGradientId})`} /> : null}
+          <circle className="usage-ring__join" cx="14" cy="1.5" r="1" fill={`url(#${joinGradientId})`} />
+          {joinedAtEnd ? <circle className="usage-ring__join" cx="14" cy="26.5" r="1" fill={`url(#${joinGradientId})`} /> : null}
         </>
       ) : null}
       {balance ? (

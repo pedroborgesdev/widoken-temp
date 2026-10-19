@@ -53,7 +53,7 @@ export const UsagePopover = forwardRef<HTMLDivElement, UsagePopoverProps>(functi
       onPointerLeave={onLeave}
     >
       {isAvailable ? (
-        <div className={`usage-popover${provider.snapshot.limits.length === 1 ? ' usage-popover--single' : ''}`} data-node-id="9:371" style={panelStyle}>
+        <div className="usage-popover" data-node-id="9:371" style={panelStyle}>
           {(provider.snapshot.plan || provider.snapshot.isUnlimited) && (
             <div className="usage-popover__metadata">
               {provider.snapshot.plan && <span>{readableName(provider.snapshot.plan)} plan</span>}

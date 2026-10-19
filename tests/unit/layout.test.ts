@@ -11,7 +11,6 @@ import {
   collapsedWidgetRectangle,
   tuckInteractionRectangle,
   edgeCollapseOffset,
-  edgesSharedWithAnotherDisplay,
   keepHorizontalPopoverOutsideTurnedThumb,
   keepVerticalPopoverOutsideTurnedThumb,
   normalizeWidgetCoordinate,
@@ -314,15 +313,13 @@ describe('widget layout', () => {
     })
   })
 
-  it('keeps following the cursor across an edge shared with another monitor', () => {
-    const top = { id: 1, x: 10, y: 0, width: 1920, height: 1080 }
-    const bottom = { id: 2, x: 0, y: 1080, width: 1920, height: 1080 }
-    expect(edgesSharedWithAnotherDisplay([top, bottom], top)).toEqual(['bottom'])
-    expect(edgesSharedWithAnotherDisplay([top, bottom], bottom)).toEqual(['top'])
-    const crossing = resolveDraggedWidgetPosition(960, 820, 18, 20, 1920, 1080, 234, 54, true, ['bottom'])
+  it('snaps to an edge shared with another monitor like any other edge', () => {
+    // The stage is one monitor of a spanning overlay, so a boundary shared with a
+    // neighboring monitor is a normal dock target: the widget sticks to that guide.
+    const crossing = resolveDraggedWidgetPosition(960, 820, 18, 20, 1920, 1080, 234, 54, true)
     expect(crossing.candidateSide).toBe('bottom')
-    expect(crossing.pulled).toBe(false)
-    expect(crossing.top).toBe(800)
+    expect(crossing.pulled).toBe(true)
+    expect(crossing.top).toBe(838)
   })
 
   it('detects points inside interaction regions', () => {

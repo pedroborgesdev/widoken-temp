@@ -33,7 +33,6 @@ import {
   POPOVER_WIDTH,
   resolveHorizontalPopoverPosition,
   resolveVerticalPopoverTop,
-  edgesSharedWithAnotherDisplay,
   resolveDraggedWidgetPosition,
   resolveCornerControlLayout,
   WIDGET_MARGIN,
@@ -112,7 +111,6 @@ export default function App(): React.JSX.Element {
   const [displays, setDisplays] = useState<DisplayRect[]>(placement.displays)
   const [dragStage, setDragStage] = useState<DisplayRect | undefined>()
   const layoutStageRef = useRef({ x: 0, y: 0, width: window.innerWidth, height: window.innerHeight })
-  const displaysRef = useRef(displays)
   const [dragVisit, setDragVisit] = useState<'here' | 'away' | null>(null)
   const [yielded, setYielded] = useState(false)
 
@@ -149,7 +147,22 @@ export default function App(): React.JSX.Element {
   const stageWidth = stage?.width ?? viewport.width
   const stageHeight = stage?.height ?? viewport.height
   layoutStageRef.current = { x: stageX, y: stageY, width: stageWidth, height: stageHeight }
-  displaysRef.current = displays
+  // Crossing monitors swaps the coordinate frame the widget is positioned in, so the
+  // stage-local left/top jumps by the monitor offset. Flag that render so the snap
+  // transition is skipped and the widget does not slide across the whole destination
+  // screen before settling on the guide.
+  const stageId = stage?.id
+  const [trackedStageId, setTrackedStageId] = useState<number | undefined>(undefined)
+  const [stageShifted, setStageShifted] = useState(false)
+  if (trackedStageId !== stageId) {
+    if (trackedStageId !== undefined) setStageShifted(true)
+    setTrackedStageId(stageId)
+  }
+  useEffect(() => {
+    if (!stageShifted) return
+    const frame = requestAnimationFrame(() => setStageShifted(false))
+    return () => cancelAnimationFrame(frame)
+  }, [stageShifted])
   const freeTop = getWidgetTop(state.settings.widget.verticalPosition, stageHeight, baseWidgetHeight)
   const maxTop = Math.max(WIDGET_MARGIN, stageHeight - widgetHeight - WIDGET_MARGIN)
   const freeLeft = getWidgetLeft(state.settings.widget.horizontalPosition, stageWidth, baseWidgetWidth)
@@ -646,7 +659,6 @@ export default function App(): React.JSX.Element {
       dragVisitRef.current = 'here'
       setDragVisit('here')
     }
-    const loose = relay.stage ? edgesSharedWithAnotherDisplay(displaysRef.current, relay.stage) : []
     const drag = resolveDraggedWidgetPosition(
       relay.x - frame.x,
       relay.y - frame.y,
@@ -656,8 +668,7 @@ export default function App(): React.JSX.Element {
       frame.height,
       widgetHeight,
       widgetWidth,
-      state.settings.widget.showDockGuides,
-      loose
+      state.settings.widget.showDockGuides
     )
     if (!drag.pulled && relay.stage) {
       const minimumLeft = WIDGET_MARGIN
@@ -712,11 +723,7 @@ export default function App(): React.JSX.Element {
           layoutStageRef.current.height,
           widgetHeight,
           widgetWidth,
-          state.settings.widget.showDockGuides,
-          edgesSharedWithAnotherDisplay(displaysRef.current, {
-            id: -1,
-            ...layoutStageRef.current
-          })
+          state.settings.widget.showDockGuides
         )
       })
     }
@@ -798,7 +805,7 @@ export default function App(): React.JSX.Element {
       ))}
       {widgetIsHere && (
         <div
-          className="widget-stage"
+          className={`widget-stage${stageShifted ? ' widget-stage--shifted' : ''}`}
           style={{ left: stageX, top: stageY, width: stageWidth, height: stageHeight }}
         >
           <Widget

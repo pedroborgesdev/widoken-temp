@@ -311,6 +311,14 @@ body {
   transition: top 90ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
 
+/* Swapping monitors changes the stage frame the widget is positioned in, which makes
+   the stage-local left/top jump by the monitor offset. Skip the snap transition for
+   that frame so the widget does not slide across the whole destination screen before
+   settling on the guide. Specificity must beat the snapped coordinate rules above. */
+.widget-stage--shifted .widget.widget--dragging.widget--snapped {
+  transition: none;
+}
+
 .widget--dragging .widget__thumb {
   opacity: 1;
   transform: scale(1);
@@ -590,15 +598,21 @@ body {
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 1;
   width: 42px;
   height: 42px;
   overflow: visible;
 }
 
+/* The ring paints above the icon shell so its visible thickness is defined by a
+   single SVG rasterization. Letting the shell clip the ring made the stroke look
+   thicker on the bottom-right, because the shell's background snaps to whole
+   pixels independently from the SVG. The stroke is kept at 3px (2 units at the
+   42px / 28 unit scale) instead of 4.5px, matching the previously visible width. */
 .usage-ring__track,
 .usage-ring__value {
   fill: none;
-  stroke-width: 3;
+  stroke-width: 2;
 }
 
 .usage-ring__track {
@@ -698,7 +712,7 @@ body {
 .usage-ring__activity {
   fill: none;
   stroke: var(--color-overlay-strong);
-  stroke-width: 2.5;
+  stroke-width: 1.67;
   stroke-linecap: butt;
   stroke-dashoffset: 8;
   opacity: 0;
@@ -1140,14 +1154,9 @@ body {
 .usage-popover {
   display: flex;
   max-height: min(360px, calc(100vh - 16px));
-  min-height: 96px;
   flex-direction: column;
   gap: 9px;
   padding: 12px 14px;
-}
-
-.usage-popover--single {
-  min-height: 96px;
 }
 
 .usage-popover__metadata {
@@ -1176,7 +1185,7 @@ body {
 .usage-popover__limits {
   display: flex;
   min-height: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   flex-direction: column;
   gap: 12px;
   overflow-x: hidden;
