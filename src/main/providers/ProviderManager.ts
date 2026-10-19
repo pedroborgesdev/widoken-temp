@@ -6,6 +6,7 @@ import { planListPrice } from './planPricing'
 type UpdateListener = (providers: ProviderView[]) => void
 const ACTIVITY_POLL_INTERVAL_MS = 750
 const ACTIVITY_FAILURE_GRACE_MS = 5_000
+export const PROVIDER_REFRESH_INTERVAL_SECONDS = 5
 
 export class ProviderManager {
   private enabled: ProviderSetting[] = []
@@ -13,7 +14,6 @@ export class ProviderManager {
   private pollTimer?: NodeJS.Timeout
   private quotaPolling = false
   private stopped = false
-  private intervalSeconds = 45
   private inFlight?: Promise<ProviderView[]>
   private configurationRevision = 0
   private inFlightRevision = 0
@@ -29,10 +29,10 @@ export class ProviderManager {
     private readonly onUpdate: UpdateListener
   ) {}
 
-  start(providers: ProviderSetting[], intervalSeconds: number): void {
+  start(providers: ProviderSetting[]): void {
     this.stopped = false
     this.quotaPolling = true
-    this.configure(providers, intervalSeconds)
+    this.configure(providers)
     void this.refresh()
     if (!this.activityPolling) {
       this.activityPolling = true
@@ -40,7 +40,7 @@ export class ProviderManager {
     }
   }
 
-  configure(providers: ProviderSetting[], intervalSeconds: number): void {
+  configure(providers: ProviderSetting[]): void {
     this.configurationRevision += 1
     const previouslyEnabled = new Set(this.enabled.map(({ id }) => id))
     for (const setting of providers) {
@@ -60,7 +60,6 @@ export class ProviderManager {
         this.activityFailureSince.delete(id)
       }
     }
-    this.intervalSeconds = Math.min(3600, Math.max(30, intervalSeconds))
     this.scheduleNext()
     this.onUpdate(this.list())
   }
@@ -171,7 +170,7 @@ export class ProviderManager {
     if (this.pollTimer) clearTimeout(this.pollTimer)
     this.pollTimer = undefined
     if (!this.quotaPolling) return
-    this.pollTimer = setTimeout(() => void this.refresh(), this.intervalSeconds * 1000)
+    this.pollTimer = setTimeout(() => void this.refresh(), PROVIDER_REFRESH_INTERVAL_SECONDS * 1000)
   }
 
   private async pollActivity(): Promise<void> {

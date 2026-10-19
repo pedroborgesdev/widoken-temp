@@ -1,14 +1,12 @@
 import { promises as fs } from 'node:fs'
 import { dirname } from 'node:path'
 import type { ProviderSnapshot, UsageLimit } from '@shared/provider'
-import type { HuggingFaceBrowser, ProviderSetting } from '@shared/settings'
 import type { ProviderAdapter } from './ProviderAdapter'
 import {
-  HuggingFacePythonBridge,
   type HuggingFaceCollector,
   type HuggingFaceMonitorHandle,
   type HuggingFaceMonitorResult
-} from './HuggingFacePythonBridge'
+} from './HuggingFaceSessionCollector'
 
 export const HUGGING_FACE_BASELINE_VERSION = 1
 
@@ -20,7 +18,7 @@ export interface HuggingFaceBalanceState {
 
 export interface HuggingFaceAdapterOptions {
   statePath?: string
-  collector?: HuggingFaceCollector
+  collector: HuggingFaceCollector
 }
 
 export function applyHuggingFaceBaseline(
@@ -61,23 +59,14 @@ export class HuggingFaceProviderAdapter implements ProviderAdapter {
   readonly id = 'huggingface'
   readonly name = 'Hugging Face'
   private connected = true
-  private browser: HuggingFaceBrowser = 'auto'
   private state: HuggingFaceBalanceState | undefined
   private stateLoaded = false
   private monitor?: HuggingFaceMonitorHandle
-  private monitorBrowser?: HuggingFaceBrowser
   private monitorResult?: HuggingFaceMonitorResult
   private readonly collector: HuggingFaceCollector
 
-  constructor(private readonly options: HuggingFaceAdapterOptions = {}) {
-    this.collector = options.collector ?? new HuggingFacePythonBridge()
-  }
-
-  configure(setting: ProviderSetting): void {
-    const browser = setting.huggingFaceBrowser ?? 'auto'
-    if (browser === this.browser) return
-    this.browser = browser
-    this.stopMonitor()
+  constructor(private readonly options: HuggingFaceAdapterOptions) {
+    this.collector = options.collector
   }
 
   async connect(): Promise<void> {
@@ -104,7 +93,7 @@ export class HuggingFaceProviderAdapter implements ProviderAdapter {
     if (!this.connected) return { providerId: this.id, status: 'disconnected', limits: [], lastUpdatedAt }
     this.ensureMonitor()
     try {
-      const result = await this.collector.balance(this.browser)
+      const result = await this.collector.balance()
       const applied = applyHuggingFaceBaseline(await this.loadState(), result.balance_usd)
       this.state = applied.state
       await this.persistState(applied.state)
@@ -131,11 +120,10 @@ export class HuggingFaceProviderAdapter implements ProviderAdapter {
   }
 
   private ensureMonitor(): void {
-    if (this.monitor && this.monitorBrowser === this.browser) return
+    if (this.monitor) return
     this.stopMonitor()
-    this.monitorBrowser = this.browser
     try {
-      this.monitor = this.collector.monitor(this.browser, (result) => { this.monitorResult = result })
+      this.monitor = this.collector.monitor((result) => { this.monitorResult = result })
     } catch {
       this.monitor = undefined
     }
@@ -144,7 +132,6 @@ export class HuggingFaceProviderAdapter implements ProviderAdapter {
   private stopMonitor(): void {
     this.monitor?.stop()
     this.monitor = undefined
-    this.monitorBrowser = undefined
     this.monitorResult = undefined
   }
 

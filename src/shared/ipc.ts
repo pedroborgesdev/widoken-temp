@@ -29,6 +29,12 @@ export const IPC = {
   deepseekCredentialStatus: 'deepseek:credential-status',
   deepseekSaveApiKey: 'deepseek:save-api-key',
   deepseekClearApiKey: 'deepseek:clear-api-key',
+  browserSessionsList: 'browser-sessions:list',
+  browserSessionLogin: 'browser-sessions:login',
+  browserSessionLogout: 'browser-sessions:logout',
+  browserSessionWindowClose: 'browser-session-window:close',
+  browserSessionWindowMinimize: 'browser-session-window:minimize',
+  browserSessionWindowConnected: 'browser-session-window:connected',
   themeSyncVsCode: 'theme:sync-vscode',
   appQuit: 'app:quit'
 } as const
@@ -38,6 +44,29 @@ export interface DeepSeekCredentialStatus {
   storedApiKeyConfigured: boolean
   environmentApiKeyAvailable: boolean
   harnessAccountAvailable: boolean
+}
+
+/** Non-secret state for a provider-owned browser session. */
+export interface BrowserSessionStatus {
+  providerId: string
+  displayName: string
+  authenticated: boolean
+  accountLabel?: string
+  error?: string
+}
+
+export interface BrowserSessionConnectedStatus {
+  providerId: string
+  displayName: string
+  accountLabel?: string
+}
+
+export interface BrowserSessionDesktopApi {
+  window: {
+    close(): Promise<void>
+    minimize(): Promise<void>
+    onConnected(callback: (status: BrowserSessionConnectedStatus) => void): () => void
+  }
 }
 
 interface ProvidersApi {
@@ -98,6 +127,11 @@ export interface DashboardDesktopApi {
     status(): Promise<DeepSeekCredentialStatus>
     saveApiKey(apiKey: string): Promise<DeepSeekCredentialStatus>
     clearApiKey(): Promise<DeepSeekCredentialStatus>
+  }
+  browserSessions: {
+    list(): Promise<BrowserSessionStatus[]>
+    login(providerId: string): Promise<BrowserSessionStatus>
+    logout(providerId: string): Promise<BrowserSessionStatus>
   }
   app: {
     quit(): Promise<void>

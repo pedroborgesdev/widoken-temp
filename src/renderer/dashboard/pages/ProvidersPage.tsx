@@ -1,9 +1,9 @@
 import type { ProviderSettingsSection } from '@shared/dashboard'
-import type { DeepSeekCredentialStatus } from '@shared/ipc'
+import type { BrowserSessionStatus, DeepSeekCredentialStatus } from '@shared/ipc'
 import type { ProviderStatus, ProviderView } from '@shared/provider'
-import type { AppSettings, CredentialSource, HuggingFaceBrowser, SettingsPatch } from '@shared/settings'
+import type { AppSettings, CredentialSource, SettingsPatch } from '@shared/settings'
 import { DeepSeekCredentialSettings } from '../../components/Settings/DeepSeekCredentialSettings'
-import { HuggingFaceBrowserSettings } from '../../components/Settings/HuggingFaceBrowserSettings'
+import { BrowserSessionSettings } from '../../components/Settings/BrowserSessionSettings'
 import { SettingsSection, SettingsToggle } from '../../components/Settings/SettingsControls'
 import { providerLogos, providerName } from '../../utils/providerBranding'
 
@@ -30,7 +30,7 @@ const PROVIDER_DESCRIPTIONS: Record<ProviderSettingsSection, string> = {
   antigravity: 'Widoken reads the Antigravity session already signed in on this computer. Sign-in is managed by the Antigravity app, so there is nothing to configure here.',
   copilot: 'Widoken reads the GitHub Copilot session already signed in on this computer. Sign-in is managed by GitHub Copilot, so there is nothing to configure here.',
   deepseek: 'Choose whether Widoken authenticates with the DeepSeek Harness account or a saved API key.',
-  huggingface: 'Widoken reads balance and inference activity from a Hugging Face session already signed in through your browser.'
+  huggingface: 'Widoken reads balance and inference activity through a private browser session managed by the app.'
 }
 
 interface ProvidersPageProps {
@@ -38,9 +38,12 @@ interface ProvidersPageProps {
   settings: AppSettings
   providers: ProviderView[]
   deepSeekCredentials: DeepSeekCredentialStatus
+  browserSessions: BrowserSessionStatus[]
   onUpdate: (patch: SettingsPatch) => void
   onSaveDeepSeekApiKey: (apiKey: string) => Promise<DeepSeekCredentialStatus>
   onClearDeepSeekApiKey: () => Promise<DeepSeekCredentialStatus>
+  onLoginBrowserSession: (providerId: string) => Promise<BrowserSessionStatus>
+  onLogoutBrowserSession: (providerId: string) => Promise<BrowserSessionStatus>
 }
 
 function ProviderStatusSummary({ providerView, enabled }: { providerView?: ProviderView; enabled: boolean }): React.JSX.Element {
@@ -105,9 +108,12 @@ export function ProvidersPage({
   settings,
   providers,
   deepSeekCredentials,
+  browserSessions,
   onUpdate,
   onSaveDeepSeekApiKey,
-  onClearDeepSeekApiKey
+  onClearDeepSeekApiKey,
+  onLoginBrowserSession,
+  onLogoutBrowserSession
 }: ProvidersPageProps): React.JSX.Element {
   const name = providerName(section)
   const providerView = providers.find((provider) => provider.id === section)
@@ -131,18 +137,10 @@ export function ProvidersPage({
     })
   }
 
-  const updateHuggingFaceBrowser = (browser: HuggingFaceBrowser): void => {
-    onUpdate({
-      providers: settings.providers.map((provider) =>
-        provider.id === 'huggingface' ? { ...provider, huggingFaceBrowser: browser } : provider
-      )
-    })
-  }
-
   const deepSeek = settings.providers.find((provider) => provider.id === 'deepseek')
-  const huggingFace = settings.providers.find((provider) => provider.id === 'huggingface')
+  const browserSession = browserSessions.find(({ providerId }) => providerId === section)
   const enabled = providerSetting?.enabled ?? false
-  const hasConfiguration = section === 'deepseek' || section === 'huggingface'
+  const hasConfiguration = section === 'deepseek' || browserSession !== undefined
 
   return (
     <SettingsSection title="Provider settings" description="Enable or disable collection and configure how Widoken connects to this provider.">
@@ -188,10 +186,12 @@ export function ProvidersPage({
                 onClearApiKey={async () => { await onClearDeepSeekApiKey() }}
               />
             )}
-            {section === 'huggingface' && huggingFace && (
-              <HuggingFaceBrowserSettings
-                provider={huggingFace}
-                onBrowserChange={updateHuggingFaceBrowser}
+            {browserSession && (
+              <BrowserSessionSettings
+                providerName={browserSession.displayName}
+                status={browserSession}
+                onLogin={async () => { await onLoginBrowserSession(browserSession.providerId) }}
+                onLogout={async () => { await onLogoutBrowserSession(browserSession.providerId) }}
               />
             )}
           </div>

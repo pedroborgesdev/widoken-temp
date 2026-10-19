@@ -1316,9 +1316,7 @@ test('resets every setting to its default from the General page', async () => {
   await expect(launchAtStartup).toBeChecked()
   await followsWidgetTheme.check()
   await launchAtStartup.uncheck()
-  const refreshInterval = dashboard.locator('.settings-control').filter({ hasText: 'Refresh interval' })
-  await refreshInterval.locator('.settings-select__trigger').click()
-  await refreshInterval.getByRole('option', { name: '5 minutes' }).click()
+  await expect(dashboard.getByText('Refresh interval')).toHaveCount(0)
   await page.evaluate(() => (window as unknown as {
     widgetDesktop: { settings: { update: (patch: object) => Promise<unknown> } }
   }).widgetDesktop.settings.update({ widget: { theme: 'dracula', itemGap: 12, edgeTuck: false } }))
@@ -1331,7 +1329,6 @@ test('resets every setting to its default from the General page', async () => {
             widget: { theme: string, itemGap: number, edgeTuck: boolean }
             launchAtStartup: boolean
             dashboardFollowsWidgetTheme: boolean
-            refreshIntervalSeconds: number
           }>
         }
       }
@@ -1339,8 +1336,7 @@ test('resets every setting to its default from the General page', async () => {
   )).toMatchObject({
     widget: { theme: 'dracula', itemGap: 12, edgeTuck: false },
     launchAtStartup: false,
-    dashboardFollowsWidgetTheme: true,
-    refreshIntervalSeconds: 300
+    dashboardFollowsWidgetTheme: true
   })
   await expect(page.locator('.overlay-root')).toHaveClass(/overlay-root--theme-dracula/)
 
@@ -1356,7 +1352,6 @@ test('resets every setting to its default from the General page', async () => {
 
   await expect(followsWidgetTheme).not.toBeChecked()
   await expect(launchAtStartup).toBeChecked()
-  await expect(refreshInterval.locator('.settings-select__trigger')).toHaveText('45 seconds')
   await expect(page.locator('.overlay-root')).toHaveClass(/overlay-root--theme-monokai-black/)
   await expect.poll(async () => dashboard.evaluate(() =>
     (window as unknown as {
@@ -1366,7 +1361,6 @@ test('resets every setting to its default from the General page', async () => {
             widget: { theme: string, itemGap: number, edgeTuck: boolean }
             launchAtStartup: boolean
             dashboardFollowsWidgetTheme: boolean
-            refreshIntervalSeconds: number
           }>
         }
       }
@@ -1374,8 +1368,7 @@ test('resets every setting to its default from the General page', async () => {
   )).toMatchObject({
     widget: { theme: 'monokai-black', itemGap: 6, edgeTuck: true },
     launchAtStartup: true,
-    dashboardFollowsWidgetTheme: false,
-    refreshIntervalSeconds: 45
+    dashboardFollowsWidgetTheme: false
   })
 
   await selectSettingsPage(dashboard, 'Widget providers')

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { dashboardRouteFromSearch, sanitizeDashboardRoute, type DashboardRoute } from '@shared/dashboard'
-import type { DeepSeekCredentialStatus } from '@shared/ipc'
+import type { BrowserSessionStatus, DeepSeekCredentialStatus } from '@shared/ipc'
 import type { ProviderView } from '@shared/provider'
 import { DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/settings'
 import { dashboardDesktop } from '../../services/desktop'
@@ -26,6 +26,7 @@ export function DashboardProvider({ children }: { children: ReactNode }): React.
   const [settingsReady, setSettingsReady] = useState(false)
   const [providers, setProviders] = useState<ProviderView[]>([])
   const [deepSeekCredentials, setDeepSeekCredentials] = useState<DeepSeekCredentialStatus>(EMPTY_DEEPSEEK_CREDENTIALS)
+  const [browserSessions, setBrowserSessions] = useState<BrowserSessionStatus[]>([])
   const [route, setRoute] = useState<DashboardRoute>(() => dashboardRouteFromSearch(window.location.search))
 
   useEffect(() => {
@@ -40,6 +41,9 @@ export function DashboardProvider({ children }: { children: ReactNode }): React.
     })
     void dashboardDesktop.deepseek.status().then((status) => {
       if (active) setDeepSeekCredentials(status)
+    }).catch(() => undefined)
+    void dashboardDesktop.browserSessions.list().then((statuses) => {
+      if (active) setBrowserSessions(statuses)
     }).catch(() => undefined)
     return () => {
       active = false
@@ -86,30 +90,52 @@ export function DashboardProvider({ children }: { children: ReactNode }): React.
     return status
   }, [])
 
+  const updateBrowserSession = useCallback((status: BrowserSessionStatus): BrowserSessionStatus => {
+    setBrowserSessions((current) => [
+      ...current.filter(({ providerId }) => providerId !== status.providerId),
+      status
+    ])
+    return status
+  }, [])
+
+  const loginBrowserSession = useCallback(async (providerId: string): Promise<BrowserSessionStatus> => {
+    return updateBrowserSession(await dashboardDesktop.browserSessions.login(providerId))
+  }, [updateBrowserSession])
+
+  const logoutBrowserSession = useCallback(async (providerId: string): Promise<BrowserSessionStatus> => {
+    return updateBrowserSession(await dashboardDesktop.browserSessions.logout(providerId))
+  }, [updateBrowserSession])
+
   const value = useMemo(
     () => ({
       settings,
       settingsReady,
       providers,
       deepSeekCredentials,
+      browserSessions,
       route,
       navigate,
       updateSettings,
       resetSettings,
       saveDeepSeekApiKey,
-      clearDeepSeekApiKey
+      clearDeepSeekApiKey,
+      loginBrowserSession,
+      logoutBrowserSession
     }),
     [
       settings,
       settingsReady,
       providers,
       deepSeekCredentials,
+      browserSessions,
       route,
       navigate,
       updateSettings,
       resetSettings,
       saveDeepSeekApiKey,
-      clearDeepSeekApiKey
+      clearDeepSeekApiKey,
+      loginBrowserSession,
+      logoutBrowserSession
     ]
   )
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>

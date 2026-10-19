@@ -4,6 +4,7 @@ import {
   createInteractionRegionAdapter,
   type InteractionWindow
 } from '../../src/main/window/interactionRegionAdapters'
+import { SHADOW_PAINT_OUTSET } from '../../src/shared/overlay'
 
 interface WindowCall {
   name: 'ignore' | 'shape'
@@ -117,6 +118,30 @@ describe('interaction region adapters', () => {
     expect(calls).toEqual([
       { name: 'ignore', value: false, forward: undefined },
       { name: 'shape', value: [{ x: 0, y: 0, width: 112, height: 302 }] }
+    ])
+  })
+
+  it('keeps paint space around a tucked Windows peek without capturing the shadow', () => {
+    const adapter = createInteractionRegionAdapter('win32', false)
+    const { calls, window } = createWindow()
+    const tuckedPeek = [{ x: 0, y: 100, width: 14, height: 234 }]
+
+    adapter.registerDisplay(window, display)
+    adapter.applyRegions(window, tuckedPeek, SHADOW_PAINT_OUTSET)
+
+    expect(calls).toEqual([
+      { name: 'ignore', value: true, forward: undefined },
+      { name: 'shape', value: [{ x: 0, y: 0, width: 116, height: 436 }] }
+    ])
+
+    calls.length = 0
+    adapter.updateCursor(window, { x: 80, y: 120 })
+    expect(calls).toEqual([])
+
+    adapter.updateCursor(window, { x: 8, y: 120 })
+    expect(calls).toEqual([
+      { name: 'ignore', value: false, forward: undefined },
+      { name: 'shape', value: [{ x: 0, y: 0, width: 116, height: 436 }] }
     ])
   })
 

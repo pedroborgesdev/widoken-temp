@@ -7,10 +7,13 @@ import { DeepSeekCredentialService } from '../credentials/DeepSeekCredentialServ
 import { ProviderCredentialRepository, repositoryApiKeyStore } from '../credentials/ProviderCredentialRepository'
 import { safeStorageCodec } from '../credentials/safeStorageCodec'
 import { registerDeepSeekCredentialsIpc } from '../ipc/deepseekCredentials.ipc'
+import { registerBrowserSessionsIpc } from '../ipc/browserSessions.ipc'
 import { registerOverlayIpc } from '../ipc/overlay.ipc'
 import { registerProvidersIpc } from '../ipc/providers.ipc'
 import { registerSettingsIpc } from '../ipc/settings.ipc'
 import { ProviderManager } from '../providers/ProviderManager'
+import { ProviderBrowserSessionManager } from '../browserSessions/ProviderBrowserSessionManager'
+import { huggingFaceBrowserSessionDefinition } from '../providers/HuggingFaceBrowserSession'
 import { createProviderRegistry } from '../providers/registry'
 import { SettingsRepository } from '../settings/SettingsRepository'
 import { DashboardWindowManager } from '../windows/DashboardWindowManager'
@@ -19,6 +22,7 @@ import { completeInitialWidgetProviderDiscovery, hideProvidersUntilInitialDiscov
 
 export class AppController {
   private credentialRepository: ProviderCredentialRepository | undefined
+  private browserSessions: ProviderBrowserSessionManager | undefined
   private providerManager: ProviderManager | undefined
   private widgetWindows: WidgetWindowManager | undefined
   private dashboardWindows: DashboardWindowManager | undefined
@@ -41,25 +45,37 @@ export class AppController {
       () => widgetWindows.window,
       (open) => widgetWindows.sendDashboardWindowState(open)
     )
+    const browserSessions = new ProviderBrowserSessionManager([
+      huggingFaceBrowserSessionDefinition
+    ], {
+      getWelcomeAppearance: async () => {
+        const current = await settingsRepository.get()
+        if (!current.dashboardFollowsWidgetTheme) return { theme: 'monokai-black' }
+        return {
+          theme: current.widget.theme,
+          syncedTheme: current.widget.themeMode === 'vscode' ? current.widget.vscodeTheme : undefined
+        }
+      }
+    })
     const providerManager = new ProviderManager(
       createProviderRegistry({
         deepSeekStatePath: join(userDataPath, 'deepseek-balance.json'),
         deepSeekApiKeys: repositoryApiKeyStore(credentialRepository),
         huggingFaceStatePath: join(userDataPath, 'huggingface-balance.json'),
-        huggingFaceScriptRoot: app.isPackaged
-          ? join(process.resourcesPath, 'huggingface')
-          : join(app.getAppPath(), 'resources', 'huggingface')
+        huggingFaceSession: browserSessions.client('huggingface')
       }),
       (providers) => this.publishProviders(providers)
     )
 
     this.credentialRepository = credentialRepository
+    this.browserSessions = browserSessions
     this.widgetWindows = widgetWindows
     this.dashboardWindows = dashboardWindows
     this.providerManager = providerManager
 
     registerOverlayIpc(widgetWindows)
     registerProvidersIpc(providerManager)
+    registerBrowserSessionsIpc(browserSessions, providerManager)
     registerDeepSeekCredentialsIpc(new DeepSeekCredentialService(credentialRepository), providerManager)
     registerSettingsIpc(
       settingsRepository,
@@ -73,7 +89,7 @@ export class AppController {
       (updatedSettings) => this.applySettings(updatedSettings)
     )
 
-    providerManager.start(settings.providers, settings.refreshIntervalSeconds)
+    providerManager.start(settings.providers)
     app.setLoginItemSettings({ openAtLogin: settings.launchAtStartup })
     await widgetWindows.applySettings(settings)
     if (!settings.widget.enabled) await dashboardWindows.open()
@@ -88,10 +104,12 @@ export class AppController {
 
   async stop(): Promise<void> {
     this.providerManager?.stop()
+    this.browserSessions?.dispose()
     this.dashboardWindows?.destroy()
     await this.widgetWindows?.destroy()
     this.credentialRepository?.close()
     this.providerManager = undefined
+    this.browserSessions = undefined
     this.dashboardWindows = undefined
     this.widgetWindows = undefined
     this.credentialRepository = undefined
@@ -115,7 +133,7 @@ export class AppController {
         providers: discovered.providers,
         widgetProviderDiscoveryCompleted: true
       })
-      providerManager.configure(updated.providers, updated.refreshIntervalSeconds)
+      providerManager.configure(updated.providers)
       await this.applySettings(updated)
     } catch (error) {
       console.warn('Failed to complete initial widget provider discovery:', error)

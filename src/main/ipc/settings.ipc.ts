@@ -20,7 +20,7 @@ export function registerSettingsIpc(
   onSettingsUpdated: (settings: AppSettings) => AppSettings | void | Promise<AppSettings | void>
 ): void {
   const commit = async (settings: AppSettings): Promise<AppSettings> => {
-    providers.configure(settings.providers, settings.refreshIntervalSeconds)
+    providers.configure(settings.providers)
     app.setLoginItemSettings({ openAtLogin: settings.launchAtStartup })
     const published = (await onSettingsUpdated(settings)) ?? settings
     for (const window of BrowserWindow.getAllWindows()) {

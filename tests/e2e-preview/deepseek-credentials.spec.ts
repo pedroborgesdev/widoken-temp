@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 const PROVIDERS_PATH = '/dashboard.html?page=providers&section=deepseek'
+const HUGGING_FACE_PATH = '/dashboard.html?page=providers&section=huggingface'
 const WIDGET_PROVIDERS_PATH = '/dashboard.html?page=widget&section=providers'
 const WIDGET_PATH = '/widget.html'
 
@@ -76,4 +77,20 @@ test('keeps enabled DeepSeek visible with its balance and active source', async 
   const activeSource = page.getByTestId('deepseek-active-source')
   await expect(activeSource).toBeVisible()
   await expect(activeSource).toHaveText('Harness account')
+})
+
+test('manages a provider-owned browser session without exposing cookies', async ({ page }) => {
+  await page.goto(HUGGING_FACE_PATH)
+  const panel = page.getByTestId('browser-session-settings')
+  await expect(panel).toBeVisible()
+  await expect(panel.getByText('Connected', { exact: true })).toBeVisible()
+  await expect(panel.getByText('preview-user')).toBeVisible()
+
+  await panel.getByRole('button', { name: 'Remove session' }).click()
+  await expect(panel.getByText('Signed out', { exact: true })).toBeVisible()
+  await expect(panel.getByText('preview-user')).toHaveCount(0)
+
+  await panel.getByRole('button', { name: 'Sign in to Hugging Face' }).click()
+  await expect(panel.getByText('Connected', { exact: true })).toBeVisible()
+  await expect(panel.getByText('preview-user')).toBeVisible()
 })

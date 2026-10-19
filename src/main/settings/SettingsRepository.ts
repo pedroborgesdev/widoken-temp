@@ -5,12 +5,10 @@ import {
   DEFAULT_SETTINGS,
   APP_THEMES,
   CREDENTIAL_SOURCES,
-  HUGGING_FACE_BROWSERS,
   clampHorizontalPosition,
   clampVerticalPosition,
   type AppSettings,
   type CredentialSource,
-  type HuggingFaceBrowser,
   type ProviderSetting,
   type ProviderUsageDisplay,
   type SettingsPatch,
@@ -76,10 +74,6 @@ function sanitizeCredentialSource(value: unknown): CredentialSource {
   return CREDENTIAL_SOURCES.includes(value as CredentialSource) ? value as CredentialSource : 'auto'
 }
 
-function sanitizeHuggingFaceBrowser(value: unknown): HuggingFaceBrowser {
-  return HUGGING_FACE_BROWSERS.includes(value as HuggingFaceBrowser) ? value as HuggingFaceBrowser : 'auto'
-}
-
 function sanitizeProviders(value: unknown): ProviderSetting[] {
   if (!Array.isArray(value)) return DEFAULT_SETTINGS.providers
 
@@ -101,7 +95,6 @@ function sanitizeProviders(value: unknown): ProviderSetting[] {
       usageDisplay: sanitizeProviderUsage(item.id, item.usageDisplay, fallback.usageDisplay)
     }
     if (item.id === 'deepseek') setting.credentialSource = sanitizeCredentialSource(item.credentialSource)
-    if (item.id === 'huggingface') setting.huggingFaceBrowser = sanitizeHuggingFaceBrowser(item.huggingFaceBrowser)
     return [setting]
   })
 
@@ -133,7 +126,6 @@ function sanitizeSyncedTheme(value: unknown): SyncedVsCodeTheme | undefined {
 function sanitizeSettings(value: unknown): AppSettings {
   const candidate = value && typeof value === 'object' ? (value as Partial<AppSettings>) : {}
   const widget = candidate.widget && typeof candidate.widget === 'object' ? candidate.widget : DEFAULT_SETTINGS.widget
-  const refresh = finiteNumber(candidate.refreshIntervalSeconds)
   const vscodeTheme = sanitizeSyncedTheme(widget.vscodeTheme)
 
   return {
@@ -172,7 +164,6 @@ function sanitizeSettings(value: unknown): AppSettings {
     widgetProviderDiscoveryCompleted: typeof candidate.widgetProviderDiscoveryCompleted === 'boolean'
       ? candidate.widgetProviderDiscoveryCompleted
       : true,
-    refreshIntervalSeconds: refresh === undefined ? 45 : Math.min(3600, Math.max(30, refresh)),
     launchAtStartup: candidate.launchAtStartup !== false,
     dashboardFollowsWidgetTheme: candidate.dashboardFollowsWidgetTheme === true
   }

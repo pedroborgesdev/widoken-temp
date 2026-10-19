@@ -18,7 +18,7 @@ import {
   type ProviderSettingsSection,
   type WidgetSettingsSection
 } from '@shared/dashboard'
-import type { DeepSeekCredentialStatus } from '@shared/ipc'
+import type { BrowserSessionStatus, DeepSeekCredentialStatus } from '@shared/ipc'
 import type { ProviderView } from '@shared/provider'
 import type { AppSettings, SettingsPatch } from '@shared/settings'
 import appIcon from '../../../resources/widoken.png'
@@ -55,12 +55,15 @@ interface DashboardPanelProps {
   settings: AppSettings
   providers: ProviderView[]
   deepSeekCredentials: DeepSeekCredentialStatus
+  browserSessions: BrowserSessionStatus[]
   route: DashboardRoute
   onNavigate: (route: DashboardRoute) => void
   onUpdate: (patch: SettingsPatch) => void
   onReset: () => Promise<AppSettings>
   onSaveDeepSeekApiKey: (apiKey: string) => Promise<DeepSeekCredentialStatus>
   onClearDeepSeekApiKey: () => Promise<DeepSeekCredentialStatus>
+  onLoginBrowserSession: (providerId: string) => Promise<BrowserSessionStatus>
+  onLogoutBrowserSession: (providerId: string) => Promise<BrowserSessionStatus>
   onSyncVsCodeTheme: () => Promise<string>
   onClose: () => void
   onMinimize: () => void
@@ -70,12 +73,15 @@ export function DashboardPanel({
   settings,
   providers,
   deepSeekCredentials,
+  browserSessions,
   route,
   onNavigate,
   onUpdate,
   onReset,
   onSaveDeepSeekApiKey,
   onClearDeepSeekApiKey,
+  onLoginBrowserSession,
+  onLogoutBrowserSession,
   onSyncVsCodeTheme,
   onClose,
   onMinimize
@@ -233,9 +239,12 @@ export function DashboardPanel({
               settings={settings}
               providers={providers}
               deepSeekCredentials={deepSeekCredentials}
+              browserSessions={browserSessions}
               onUpdate={onUpdate}
               onSaveDeepSeekApiKey={onSaveDeepSeekApiKey}
               onClearDeepSeekApiKey={onClearDeepSeekApiKey}
+              onLoginBrowserSession={onLoginBrowserSession}
+              onLogoutBrowserSession={onLogoutBrowserSession}
             />
           ) : (
             <GeneralPage settings={settings} onUpdate={onUpdate} onReset={onReset} />

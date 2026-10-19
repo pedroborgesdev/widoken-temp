@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ProviderSnapshot } from '../../src/shared/provider'
-import { ProviderManager } from '../../src/main/providers/ProviderManager'
+import {
+  PROVIDER_REFRESH_INTERVAL_SECONDS,
+  ProviderManager
+} from '../../src/main/providers/ProviderManager'
 import type { ProviderAdapter } from '../../src/main/providers/ProviderAdapter'
 
 afterEach(() => vi.useRealTimers())
@@ -23,7 +26,7 @@ describe('ProviderManager', () => {
     }
     const manager = new ProviderManager(new Map([[adapter.id, adapter]]), () => undefined)
 
-    manager.configure([{ id: adapter.id, enabled: true, order: 0, usageDisplay }], 30)
+    manager.configure([{ id: adapter.id, enabled: true, order: 0, usageDisplay }])
 
     expect(manager.list()[0]).not.toHaveProperty('activity')
     manager.stop()
@@ -47,9 +50,9 @@ describe('ProviderManager', () => {
     }
     const manager = new ProviderManager(new Map([[adapter.id, adapter]]), () => undefined)
 
-    manager.configure([{ id: adapter.id, enabled: true, order: 0, usageDisplay }], 30)
-    manager.configure([{ id: adapter.id, enabled: false, order: 0, usageDisplay }], 30)
-    manager.configure([{ id: adapter.id, enabled: true, order: 0, usageDisplay }], 30)
+    manager.configure([{ id: adapter.id, enabled: true, order: 0, usageDisplay }])
+    manager.configure([{ id: adapter.id, enabled: false, order: 0, usageDisplay }])
+    manager.configure([{ id: adapter.id, enabled: true, order: 0, usageDisplay }])
     await Promise.resolve()
 
     expect(connect).toHaveBeenCalledTimes(2)
@@ -78,7 +81,7 @@ describe('ProviderManager', () => {
     }
     const manager = new ProviderManager(new Map([[adapter.id, adapter]]), () => undefined)
 
-    manager.start([{ id: adapter.id, enabled: true, order: 0, usageDisplay }], 30)
+    manager.start([{ id: adapter.id, enabled: true, order: 0, usageDisplay }])
     await vi.advanceTimersByTimeAsync(0)
     manager.stop()
     finishRefresh()
@@ -113,7 +116,7 @@ describe('ProviderManager', () => {
       }
     }
     const manager = new ProviderManager(new Map([[adapter.id, adapter]]), () => undefined)
-    manager.configure([{ id: adapter.id, enabled: true, order: 0, usageDisplay }], 30)
+    manager.configure([{ id: adapter.id, enabled: true, order: 0, usageDisplay }])
 
     const older = manager.refresh(adapter.id)
     await firstStarted
@@ -130,7 +133,7 @@ describe('ProviderManager', () => {
     manager.stop()
   })
 
-  it('keeps the full refresh cadence after a targeted refresh', async () => {
+  it('keeps the fixed five-second refresh cadence after a targeted refresh', async () => {
     vi.useFakeTimers()
     const firstUsage = vi.fn(async () => ({
       providerId: 'first',
@@ -159,15 +162,16 @@ describe('ProviderManager', () => {
     manager.start([
       { id: 'first', enabled: true, order: 0, usageDisplay },
       { id: 'second', enabled: true, order: 1, usageDisplay }
-    ], 30)
+    ])
     await vi.advanceTimersByTimeAsync(0)
 
-    await vi.advanceTimersByTimeAsync(20_000)
+    await vi.advanceTimersByTimeAsync(2_000)
     await manager.refresh('first')
-    await vi.advanceTimersByTimeAsync(10_000)
+    await vi.advanceTimersByTimeAsync(3_000)
 
     expect(firstUsage).toHaveBeenCalledTimes(3)
     expect(secondUsage).toHaveBeenCalledTimes(2)
+    expect(PROVIDER_REFRESH_INTERVAL_SECONDS).toBe(5)
     manager.stop()
   })
 
@@ -184,7 +188,7 @@ describe('ProviderManager', () => {
     const onUpdate = vi.fn()
     const manager = new ProviderManager(new Map([['instant', adapter]]), onUpdate)
 
-    manager.configure([{ id: 'instant', enabled: true, order: 0, usageDisplay }], 30)
+    manager.configure([{ id: 'instant', enabled: true, order: 0, usageDisplay }])
 
     expect(onUpdate).toHaveBeenCalledOnce()
     expect(onUpdate.mock.calls[0][0]).toMatchObject([
@@ -206,7 +210,7 @@ describe('ProviderManager', () => {
       }
     }
     const manager = new ProviderManager(new Map([['broken', broken]]), () => undefined)
-    manager.configure([{ id: 'broken', enabled: true, order: 0, usageDisplay }], 30)
+    manager.configure([{ id: 'broken', enabled: true, order: 0, usageDisplay }])
 
     const [provider] = await manager.refresh()
     expect(provider.snapshot.status).toBe('error')
@@ -237,7 +241,7 @@ describe('ProviderManager', () => {
       visibleInWidget: false,
       order: 0,
       usageDisplay
-    }], 30)
+    }])
 
     await expect(manager.refresh()).resolves.toMatchObject([
       { id: 'hidden', snapshot: { status: 'connected' } }
@@ -278,13 +282,13 @@ describe('ProviderManager', () => {
       getUsage: secondUsage
     }
     const manager = new ProviderManager(new Map([['first', first], ['second', second]]), () => undefined)
-    manager.configure([{ id: 'first', enabled: true, order: 0, usageDisplay }], 30)
+    manager.configure([{ id: 'first', enabled: true, order: 0, usageDisplay }])
     const activeRefresh = manager.refresh()
 
     manager.configure([
       { id: 'first', enabled: true, order: 0, usageDisplay },
       { id: 'second', enabled: true, order: 1, usageDisplay }
-    ], 30)
+    ])
     const reconfiguredRefresh = manager.refresh()
     finishFirst()
 
@@ -313,7 +317,7 @@ describe('ProviderManager', () => {
     }
     const onUpdate = vi.fn()
     const manager = new ProviderManager(new Map([['active', adapter]]), onUpdate)
-    manager.start([{ id: 'active', enabled: true, order: 0, usageDisplay }], 30)
+    manager.start([{ id: 'active', enabled: true, order: 0, usageDisplay }])
     await vi.advanceTimersByTimeAsync(0)
 
     active = true
@@ -348,7 +352,7 @@ describe('ProviderManager', () => {
     }
     const onUpdate = vi.fn()
     const manager = new ProviderManager(new Map([['active', adapter]]), onUpdate)
-    manager.start([{ id: 'active', enabled: true, order: 0, usageDisplay }], 30)
+    manager.start([{ id: 'active', enabled: true, order: 0, usageDisplay }])
     await vi.advanceTimersByTimeAsync(0)
     expect(manager.list()[0]?.activity).toBe('active')
 
@@ -386,7 +390,7 @@ describe('ProviderManager', () => {
       credentialSource: 'api-key' as const
     }
 
-    manager.configure([setting], 30)
+    manager.configure([setting])
 
     expect(configure).toHaveBeenCalledWith(setting)
     manager.stop()

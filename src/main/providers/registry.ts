@@ -6,7 +6,8 @@ import { GitHubCopilotProviderAdapter } from './GitHubCopilotProviderAdapter'
 import { AntigravityProviderAdapter } from './AntigravityProviderAdapter'
 import { DeepSeekProviderAdapter, type DeepSeekApiKeyStore } from './DeepSeekProviderAdapter'
 import { HuggingFaceProviderAdapter } from './HuggingFaceProviderAdapter'
-import { HuggingFacePythonBridge } from './HuggingFacePythonBridge'
+import { HuggingFaceSessionCollector } from './HuggingFaceSessionCollector'
+import type { ProviderBrowserSessionClient } from '../browserSessions/ProviderBrowserSessionManager'
 import type { ProviderAdapter } from './ProviderAdapter'
 
 const inMinutes = (minutes: number): string => new Date(Date.now() + minutes * 60_000).toISOString()
@@ -71,11 +72,12 @@ export interface ProviderRegistryOptions {
   deepSeekStatePath?: string
   deepSeekApiKeys?: DeepSeekApiKeyStore
   huggingFaceStatePath?: string
-  huggingFaceScriptRoot?: string
+  huggingFaceSession?: ProviderBrowserSessionClient
 }
 
 export function createProviderRegistry(options: ProviderRegistryOptions = {}): Map<string, ProviderAdapter> {
   if (process.env.NODE_ENV === 'test') return createTestRegistry()
+  if (!options.huggingFaceSession) throw new Error('Hugging Face browser session is required.')
 
   const adapters: ProviderAdapter[] = [
     new ClaudeProviderAdapter(),
@@ -89,7 +91,7 @@ export function createProviderRegistry(options: ProviderRegistryOptions = {}): M
     }),
     new HuggingFaceProviderAdapter({
       statePath: options.huggingFaceStatePath,
-      collector: new HuggingFacePythonBridge({ scriptRoot: options.huggingFaceScriptRoot })
+      collector: new HuggingFaceSessionCollector(options.huggingFaceSession)
     })
   ]
 

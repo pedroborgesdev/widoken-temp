@@ -171,7 +171,7 @@ const providerSettings = (overrides = {}) => [
   { id: 'antigravity', enabled: true, order: 3, usageDisplay: { split: true, primaryLimitId: 'gemini', secondaryLimitId: 'partner' } },
   { id: 'copilot', enabled: true, visibleInWidget: false, order: 4, usageDisplay: { split: true, primaryLimitId: 'premium_interactions', secondaryLimitId: 'chat' } },
   { id: 'deepseek', enabled: true, visibleInWidget: false, order: 5, usageDisplay: { split: true, primaryLimitId: 'balance-usd', secondaryLimitId: 'balance-cny' }, credentialSource: 'auto' },
-  { id: 'huggingface', enabled: true, visibleInWidget: false, order: 6, usageDisplay: { split: false, primaryLimitId: 'balance-usd' }, huggingFaceBrowser: 'auto' }
+  { id: 'huggingface', enabled: true, visibleInWidget: false, order: 6, usageDisplay: { split: false, primaryLimitId: 'balance-usd' } }
 ].map((provider) => ({ ...provider, ...overrides[provider.id] }))
 
 const baseSettings = (widget = {}, providers = {}) => ({
@@ -194,7 +194,6 @@ const baseSettings = (widget = {}, providers = {}) => ({
     ...widget
   },
   providers: providerSettings(providers),
-  refreshIntervalSeconds: 45,
   launchAtStartup: true,
   dashboardFollowsWidgetTheme: false
 })

@@ -10,12 +10,15 @@ export function DashboardApp(): React.JSX.Element {
     settingsReady,
     providers,
     deepSeekCredentials,
+    browserSessions,
     route,
     navigate,
     updateSettings,
     resetSettings,
     saveDeepSeekApiKey,
-    clearDeepSeekApiKey
+    clearDeepSeekApiKey,
+    loginBrowserSession,
+    logoutBrowserSession
   } = useDashboard()
 
   const syncVsCodeTheme = useCallback(async (): Promise<string> => {
@@ -41,11 +44,14 @@ export function DashboardApp(): React.JSX.Element {
           providers={providers}
           route={route}
           deepSeekCredentials={deepSeekCredentials}
+          browserSessions={browserSessions}
           onNavigate={navigate}
           onUpdate={(patch) => void updateSettings(patch)}
           onReset={resetSettings}
           onSaveDeepSeekApiKey={saveDeepSeekApiKey}
           onClearDeepSeekApiKey={clearDeepSeekApiKey}
+          onLoginBrowserSession={loginBrowserSession}
+          onLogoutBrowserSession={logoutBrowserSession}
           onSyncVsCodeTheme={syncVsCodeTheme}
           onClose={() => void dashboardDesktop.dashboard.close()}
           onMinimize={() => void dashboardDesktop.dashboard.minimize()}

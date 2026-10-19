@@ -1,5 +1,5 @@
 import { dashboardRouteQuery, sanitizeDashboardRoute } from '@shared/dashboard'
-import type { DashboardDesktopApi, DeepSeekCredentialStatus, DesktopApi, WidgetDesktopApi } from '@shared/ipc'
+import type { BrowserSessionStatus, DashboardDesktopApi, DeepSeekCredentialStatus, DesktopApi, WidgetDesktopApi } from '@shared/ipc'
 import type { ProviderView } from '@shared/provider'
 import { APP_THEMES, DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/settings'
 
@@ -60,6 +60,12 @@ const dashboardWindowListeners = new Set<(open: boolean) => void>()
  * to localStorage, settings, or any provider snapshot.
  */
 let previewDeepSeekApiKey: string | undefined
+let previewBrowserSessions: BrowserSessionStatus[] = [{
+  providerId: 'huggingface',
+  displayName: 'Hugging Face',
+  authenticated: true,
+  accountLabel: 'preview-user'
+}]
 function previewDeepSeekStatus(): DeepSeekCredentialStatus {
   return {
     storedApiKeyConfigured: previewDeepSeekApiKey !== undefined,
@@ -232,6 +238,23 @@ const browserDesktopApi: DesktopApi = {
     clearApiKey: async () => {
       previewDeepSeekApiKey = undefined
       return previewDeepSeekStatus()
+    }
+  },
+  browserSessions: {
+    list: async () => structuredClone(previewBrowserSessions),
+    login: async (providerId: string) => {
+      const current = previewBrowserSessions.find((status) => status.providerId === providerId)
+      if (!current) throw new Error('Unknown browser-session provider.')
+      const status = { ...current, authenticated: true, accountLabel: current.accountLabel ?? 'preview-user' }
+      previewBrowserSessions = previewBrowserSessions.map((candidate) => candidate.providerId === providerId ? status : candidate)
+      return structuredClone(status)
+    },
+    logout: async (providerId: string) => {
+      const current = previewBrowserSessions.find((status) => status.providerId === providerId)
+      if (!current) throw new Error('Unknown browser-session provider.')
+      const status = { providerId, displayName: current.displayName, authenticated: false }
+      previewBrowserSessions = previewBrowserSessions.map((candidate) => candidate.providerId === providerId ? status : candidate)
+      return structuredClone(status)
     }
   },
   app: {

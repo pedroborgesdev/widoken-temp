@@ -2,7 +2,6 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { HuggingFaceBrowser, ProviderSetting } from '../../src/shared/settings'
 import {
   applyHuggingFaceBaseline,
   HUGGING_FACE_BASELINE_VERSION,
@@ -11,7 +10,7 @@ import {
 import type {
   HuggingFaceCollector,
   HuggingFaceMonitorResult
-} from '../../src/main/providers/HuggingFacePythonBridge'
+} from '../../src/main/providers/HuggingFaceSessionCollector'
 
 const temporaryDirectories: string[] = []
 
@@ -23,23 +22,17 @@ function collector(balance = 10): HuggingFaceCollector & { emit(result: HuggingF
   let listener: ((result: HuggingFaceMonitorResult) => void) | undefined
   const instance: HuggingFaceCollector & { emit(result: HuggingFaceMonitorResult): void; stopped: boolean } = {
     stopped: false,
-    balance: vi.fn(async (browser: HuggingFaceBrowser) => ({
+    balance: vi.fn(async () => ({
       provider: 'huggingface' as const,
-      username: 'octocat',
-      balance_usd: balance,
-      browser: browser === 'auto' ? 'firefox' as const : browser
+      balance_usd: balance
     })),
-    monitor: vi.fn((_browser, onResult) => {
+    monitor: vi.fn((onResult) => {
       listener = onResult
       return { stop: () => { instance.stopped = true } }
     }),
     emit: (result) => listener?.(result)
   }
   return instance
-}
-
-function setting(browser: ProviderSetting['huggingFaceBrowser']): ProviderSetting {
-  return { id: 'huggingface', enabled: true, order: 0, usageDisplay: { split: false }, huggingFaceBrowser: browser }
 }
 
 describe('Hugging Face baseline', () => {
@@ -60,11 +53,10 @@ describe('HuggingFaceProviderAdapter', () => {
     const path = join(directory, 'balance.json')
     const source = collector(12.5)
     const adapter = new HuggingFaceProviderAdapter({ statePath: path, collector: source })
-    adapter.configure(setting('firefox'))
 
     const snapshot = await adapter.getUsage()
 
-    expect(source.balance).toHaveBeenCalledWith('firefox')
+    expect(source.balance).toHaveBeenCalledWith()
     expect(snapshot).toMatchObject({ providerId: 'huggingface', status: 'connected' })
     expect(snapshot.limits).toEqual([{
       id: 'balance-usd', label: 'USD balance', currency: 'USD', percent: 0, used: 0, limit: 12.5, remaining: 12.5
@@ -78,9 +70,9 @@ describe('HuggingFaceProviderAdapter', () => {
     const source = collector()
     const adapter = new HuggingFaceProviderAdapter({ collector: source })
     expect(await adapter.isActive()).toBe(false)
-    source.emit({ provider: 'huggingface', status: 'working', browser: 'chrome' })
+    source.emit({ provider: 'huggingface', status: 'working' })
     expect(await adapter.isActive()).toBe(true)
-    source.emit({ provider: 'huggingface', status: 'idle', browser: 'chrome' })
+    source.emit({ provider: 'huggingface', status: 'idle' })
     expect(await adapter.isActive()).toBe(false)
   })
 

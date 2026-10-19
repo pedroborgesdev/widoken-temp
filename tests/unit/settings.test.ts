@@ -37,6 +37,11 @@ describe('widget lifecycle settings', () => {
     expect(DEFAULT_SETTINGS.widget.enabled).toBe(true)
   })
 
+  it('dims unavailable icons and enables edge tuck by default', () => {
+    expect(DEFAULT_SETTINGS.widget.unavailableStyle).toBe('dim')
+    expect(DEFAULT_SETTINGS.widget.edgeTuck).toBe(true)
+  })
+
   it('remembers the display the widget was dropped on', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'widoken-settings-'))
     temporaryDirectories.push(directory)
@@ -65,7 +70,6 @@ describe('widget lifecycle settings', () => {
     temporaryDirectories.push(directory)
     const path = join(directory, 'settings.json')
     await writeFile(path, JSON.stringify({
-      refreshIntervalSeconds: null,
       widget: {
         horizontalPosition: null,
         verticalPosition: null,
@@ -77,7 +81,6 @@ describe('widget lifecycle settings', () => {
 
     const settings = await new SettingsRepository(path).get()
 
-    expect(settings.refreshIntervalSeconds).toBe(DEFAULT_SETTINGS.refreshIntervalSeconds)
     expect(settings.widget.horizontalPosition).toBe(DEFAULT_SETTINGS.widget.horizontalPosition)
     expect(settings.widget.verticalPosition).toBe(DEFAULT_SETTINGS.widget.verticalPosition)
     expect(settings.widget.itemGap).toBe(DEFAULT_SETTINGS.widget.itemGap)
@@ -119,13 +122,24 @@ describe('general settings', () => {
     await Promise.all([
       repository.update({ widget: { theme: 'dracula' } }),
       repository.update({ widget: { itemGap: 14 } }),
-      repository.update({ refreshIntervalSeconds: 300 })
+      repository.update({ launchAtStartup: false })
     ])
 
     const settings = await new SettingsRepository(path).get()
     expect(settings.widget.theme).toBe('dracula')
     expect(settings.widget.itemGap).toBe(14)
-    expect(settings.refreshIntervalSeconds).toBe(300)
+    expect(settings.launchAtStartup).toBe(false)
+  })
+
+  it('drops the retired configurable refresh interval from older settings', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'widoken-settings-'))
+    temporaryDirectories.push(directory)
+    const path = join(directory, 'settings.json')
+    await writeFile(path, JSON.stringify({ refreshIntervalSeconds: 300 }))
+
+    const settings = await new SettingsRepository(path).get()
+
+    expect(settings).not.toHaveProperty('refreshIntervalSeconds')
   })
 })
 
@@ -191,8 +205,7 @@ describe('provider usage settings', () => {
       enabled: true,
       visibleInWidget: false,
       order: 6,
-      usageDisplay: { split: false, primaryLimitId: 'balance-usd' },
-      huggingFaceBrowser: 'auto'
+      usageDisplay: { split: false, primaryLimitId: 'balance-usd' }
     })
   })
 
@@ -241,7 +254,7 @@ describe('provider usage settings', () => {
     })
   })
 
-  it('persists supported Hugging Face browsers and rejects unknown values', async () => {
+  it('drops the legacy external-browser selection from Hugging Face settings', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'widoken-settings-'))
     temporaryDirectories.push(directory)
     const path = join(directory, 'settings.json')
@@ -251,10 +264,9 @@ describe('provider usage settings', () => {
       )
     })
     await writeFile(path, JSON.stringify(withBrowser('firefox')))
-    expect((await new SettingsRepository(path).get()).providers.find(({ id }) => id === 'huggingface')?.huggingFaceBrowser).toBe('firefox')
-
-    await writeFile(path, JSON.stringify(withBrowser('netscape')))
-    expect((await new SettingsRepository(path).get()).providers.find(({ id }) => id === 'huggingface')?.huggingFaceBrowser).toBe('auto')
+    const huggingFace = (await new SettingsRepository(path).get()).providers.find(({ id }) => id === 'huggingface')
+    expect(huggingFace).toBeDefined()
+    expect(huggingFace).not.toHaveProperty('huggingFaceBrowser')
   })
 
   it('defaults the DeepSeek credential source to auto and sanitizes invalid values', async () => {
@@ -332,7 +344,6 @@ describe('resetting settings', () => {
     },
     display: { id: 7 },
     providers: DEFAULT_SETTINGS.providers.map((provider) => ({ ...provider, visibleInWidget: false })),
-    refreshIntervalSeconds: 300,
     launchAtStartup: false,
     dashboardFollowsWidgetTheme: true
   } as const

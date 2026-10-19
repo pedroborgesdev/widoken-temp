@@ -21,6 +21,9 @@ const IPC = {
   deepseekCredentialStatus: 'deepseek:credential-status',
   deepseekSaveApiKey: 'deepseek:save-api-key',
   deepseekClearApiKey: 'deepseek:clear-api-key',
+  browserSessionsList: 'browser-sessions:list',
+  browserSessionLogin: 'browser-sessions:login',
+  browserSessionLogout: 'browser-sessions:logout',
   themeSyncVsCode: 'theme:sync-vscode',
   appQuit: 'app:quit'
 } as const
@@ -62,6 +65,11 @@ const dashboardDesktopApi: DashboardDesktopApi = {
     status: () => ipcRenderer.invoke(IPC.deepseekCredentialStatus),
     saveApiKey: (apiKey: string) => ipcRenderer.invoke(IPC.deepseekSaveApiKey, apiKey),
     clearApiKey: () => ipcRenderer.invoke(IPC.deepseekClearApiKey)
+  },
+  browserSessions: {
+    list: () => ipcRenderer.invoke(IPC.browserSessionsList),
+    login: (providerId: string) => ipcRenderer.invoke(IPC.browserSessionLogin, providerId),
+    logout: (providerId: string) => ipcRenderer.invoke(IPC.browserSessionLogout, providerId)
   },
   app: {
     quit: () => ipcRenderer.invoke(IPC.appQuit)

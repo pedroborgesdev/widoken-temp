@@ -22,7 +22,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           widget: resolve('src/preload/widget.ts'),
-          dashboard: resolve('src/preload/dashboard.ts')
+          dashboard: resolve('src/preload/dashboard.ts'),
+          browserSession: resolve('src/preload/browserSession.ts')
         },
         output: {
           format: 'cjs',
@@ -44,7 +45,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           widget: resolve('widget.html'),
-          dashboard: resolve('dashboard.html')
+          dashboard: resolve('dashboard.html'),
+          browserSession: resolve('browser-session.html')
         }
       }
     }

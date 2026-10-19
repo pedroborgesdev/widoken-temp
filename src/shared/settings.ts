@@ -50,9 +50,6 @@ export interface ProviderUsageDisplay {
 export const CREDENTIAL_SOURCES = ['auto', 'harness-account', 'api-key'] as const
 export type CredentialSource = (typeof CREDENTIAL_SOURCES)[number]
 
-export const HUGGING_FACE_BROWSERS = ['auto', 'chrome', 'chromium', 'firefox', 'brave', 'edge'] as const
-export type HuggingFaceBrowser = (typeof HUGGING_FACE_BROWSERS)[number]
-
 export interface ProviderSetting {
   id: string
   enabled: boolean
@@ -60,7 +57,6 @@ export interface ProviderSetting {
   order: number
   usageDisplay: ProviderUsageDisplay
   credentialSource?: CredentialSource
-  huggingFaceBrowser?: HuggingFaceBrowser
 }
 
 export interface AppSettings {
@@ -87,7 +83,6 @@ export interface AppSettings {
   }
   providers: ProviderSetting[]
   widgetProviderDiscoveryCompleted: boolean
-  refreshIntervalSeconds: number
   launchAtStartup: boolean
   dashboardFollowsWidgetTheme: boolean
 }
@@ -117,17 +112,16 @@ export const DEFAULT_SETTINGS: AppSettings = {
     { id: 'antigravity', enabled: true, visibleInWidget: true, order: 3, usageDisplay: { split: true, primaryLimitId: 'gemini', secondaryLimitId: 'partner' } },
     { id: 'copilot', enabled: true, visibleInWidget: true, order: 4, usageDisplay: { split: true, primaryLimitId: 'premium_interactions', secondaryLimitId: 'chat' } },
     { id: 'deepseek', enabled: true, visibleInWidget: true, order: 5, usageDisplay: { split: true, primaryLimitId: 'balance-usd', secondaryLimitId: 'balance-cny' }, credentialSource: 'auto' },
-    { id: 'huggingface', enabled: true, visibleInWidget: true, order: 6, usageDisplay: { split: false, primaryLimitId: 'balance-usd' }, huggingFaceBrowser: 'auto' }
+    { id: 'huggingface', enabled: true, visibleInWidget: true, order: 6, usageDisplay: { split: false, primaryLimitId: 'balance-usd' } }
   ],
   widgetProviderDiscoveryCompleted: false,
-  refreshIntervalSeconds: 45,
   launchAtStartup: true,
   dashboardFollowsWidgetTheme: false
 }
 
 export type SettingsPatch = Partial<Pick<
   AppSettings,
-  'widgetProviderDiscoveryCompleted' | 'refreshIntervalSeconds' | 'launchAtStartup' | 'dashboardFollowsWidgetTheme'
+  'widgetProviderDiscoveryCompleted' | 'launchAtStartup' | 'dashboardFollowsWidgetTheme'
 >> & {
   widget?: Partial<AppSettings['widget']>
   providers?: ProviderSetting[]

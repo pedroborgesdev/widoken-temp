@@ -196,12 +196,9 @@ export default function App(): React.JSX.Element {
     || state.mode === 'provider-hover'
   const showCornerChrome = widgetHovered || state.mode === 'dragging'
   const collapsed = Boolean(edgeCollapse) && tucked && !holdWidgetOpen
-  // A settled tuck has to stay clipped to the peek. Padding that sliver would
-  // paint the shadow of the part that already slid off the screen.
-  const paintOutset = shadowPaintOutset(
-    state.settings.widget.shadows && !(collapsed && collapseSettled),
-    widgetScale
-  )
+  // The settled tuck already reduces hit testing to the visible peek. Keep the
+  // paint margin so Windows setShape does not clip the shadow around that peek.
+  const paintOutset = shadowPaintOutset(state.settings.widget.shadows, widgetScale)
   const edgeGap = !edgeCollapse
     ? 0
     : edgeCollapse === 'left'

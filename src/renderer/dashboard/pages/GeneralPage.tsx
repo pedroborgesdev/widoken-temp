@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { AppSettings, SettingsPatch } from '@shared/settings'
 import { SettingsCheckbox, SettingsSection } from '../../components/Settings/SettingsControls'
-import { SettingsSelect } from '../../components/Settings/SettingsSelect'
 
 interface GeneralPageProps {
   settings: AppSettings
@@ -52,17 +51,6 @@ export function GeneralPage({ settings, onUpdate, onReset }: GeneralPageProps): 
               checked={settings.launchAtStartup}
               label="Launch Widget at startup"
               onChange={(launchAtStartup) => onUpdate({ launchAtStartup })}
-            />
-          </div>
-        </div>
-        <div>
-          <h3 className="m-0 mb-2 text-[13px] font-semibold text-overlay-strong">Data</h3>
-          <div className="grid border-t border-overlay-track">
-            <SettingsSelect
-              label="Refresh interval"
-              value={settings.refreshIntervalSeconds}
-              options={[{ value: 30, label: '30 seconds' }, { value: 45, label: '45 seconds' }, { value: 60, label: '1 minute' }, { value: 300, label: '5 minutes' }]}
-              onChange={(value) => onUpdate({ refreshIntervalSeconds: Number(value) })}
             />
           </div>
         </div>
