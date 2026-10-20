@@ -1,0 +1,472 @@
+{
+  "widget-vertical": {
+    "file": "product/widget-vertical.png",
+    "clip": {
+      "x": 839,
+      "y": 303,
+      "width": 122,
+      "height": 494
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 34,
+        "y": 52,
+        "width": 54,
+        "height": 390
+      },
+      "claude": {
+        "x": 40,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 40,
+        "y": 106,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 40,
+        "y": 154,
+        "width": 42,
+        "height": 42
+      },
+      "antigravity": {
+        "x": 40,
+        "y": 202,
+        "width": 42,
+        "height": 42
+      },
+      "copilot": {
+        "x": 40,
+        "y": 250,
+        "width": 42,
+        "height": 42
+      },
+      "deepseek": {
+        "x": 40,
+        "y": 298,
+        "width": 42,
+        "height": 42
+      },
+      "huggingface": {
+        "x": 40,
+        "y": 346,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-horizontal": {
+    "file": "product/widget-horizontal.png",
+    "clip": {
+      "x": 653,
+      "y": 489,
+      "width": 494,
+      "height": 122
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 52,
+        "y": 34,
+        "width": 390,
+        "height": 54
+      },
+      "claude": {
+        "x": 58,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 106,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 154,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "antigravity": {
+        "x": 202,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "copilot": {
+        "x": 250,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "deepseek": {
+        "x": 298,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "huggingface": {
+        "x": 346,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-vertical-hot": {
+    "file": "product/widget-vertical-hot.png",
+    "clip": {
+      "x": 839,
+      "y": 303,
+      "width": 122,
+      "height": 494
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 34,
+        "y": 52,
+        "width": 54,
+        "height": 390
+      },
+      "claude": {
+        "x": 40,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 40,
+        "y": 106,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 40,
+        "y": 154,
+        "width": 42,
+        "height": 42
+      },
+      "antigravity": {
+        "x": 40,
+        "y": 202,
+        "width": 42,
+        "height": 42
+      },
+      "copilot": {
+        "x": 40,
+        "y": 250,
+        "width": 42,
+        "height": 42
+      },
+      "deepseek": {
+        "x": 40,
+        "y": 298,
+        "width": 42,
+        "height": 42
+      },
+      "huggingface": {
+        "x": 40,
+        "y": 346,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-horizontal-popover": {
+    "file": "product/widget-horizontal-popover.png",
+    "clip": {
+      "x": 626,
+      "y": 471,
+      "width": 539,
+      "height": 372.15625
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 79,
+        "y": 52,
+        "width": 390,
+        "height": 54
+      },
+      "popover": {
+        "x": 52,
+        "y": 112,
+        "width": 300,
+        "height": 208.16
+      },
+      "claude": {
+        "x": 85,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 133,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 181,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "antigravity": {
+        "x": 229,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "copilot": {
+        "x": 277,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "deepseek": {
+        "x": 325,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "huggingface": {
+        "x": 373,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-vertical-popover": {
+    "file": "product/widget-vertical-popover.png",
+    "clip": {
+      "x": 821,
+      "y": 235,
+      "width": 464,
+      "height": 580
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 52,
+        "y": 120,
+        "width": 54,
+        "height": 390
+      },
+      "popover": {
+        "x": 112,
+        "y": 52,
+        "width": 300,
+        "height": 189.97
+      },
+      "claude": {
+        "x": 58,
+        "y": 126,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 58,
+        "y": 174,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 58,
+        "y": 222,
+        "width": 42,
+        "height": 42
+      },
+      "antigravity": {
+        "x": 58,
+        "y": 270,
+        "width": 42,
+        "height": 42
+      },
+      "copilot": {
+        "x": 58,
+        "y": 318,
+        "width": 42,
+        "height": 42
+      },
+      "deepseek": {
+        "x": 58,
+        "y": 366,
+        "width": 42,
+        "height": 42
+      },
+      "huggingface": {
+        "x": 58,
+        "y": 414,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-vertical-popover-balance": {
+    "file": "product/widget-vertical-popover-balance.png",
+    "clip": {
+      "x": 821,
+      "y": 285,
+      "width": 464,
+      "height": 530
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 52,
+        "y": 70,
+        "width": 54,
+        "height": 390
+      },
+      "popover": {
+        "x": 112,
+        "y": 292.5,
+        "width": 300,
+        "height": 88.8
+      },
+      "claude": {
+        "x": 58,
+        "y": 76,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 58,
+        "y": 124,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 58,
+        "y": 172,
+        "width": 42,
+        "height": 42
+      },
+      "antigravity": {
+        "x": 58,
+        "y": 220,
+        "width": 42,
+        "height": 42
+      },
+      "copilot": {
+        "x": 58,
+        "y": 268,
+        "width": 42,
+        "height": 42
+      },
+      "deepseek": {
+        "x": 58,
+        "y": 316,
+        "width": 42,
+        "height": 42
+      },
+      "huggingface": {
+        "x": 58,
+        "y": 364,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-vertical-tucked": {
+    "file": "product/widget-vertical-tucked.png",
+    "clip": {
+      "x": 0,
+      "y": 0,
+      "width": 34,
+      "height": 1100
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    }
+  },
+  "activity-frames": {
+    "frames": 33,
+    "period": 2.2,
+    "clip": {
+      "x": 839,
+      "y": 303,
+      "width": 122,
+      "height": 494
+    },
+    "file": "product/activity",
+    "boxes": {
+      "pill": {
+        "x": 34,
+        "y": 52,
+        "width": 54,
+        "height": 390
+      },
+      "claude": {
+        "x": 40,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 40,
+        "y": 106,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 40,
+        "y": 154,
+        "width": 42,
+        "height": 42
+      },
+      "antigravity": {
+        "x": 40,
+        "y": 202,
+        "width": 42,
+        "height": 42
+      },
+      "copilot": {
+        "x": 40,
+        "y": 250,
+        "width": 42,
+        "height": 42
+      },
+      "deepseek": {
+        "x": 40,
+        "y": 298,
+        "width": 42,
+        "height": 42
+      },
+      "huggingface": {
+        "x": 40,
+        "y": 346,
+        "width": 42,
+        "height": 42
+      }
+    }
+  }
+}

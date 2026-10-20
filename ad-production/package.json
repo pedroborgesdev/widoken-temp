@@ -1,0 +1,44 @@
+{
+  "name": "widoken-ad-production",
+  "version": "1.0.0",
+  "description": "Production pipeline for the Widoken launch commercial (Remotion).",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "capture": "node scripts/capture-product.mjs",
+    "audio": "node scripts/make-audio.mjs",
+    "voiceover": "bash scripts/voiceover.sh",
+    "typecheck": "tsc --noEmit",
+    "studio": "remotion studio",
+    "styleframes": "node scripts/render-styleframes.mjs",
+    "render": "remotion render src/index.ts WidokenAd output/widoken-comercial-1920x1080.mp4 --codec=h264 --audio-codec=aac --crf=17 --pixel-format=yuv420p --color-space=bt709 --concurrency=4",
+    "render:v3": "remotion render src/index.ts WidokenAdV3 output/widoken-comercial-v3.mp4 --codec=h264 --audio-codec=aac --crf=17 --pixel-format=yuv420p --color-space=bt709 --concurrency=4",
+    "render:v4": "remotion render src/index.ts WidokenAdV4 output/widoken-comercial-v4.mp4 --codec=h264 --audio-codec=aac --crf=17 --pixel-format=yuv420p --color-space=bt709 --concurrency=4",
+    "audit:v4": "node scripts/audit-v4.mjs",
+    "audit:v3": "node scripts/audit-v3.mjs",
+    "render:all": "npm run render:v3 && npm run render && npm run render:v1",
+    "render:v1": "remotion render src/index.ts WidokenAdV1 output/widoken-comercial-v1-1920x1080.mp4 --codec=h264 --audio-codec=aac --crf=17 --pixel-format=yuv420p --color-space=bt709 --concurrency=4"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@remotion/cli": "^4.0.537",
+    "@remotion/player": "^4.0.537",
+    "playwright": "^1.64.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "remotion": "^4.0.537"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  },
+  "private": true
+}

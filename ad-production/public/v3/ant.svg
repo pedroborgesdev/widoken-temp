@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 112" role="img" aria-label="Formiga estilizada">
+  <g fill="none" stroke="#0d0d0d" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M63 52L42 28 21 20M69 61L39 61 16 48M64 71L39 88 18 100"/>
+    <path d="M102 50l23-24 25-9M105 60l31 1 27-14M101 72l29 18 26 9"/>
+    <path d="M131 43c13-23 27-30 39-31M124 38c5-24 15-33 27-37" stroke-width="5"/>
+    <path d="M144 58c12-3 20 0 27 9M143 64c11 5 18 10 22 18" stroke-width="4"/>
+  </g>
+  <ellipse cx="47" cy="61" rx="34" ry="26" fill="#0d0d0d"/>
+  <ellipse cx="91" cy="60" rx="24" ry="21" fill="#0d0d0d"/>
+  <ellipse cx="128" cy="55" rx="22" ry="20" fill="#0d0d0d"/>
+  <circle cx="137" cy="49" r="4" fill="#fff"/>
+</svg>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" role="img" aria-label="Tanque estilizado">
+  <g fill="none" fill-rule="evenodd">
+    <path fill="#0d0d0d" d="M94 286h690c39 0 72 25 84 59l18 52H48l18-52c12-34 44-59 28-59z"/>
+    <rect x="54" y="292" width="832" height="122" rx="61" fill="#0d0d0d"/>
+    <rect x="82" y="316" width="776" height="74" rx="37" fill="#2b2b2b"/>
+    <g fill="#fff" stroke="#0d0d0d" stroke-width="8">
+      <circle cx="137" cy="353" r="29"/><circle cx="253" cy="353" r="29"/>
+      <circle cx="369" cy="353" r="29"/><circle cx="485" cy="353" r="29"/>
+      <circle cx="601" cy="353" r="29"/><circle cx="717" cy="353" r="29"/>
+      <circle cx="815" cy="353" r="25"/>
+    </g>
+    <g fill="#0d0d0d">
+      <circle cx="137" cy="353" r="9"/><circle cx="253" cy="353" r="9"/>
+      <circle cx="369" cy="353" r="9"/><circle cx="485" cy="353" r="9"/>
+      <circle cx="601" cy="353" r="9"/><circle cx="717" cy="353" r="9"/>
+      <circle cx="815" cy="353" r="8"/>
+    </g>
+    <path fill="#0d0d0d" d="M132 287l47-108h480l119 108z"/>
+    <path fill="#303030" d="M181 272l29-69h420l78 69z"/>
+    <path fill="#0d0d0d" d="M329 184l37-90c5-13 17-21 31-21h169c16 0 30 11 34 26l24 85z"/>
+    <rect x="427" y="50" width="86" height="30" rx="12" fill="#0d0d0d"/>
+    <path fill="#0d0d0d" d="M554 101l350-13v39l-350 20z"/>
+    <rect x="891" y="78" width="55" height="59" rx="5" fill="#0d0d0d"/>
+    <rect x="911" y="88" width="9" height="22" fill="#fff"/>
+    <path d="M582 78l30-47" stroke="#0d0d0d" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="615" cy="27" r="8" fill="#0d0d0d"/>
+    <circle cx="730" cy="241" r="13" fill="#4aff5d"/>
+  </g>
+</svg>
