@@ -12,7 +12,7 @@
  *   node scripts/capture-product.mjs
  */
 import { spawn } from 'node:child_process'
-import { mkdir, writeFile, rm } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, writeFile, rm } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -148,10 +148,10 @@ const widgetSettings = (overrides = {}) => ({
   enabled: true,
   theme: 'monokai-black',
   themeMode: 'preset',
-  shadows: true,
+  shadows: false,
   showDockGuides: true,
   edgeTuck: false,
-  shadowOpacity: 45,
+  shadowOpacity: 0,
   itemGap: 6,
   scale: 100,
   orientation: 'vertical',
@@ -163,9 +163,16 @@ const widgetSettings = (overrides = {}) => ({
   ...overrides
 })
 
-const settings = (widget = {}) => ({
+const providerSettings = (providerIds = PROVIDER_SETTINGS.map(({ id }) => id)) =>
+  providerIds.map((id, order) => {
+    const provider = PROVIDER_SETTINGS.find((candidate) => candidate.id === id)
+    if (!provider) throw new Error(`Unknown provider id: ${id}`)
+    return { ...provider, order }
+  })
+
+const settings = (widget = {}, providerIds) => ({
   widget: widgetSettings(widget),
-  providers: PROVIDER_SETTINGS,
+  providers: providerSettings(providerIds),
   widgetProviderDiscoveryCompleted: true,
   launchAtStartup: false,
   dashboardFollowsWidgetTheme: false
@@ -248,15 +255,17 @@ function installBridge({ settings: initialSettings, providers }) {
  * explicitly instead (see ACTIVITY frames). */
 const FREEZE_CSS = `
   * { transition: none !important; }
+  .widget { filter: none !important; }
+  :is(.widget__thumb, .widget__board, .usage-popover, .unavailable-popover) { box-shadow: none !important; }
   .usage-ring--active .usage-ring__value { opacity: 0 !important; transform: scale(0.9) !important; }
   .usage-ring--active .usage-ring__activity { opacity: 1 !important; stroke-dashoffset: 0 !important; }
   .usage-ring__activity { animation-play-state: paused !important; }
 `
 
 async function startPreview() {
-  const bin = path.join(APP_ROOT, 'node_modules', '.bin', 'vite')
-  if (!existsSync(bin)) throw new Error(`vite binary not found at ${bin}`)
-  const child = spawn(bin, ['--config', 'vite.web.config.ts', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
+  const viteEntry = path.join(APP_ROOT, 'node_modules', 'vite', 'bin', 'vite.js')
+  if (!existsSync(viteEntry)) throw new Error(`vite entrypoint not found at ${viteEntry}`)
+  const child = spawn(process.execPath, [viteEntry, '--config', 'vite.web.config.ts', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
     cwd: APP_ROOT,
     stdio: ['ignore', 'pipe', 'pipe']
   })
@@ -275,9 +284,33 @@ async function startPreview() {
   throw new Error('vite preview did not start in time')
 }
 
-async function openWidget(context, { widget = {}, providers = FIXTURES.providers } = {}) {
+async function chromiumLaunchOptions() {
+  const expected = chromium.executablePath()
+  if (existsSync(expected)) return { headless: true }
+
+  const cache = path.join(process.env.LOCALAPPDATA ?? '', 'ms-playwright')
+  const revisions = (await readdir(cache, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith('chromium_headless_shell-'))
+    .map((entry) => entry.name)
+    .sort()
+    .reverse()
+
+  for (const revision of revisions) {
+    const executablePath = path.join(cache, revision, 'chrome-headless-shell-win64', 'chrome-headless-shell.exe')
+    if (existsSync(executablePath)) return { headless: true, executablePath }
+  }
+
+  throw new Error(`No Chromium executable found (expected ${expected})`)
+}
+
+async function openWidget(context, { widget = {}, providerIds = PROVIDER_SETTINGS.map(({ id }) => id), providers } = {}) {
+  const providerViews = providers ?? providerIds.map((id) => {
+    const provider = FIXTURES.providers.find((candidate) => candidate.id === id)
+    if (!provider) throw new Error(`Unknown provider fixture: ${id}`)
+    return provider
+  })
   const page = await context.newPage()
-  await page.addInitScript(installBridge, { settings: settings(widget), providers })
+  await page.addInitScript(installBridge, { settings: settings(widget, providerIds), providers: providerViews })
   await page.goto(`${BASE}/widget.html`, { waitUntil: 'networkidle' })
   await page.addStyleTag({ content: FREEZE_CSS })
   await page.waitForSelector('.widget', { state: 'visible' })
@@ -334,6 +367,17 @@ async function readBoxes(page, clip) {
       height: Number(box.height.toFixed(2))
     }
   }
+  const bars = page.locator('.usage-bar')
+  for (let index = 0; index < await bars.count(); index += 1) {
+    const box = await bars.nth(index).boundingBox()
+    if (!box) continue
+    result[`bar-${index}`] = {
+      x: Number((box.x - clip.x).toFixed(2)),
+      y: Number((box.y - clip.y).toFixed(2)),
+      width: Number(box.width.toFixed(2)),
+      height: Number(box.height.toFixed(2))
+    }
+  }
   return result
 }
 
@@ -357,9 +401,21 @@ async function main() {
   await rm(OUT, { recursive: true, force: true })
   await mkdir(path.join(OUT, 'activity'), { recursive: true })
   await mkdir(path.join(OUT, 'brand'), { recursive: true })
+  await mkdir(path.join(OUT, 'themes'), { recursive: true })
+  await mkdir(path.join(OUT, 'themes-v42'), { recursive: true })
+  await mkdir(path.join(OUT, 'activity-3'), { recursive: true })
+
+  /* Shadowless real theme captures used by the customization showcase. */
+  const themeSource = path.join(APP_ROOT, 'assets', 'readme', 'source', 'theme-shots')
+  for (const theme of [
+    'monokai-black', 'dark', 'slate', 'dracula', 'nord', 'catppuccin',
+    'tokyo-night', 'gruvbox', 'one-dark', 'solarized-dark', 'monokai'
+  ]) {
+    await copyFile(path.join(themeSource, `${theme}.png`), path.join(OUT, 'themes', `${theme}.png`))
+  }
 
   const preview = await startPreview()
-  const browser = await chromium.launch({ headless: true })
+  const browser = await chromium.launch(await chromiumLaunchOptions())
   const context = await browser.newContext({
     viewport: VIEWPORT,
     deviceScaleFactor: DPR,
@@ -385,6 +441,34 @@ async function main() {
       await page.close()
     }
 
+    /* V4.2 - real compact horizontal variants used for progressive assembly. */
+    for (const [count, providerIds] of [
+      [1, ['cursor']],
+      [2, ['cursor', 'claude']],
+      [3, ['cursor', 'claude', 'openai']],
+      [4, ['cursor', 'claude', 'openai', 'antigravity']]
+    ]) {
+      const page = await openWidget(context, { widget: { orientation: 'horizontal' }, providerIds })
+      await page.mouse.move(20, 20)
+      await page.waitForTimeout(250)
+      await capture(page, `widget-horizontal-${count}`, { padding: { left: 34, right: 34, top: 34, bottom: 34 } })
+      await page.close()
+    }
+
+    /* V4.2 - compact vertical variants; fewer providers stay legible at larger scale. */
+    for (const [count, providerIds] of [
+      [1, ['cursor']],
+      [2, ['cursor', 'claude']],
+      [3, ['cursor', 'claude', 'openai']],
+      [4, ['cursor', 'claude', 'openai', 'antigravity']]
+    ]) {
+      const page = await openWidget(context, { widget: { orientation: 'vertical', side: 'left' }, providerIds })
+      await page.mouse.move(20, 20)
+      await page.waitForTimeout(250)
+      await capture(page, `widget-vertical-${count}`, { padding: { left: 34, right: 34, top: 34, bottom: 34 } })
+      await page.close()
+    }
+
     /* 3 - vertical strip in its hot state (gear + grab handle revealed) */
     {
       const page = await openWidget(context, { widget: { orientation: 'vertical' } })
@@ -402,6 +486,77 @@ async function main() {
       await page.waitForSelector('.usage-popover', { state: 'visible' })
       await page.waitForTimeout(450)
       await capture(page, 'widget-horizontal-popover', {
+        selector: '.widget',
+        extraSelectors: ['.usage-popover'],
+        padding: { left: 52, right: 52, top: 52, bottom: 52 }
+      })
+      await page.close()
+    }
+
+    /* V4.2 - Cursor percentage popover with only Cursor + Claude. */
+    {
+      const page = await openWidget(context, {
+        widget: { orientation: 'horizontal' },
+        providerIds: ['cursor', 'claude']
+      })
+      await page.locator('[data-provider-id="cursor"]').hover()
+      await page.waitForSelector('.usage-popover', { state: 'visible' })
+      await page.waitForTimeout(450)
+      await capture(page, 'widget-horizontal-popover-cursor-2', {
+        selector: '.widget',
+        extraSelectors: ['.usage-popover'],
+        padding: { left: 52, right: 52, top: 52, bottom: 52 }
+      })
+      await page.close()
+    }
+
+    /* V6 - the hero composition stays horizontal with the same three providers. */
+    {
+      const page = await openWidget(context, {
+        widget: { orientation: 'horizontal' },
+        providerIds: ['cursor', 'claude', 'openai']
+      })
+      await page.locator('[data-provider-id="cursor"]').hover()
+      await page.waitForSelector('.usage-popover', { state: 'visible' })
+      await page.waitForTimeout(450)
+      await capture(page, 'widget-horizontal-popover-cursor-3', {
+        selector: '.widget',
+        extraSelectors: ['.usage-popover'],
+        padding: { left: 52, right: 52, top: 52, bottom: 52 }
+      })
+      await page.close()
+    }
+
+    /* V7 - four comparable themes, identical provider order and orientation. */
+    for (const [theme, name] of [
+      ['monokai-black', 'widget-horizontal-3-theme-monokai'],
+      ['catppuccin', 'widget-horizontal-3-theme-catppuccin'],
+      ['dark', 'widget-horizontal-3-theme-dark'],
+      ['nord', 'widget-horizontal-3-theme-nord']
+    ]) {
+      const page = await openWidget(context, {
+        widget: { orientation: 'horizontal', theme },
+        providerIds: ['cursor', 'claude', 'openai']
+      })
+      await page.mouse.move(20, 20)
+      await page.waitForTimeout(250)
+      await capture(page, name, { padding: { left: 34, right: 34, top: 34, bottom: 34 } })
+      await page.close()
+    }
+
+    /* V4.2 - large vertical Cursor popovers for the usage and CTA scenes. */
+    for (const [count, providerIds] of [
+      [3, ['cursor', 'claude', 'openai']],
+      [4, ['cursor', 'claude', 'openai', 'antigravity']]
+    ]) {
+      const page = await openWidget(context, {
+        widget: { orientation: 'vertical', side: 'left' },
+        providerIds
+      })
+      await page.locator('[data-provider-id="cursor"]').hover()
+      await page.waitForSelector('.usage-popover', { state: 'visible' })
+      await page.waitForTimeout(450)
+      await capture(page, `widget-vertical-popover-cursor-${count}`, {
         selector: '.widget',
         extraSelectors: ['.usage-popover'],
         padding: { left: 52, right: 52, top: 52, bottom: 52 }
@@ -484,8 +639,106 @@ async function main() {
       await page.close()
     }
 
+    /* V4.2 - the same real activity state, limited to three providers. */
+    {
+      const providerIds = ['cursor', 'claude', 'openai']
+      const active = providerIds.map((id) => {
+        const provider = FIXTURES.providers.find((candidate) => candidate.id === id)
+        return id === 'cursor' ? { ...provider, activity: 'active' } : provider
+      })
+      const page = await openWidget(context, {
+        widget: { orientation: 'vertical', side: 'left' },
+        providerIds,
+        providers: active
+      })
+      await page.mouse.move(20, 20)
+      await page.waitForTimeout(300)
+      const box = await page.locator('.widget').boundingBox()
+      const viewport = page.viewportSize()
+      const clip = pad(box, { left: 34, right: 34, top: 34, bottom: 34 }, viewport)
+      const frames = 33
+      const period = 2.2
+      for (let i = 0; i < frames; i += 1) {
+        const phase = -(i / frames) * period
+        await page.addStyleTag({ content: `.usage-ring__activity { animation-delay: ${phase}s !important; }` })
+        await page.screenshot({
+          path: path.join(OUT, 'activity-3', `frame-${String(i).padStart(3, '0')}.png`),
+          clip,
+          omitBackground: true
+        })
+      }
+      manifest['activity-frames-3'] = { frames, period, clip, file: 'product/activity-3', boxes: await readBoxes(page, clip) }
+      console.log(`captured ${frames} compact activity frames`)
+      await page.close()
+    }
+
+    /* V6 - the same real activity orbit in the horizontal hero composition. */
+    {
+      const providerIds = ['cursor', 'claude', 'openai']
+      const active = providerIds.map((id) => {
+        const provider = FIXTURES.providers.find((candidate) => candidate.id === id)
+        return id === 'cursor' ? { ...provider, activity: 'active' } : provider
+      })
+      const page = await openWidget(context, {
+        widget: { orientation: 'horizontal' },
+        providerIds,
+        providers: active
+      })
+      await page.mouse.move(20, 20)
+      await page.waitForTimeout(300)
+      const box = await page.locator('.widget').boundingBox()
+      const viewport = page.viewportSize()
+      const clip = pad(box, { left: 34, right: 34, top: 34, bottom: 34 }, viewport)
+      const frames = 33
+      const period = 2.2
+      await mkdir(path.join(OUT, 'activity-horizontal-3'), { recursive: true })
+      for (let i = 0; i < frames; i += 1) {
+        const phase = -(i / frames) * period
+        await page.addStyleTag({ content: `.usage-ring__activity { animation-delay: ${phase}s !important; }` })
+        await page.screenshot({
+          path: path.join(OUT, 'activity-horizontal-3', `frame-${String(i).padStart(3, '0')}.png`),
+          clip,
+          omitBackground: true
+        })
+      }
+      manifest['activity-frames-horizontal-3'] = { frames, period, clip, file: 'product/activity-horizontal-3', boxes: await readBoxes(page, clip) }
+      console.log(`captured ${frames} horizontal compact activity frames`)
+      await page.close()
+    }
+
+    /* V4.2 - every theme is a real widget with a deliberately different provider set. */
+    const themeVariants = [
+      ['monokai-black', ['cursor', 'claude']],
+      ['dark', ['openai', 'cursor', 'claude']],
+      ['slate', ['antigravity', 'cursor', 'claude', 'openai']],
+      ['dracula', ['claude', 'cursor']],
+      ['nord', ['openai', 'claude', 'cursor']],
+      ['catppuccin', ['cursor', 'antigravity', 'claude', 'openai']],
+      ['tokyo-night', ['cursor', 'openai']],
+      ['gruvbox', ['claude', 'antigravity', 'cursor']],
+      ['one-dark', ['openai', 'cursor', 'claude', 'antigravity']],
+      ['solarized-dark', ['antigravity', 'claude']],
+      ['monokai', ['cursor', 'claude', 'openai']]
+    ]
+    for (const [theme, providerIds] of themeVariants) {
+      const page = await openWidget(context, {
+        widget: { orientation: 'vertical', side: 'left', theme },
+        providerIds
+      })
+      await page.mouse.move(20, 20)
+      await page.waitForTimeout(250)
+      const box = await page.locator('.widget').boundingBox()
+      const clip = pad(box, { left: 24, right: 24, top: 24, bottom: 24 }, page.viewportSize())
+      await page.screenshot({
+        path: path.join(OUT, 'themes-v42', `${theme}.png`),
+        clip,
+        omitBackground: true
+      })
+      await page.close()
+    }
+
     /* 8 - the official icon (brand layer) */
-    await (await import('node:fs/promises')).copyFile(
+    await copyFile(
       path.join(APP_ROOT, 'resources', 'widoken.png'),
       path.join(OUT, 'brand', 'icon.png')
     )
@@ -495,6 +748,7 @@ async function main() {
     // The ad imports this copy so camera moves are driven by measured
     // geometry instead of hard-coded guesses.
     await writeFile(path.join(AD_ROOT, 'src', 'v2', 'captures.json'), serialised)
+    await writeFile(path.join(AD_ROOT, 'src', 'v3', 'captures.json'), serialised)
   } finally {
     await context.close()
     await browser.close()

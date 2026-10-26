@@ -1,6 +1,6 @@
 import React from 'react'
 import { Img, staticFile } from 'remotion'
-import manifest from './captures.json'
+import manifest from '../v2/captures.json'
 
 /**
  * PRODUCT LAYER — V2.
@@ -34,9 +34,25 @@ const CAPTURES = manifest as unknown as Record<string, CaptureSpec>
 export type CaptureName =
   | 'widget-vertical'
   | 'widget-horizontal'
+  | 'widget-horizontal-1'
+  | 'widget-horizontal-2'
+  | 'widget-horizontal-3'
+  | 'widget-horizontal-4'
+  | 'widget-vertical-1'
+  | 'widget-vertical-2'
+  | 'widget-vertical-3'
+  | 'widget-vertical-4'
   | 'widget-vertical-hot'
   | 'widget-horizontal-popover'
+  | 'widget-horizontal-popover-cursor-2'
+  | 'widget-horizontal-popover-cursor-3'
+  | 'widget-horizontal-3-theme-monokai'
+  | 'widget-horizontal-3-theme-catppuccin'
+  | 'widget-horizontal-3-theme-dark'
+  | 'widget-horizontal-3-theme-nord'
   | 'widget-vertical-popover'
+  | 'widget-vertical-popover-cursor-3'
+  | 'widget-vertical-popover-cursor-4'
   | 'widget-vertical-popover-balance'
   | 'widget-vertical-tucked'
 
@@ -45,7 +61,11 @@ export function capture(name: CaptureName): CaptureSpec {
 }
 
 export function box(name: CaptureName, node: string): Box {
-  return CAPTURES[name].boxes[node]
+  const spec = CAPTURES[name]
+  if (!spec) throw new Error(`Missing product capture: ${name}`)
+  const target = spec.boxes[node]
+  if (!target) throw new Error(`Missing product capture node: ${name}.${node}`)
+  return target
 }
 
 /** Centre of a named DOM node, in capture-clip CSS pixels. */
@@ -141,18 +161,26 @@ export function ActivityShot({
   camera,
   frame,
   from = 0,
-  opacity = 1
+  opacity = 1,
+  variant = 'full'
 }: {
   camera: Camera
   frame: number
   /** Absolute frame at which the orbit starts. */
   from?: number
   opacity?: number
+  variant?: 'full' | 'compact-3' | 'horizontal-3'
 }) {
-  const spec = CAPTURES['activity-frames']
+  const captureName = variant === 'horizontal-3'
+    ? 'activity-frames-horizontal-3'
+    : variant === 'compact-3' ? 'activity-frames-3' : 'activity-frames'
+  const directory = variant === 'horizontal-3'
+    ? 'activity-horizontal-3'
+    : variant === 'compact-3' ? 'activity-3' : 'activity'
+  const spec = CAPTURES[captureName]
   const local = Math.max(0, frame - from)
   const index = Math.floor(local / 2) % 33
-  const file = `product/activity/frame-${String(index).padStart(3, '0')}.png`
+  const file = `product/${directory}/frame-${String(index).padStart(3, '0')}.png`
   const left = camera.atX - camera.focusX * camera.scale
   const top = camera.atY - camera.focusY * camera.scale
   const width = spec.clip.width * camera.scale

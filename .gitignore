@@ -12,3 +12,4 @@ __pycache__/
 *.py[cod]
 .DS_Store
 assets/readme/source/dashboard-raw.png
+ad-production.zip

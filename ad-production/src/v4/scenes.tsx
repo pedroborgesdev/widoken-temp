@@ -14,13 +14,14 @@ const usagePill = centre(USAGE, 'pill')
 const verticalPill = centre(VERTICAL, 'pill')
 const balancePill = centre(BALANCE, 'pill')
 
-const H_CONCEPT: Camera = { focusX: hPill.x, focusY: hPill.y, atX: 960, atY: 535, scale: 2.55 }
-const H_USAGE: Camera = { focusX: hPill.x, focusY: hPill.y, atX: 1340, atY: 260, scale: 2.05 }
-const U_USAGE: Camera = { focusX: usagePill.x, focusY: usagePill.y, atX: 1340, atY: 260, scale: 2.05 }
-const V_BALANCE: Camera = { focusX: verticalPill.x, focusY: verticalPill.y, atX: 1320, atY: 540, scale: 1.55 }
-const B_BALANCE: Camera = { focusX: balancePill.x, focusY: balancePill.y, atX: 1320, atY: 540, scale: 1.55 }
+const H_CONCEPT: Camera = { focusX: hPill.x, focusY: hPill.y, atX: 1000, atY: 500, scale: 3.05 }
+const H_USAGE: Camera = { focusX: hPill.x, focusY: hPill.y, atX: 1370, atY: 255, scale: 2.15 }
+const U_USAGE: Camera = { focusX: usagePill.x, focusY: usagePill.y, atX: 1370, atY: 255, scale: 2.15 }
+const V_BALANCE: Camera = { focusX: verticalPill.x, focusY: verticalPill.y, atX: 1245, atY: 530, scale: 1.78 }
+const B_BALANCE: Camera = { focusX: balancePill.x, focusY: balancePill.y, atX: 1245, atY: 530, scale: 1.78 }
+const V_ACTIVITY: Camera = { focusX: verticalPill.x, focusY: verticalPill.y, atX: 1330, atY: 540, scale: 2.08 }
 const V_GALLERY: Camera = { focusX: verticalPill.x, focusY: verticalPill.y, atX: 1710, atY: 545, scale: 1.22 }
-const B_FINAL: Camera = { focusX: balancePill.x, focusY: balancePill.y, atX: 1365, atY: 500, scale: 1.4 }
+const B_FINAL: Camera = { focusX: balancePill.x, focusY: balancePill.y, atX: 1220, atY: 510, scale: 1.62 }
 
 function ProviderMetric({ x, y, name, value, color, from, exitAt }: {
   x: number; y: number; name: string; value: number; color: string; from: number; exitAt: number
@@ -98,11 +99,13 @@ export function S04Concept() {
   const target = progress(frame, 124, 26, EASE.inOutCubic)
   const camera = lerpCamera(H_CONCEPT, H_USAGE, target)
   return <AbsoluteFill style={{ background: COLORS.WHITE }}>
+    <div style={{ position: 'absolute', left: 0, top: 0, width: 22, height: 1080, background: COLORS.BRAND_PURPLE }} />
+    <div style={{ position: 'absolute', right: 0, bottom: 0, width: 310, height: 18, background: COLORS.BRAND_GREEN }} />
     <Shot name={HORIZONTAL} camera={camera} />
-    <Headline lines={['SUAS IAS.']} from={8} exitAt={45} size={146} style={{ position: 'absolute', left: SAFE, top: 86 }} />
-    <Headline lines={['SEUS LIMITES.']} from={48} exitAt={87} size={142} color={COLORS.BRAND_PURPLE} style={{ position: 'absolute', right: SAFE, bottom: 90 }} align="right" />
-    <Headline lines={['NUMA OLHADA.']} from={90} exitAt={124} size={148} color={COLORS.INK} accent={{ text: 'OLHADA.', color: COLORS.BRAND_GREEN }} style={{ position: 'absolute', left: SAFE, top: 100 }} />
-    <Support from={98} exitAt={126} size={25} style={{ position: 'absolute', left: SUPPORT_SAFE, bottom: 98 }}>
+    <Headline lines={['SUAS IAS.']} from={8} exitAt={45} size={142} style={{ position: 'absolute', left: SAFE, top: 72 }} />
+    <Headline lines={['SEUS LIMITES.']} from={48} exitAt={87} size={138} color={COLORS.BRAND_PURPLE} style={{ position: 'absolute', right: SAFE, bottom: 82 }} align="right" />
+    <Headline lines={['NUMA OLHADA.']} from={90} exitAt={124} size={150} color={COLORS.INK} accent={{ text: 'OLHADA.', color: COLORS.BRAND_GREEN }} style={{ position: 'absolute', left: SAFE, top: 72 }} />
+    <Support from={98} exitAt={126} size={27} style={{ position: 'absolute', left: SUPPORT_SAFE, bottom: 82 }}>
       COMPACTO. DIRETO. SEM TROCAR DE JANELA.
     </Support>
   </AbsoluteFill>
@@ -137,13 +140,15 @@ export function S06Balance() {
   const pop = progress(frame, 10, 14, EASE.inOutCubic)
   const close = progress(frame, 112, 13, EASE.inOutCubic)
   return <AbsoluteFill style={{ background: COLORS.WHITE }}>
+    <div style={{ position: 'absolute', left: 1115, top: 92, width: 18, height: 792, background: COLORS.BRAND_PURPLE }} />
+    <div style={{ position: 'absolute', left: 1115, top: 884, width: 330, height: 18, background: COLORS.BRAND_ORANGE }} />
     <Shot name={VERTICAL} camera={V_BALANCE} />
     <MaskReveal frame={frame} from={10} duration={14} direction="right" style={{ opacity: 1 - close }}>
       <Shot name={BALANCE} camera={B_BALANCE} />
     </MaskReveal>
-    <Headline lines={['QUANTO AINDA', 'RESTA?']} from={12} exitAt={65} size={108} accent={{ text: 'RESTA?', color: COLORS.BRAND_PURPLE }} style={{ position: 'absolute', left: SAFE, top: 225 }} />
-    <Headline lines={['VOCÊ VÊ', 'NA HORA.']} from={69} exitAt={119} size={112} accent={{ text: 'NA HORA.', color: COLORS.BRAND_GREEN }} style={{ position: 'absolute', left: SAFE, top: 225 }} />
-    <Support from={35} exitAt={116} size={29} style={{ position: 'absolute', left: SUPPORT_SAFE, bottom: 150 }}>
+    <Headline lines={['QUANTO AINDA', 'RESTA?']} from={12} exitAt={65} size={106} accent={{ text: 'RESTA?', color: COLORS.BRAND_PURPLE }} style={{ position: 'absolute', left: SAFE, top: 205 }} />
+    <Headline lines={['VOCÊ VÊ', 'NA HORA.']} from={69} exitAt={119} size={110} accent={{ text: 'NA HORA.', color: COLORS.BRAND_GREEN }} style={{ position: 'absolute', left: SAFE, top: 205 }} />
+    <Support from={35} exitAt={116} size={28} style={{ position: 'absolute', left: SUPPORT_SAFE, bottom: 132 }}>
       $2.00 DISPONÍVEL · HARNESS / DEEPSEEK
     </Support>
     <DemoLabel style={{ position: 'absolute', left: SUPPORT_SAFE, bottom: 68, opacity: progress(frame, 18, 8) * (1 - progress(frame, 118, 12, EASE.inOutCubic)) }} />
@@ -154,14 +159,20 @@ export function S07Activity() {
   const frame = useCurrentFrame()
   const active = progress(frame, 10, 10)
   const resolved = progress(frame, 70, 9, EASE.inOutCubic)
-  const camera = lerpCamera(V_BALANCE, V_GALLERY, progress(frame, 108, 27, EASE.inOutCubic))
+  const settle = lerpCamera(V_BALANCE, V_ACTIVITY, progress(frame, 0, 14, EASE.inOutCubic))
+  const camera = lerpCamera(settle, V_GALLERY, progress(frame, 108, 27, EASE.inOutCubic))
   return <AbsoluteFill style={{ background: COLORS.WHITE }}>
+    <div style={{ position: 'absolute', left: 104, top: 166, width: 148, height: 12, background: COLORS.BRAND_ORANGE }} />
+    <div style={{ position: 'absolute', left: 104, top: 178, width: 82, height: 12, background: COLORS.BRAND_PINK }} />
     <Shot name={VERTICAL} camera={camera} />
     <ActivityShot camera={camera} frame={frame} from={10} opacity={active * (1 - resolved)} />
-    <Headline lines={['SUA IA TÁ', 'TRABALHANDO?']} from={12} exitAt={66} size={112} accent={{ text: 'TRABALHANDO?', color: COLORS.BRAND_ORANGE }} style={{ position: 'absolute', left: SAFE, top: 240 }} />
-    <Headline lines={['VOCÊ SABE.']} from={72} exitAt={116} size={126} accent={{ text: 'SABE.', color: COLORS.BRAND_GREEN }} style={{ position: 'absolute', left: SAFE, top: 315 }} />
-    <Support from={87} exitAt={116} size={27} style={{ position: 'absolute', left: SUPPORT_SAFE, bottom: 180 }}>
-      INDICADOR DE ATIVIDADE EM TEMPO REAL.
+    <Headline lines={['SUA IA TÁ', 'TRABALHANDO?']} from={12} exitAt={66} size={108} accent={{ text: 'TRABALHANDO?', color: COLORS.BRAND_ORANGE }} style={{ position: 'absolute', left: SAFE, top: 226 }} />
+    <Headline lines={['VOCÊ SABE.']} from={72} exitAt={116} size={126} accent={{ text: 'SABE.', color: COLORS.BRAND_GREEN }} style={{ position: 'absolute', left: SAFE, top: 284 }} />
+    <Support from={28} exitAt={66} size={25} style={{ position: 'absolute', left: SUPPORT_SAFE, bottom: 178 }}>
+      ANÉIS EM MOVIMENTO MOSTRAM<br />QUEM ESTÁ ATIVO AGORA.
+    </Support>
+    <Support from={82} exitAt={116} size={27} style={{ position: 'absolute', left: SUPPORT_SAFE, bottom: 178 }}>
+      ATIVIDADE EM TEMPO REAL.
     </Support>
   </AbsoluteFill>
 }
@@ -174,32 +185,33 @@ const THEMES = [
 ] as const
 
 function galleryOffset(frame: number) {
-  if (frame < 27) return 0
-  if (frame < 38) return mix(0, -900, progress(frame, 27, 11, EASE.inOutCubic))
-  if (frame < 53) return -900
-  if (frame < 64) return mix(-900, -1800, progress(frame, 53, 11, EASE.inOutCubic))
-  if (frame < 78) return -1800
-  if (frame < 89) return mix(-1800, -2290, progress(frame, 78, 11, EASE.inOutCubic))
-  return -2290
+  return mix(0, -322, progress(frame, 59, 15, EASE.inOutCubic))
 }
 
 export function S08Themes() {
   const frame = useCurrentFrame()
-  const galleryIn = progress(frame, 6, 12)
+  const galleryIn = progress(frame, 5, 14)
   const galleryOut = progress(frame, 98, 13, EASE.inOutCubic)
-  const priorOut = progress(frame, 6, 12, EASE.inOutCubic)
-  return <AbsoluteFill style={{ background: COLORS.WHITE }}>
-    <div style={{ transform: `translateX(${-priorOut * 260}px)`, opacity: 1 - priorOut }}><Shot name={VERTICAL} camera={V_GALLERY} /></div>
-    <Headline lines={['DO SEU', 'JEITO.']} from={7} exitAt={96} size={120} accent={{ text: 'JEITO.', color: COLORS.BRAND_PURPLE }} style={{ position: 'absolute', left: SAFE, top: 180, zIndex: 2 }} />
-    <Support from={18} exitAt={96} size={30} color={COLORS.INK} style={{ position: 'absolute', left: SUPPORT_SAFE, top: 520, zIndex: 2 }}>
-      11 TEMAS.<br />UMA EXPERIÊNCIA SIMPLES.
+  const priorOut = progress(frame, 4, 13, EASE.inOutCubic)
+  return <AbsoluteFill style={{ background: '#f7f7f4' }}>
+    <div style={{ position: 'absolute', inset: 0, transform: `translateX(${-priorOut * 240}px)`, opacity: 1 - priorOut }}><Shot name={VERTICAL} camera={V_GALLERY} /></div>
+    <div style={{ position: 'absolute', left: 0, top: 0, width: 28, height: 1080, background: COLORS.BRAND_PURPLE }} />
+    <div style={{ position: 'absolute', right: 96, top: 64, display: 'flex', gap: 10 }}>
+      {[COLORS.BRAND_GREEN, COLORS.BRAND_ORANGE, COLORS.BRAND_PINK].map((color) => <div key={color} style={{ width: 66, height: 12, background: color }} />)}
+    </div>
+    <Headline lines={['DO SEU JEITO.']} from={7} exitAt={96} size={102} accent={{ text: 'JEITO.', color: COLORS.BRAND_PURPLE }} style={{ position: 'absolute', left: SAFE, top: 56, zIndex: 2 }} />
+    <Support from={17} exitAt={96} size={27} color={COLORS.INK} style={{ position: 'absolute', left: SUPPORT_SAFE, top: 180, zIndex: 2 }}>
+      11 TEMAS. A MESMA EXPERIÊNCIA.
     </Support>
-    <div style={{ position: 'absolute', left: 760, top: 150, width: 920, height: 800, overflow: 'hidden', opacity: galleryIn * (1 - galleryOut) }}>
-      <div style={{ position: 'absolute', left: galleryOffset(frame) - galleryOut * 500, top: 0, display: 'flex', gap: 90 }}>
-        {THEMES.map(([id, label], index) => <div key={id} style={{ width: 210, flex: '0 0 210px', textAlign: 'center', transform: `translateY(${index % 2 ? 50 : 0}px)` }}>
-          <Img src={staticFile(`product/themes/${id}.png`)} style={{ width: 210, height: 646, display: 'block', objectFit: 'contain' }} />
-          <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 25, fontWeight: 700, letterSpacing: '.04em', color: COLORS.SOFT, marginTop: 16, whiteSpace: 'nowrap' }}>{label}</div>
-        </div>)}
+    <div style={{ position: 'absolute', left: 244, top: 292, width: 1433, height: 654, overflow: 'hidden', opacity: galleryIn * (1 - galleryOut), transform: `translateY(${mix(42, 0, galleryIn) + galleryOut * 34}px)` }}>
+      <div style={{ position: 'absolute', left: galleryOffset(frame) - galleryOut * 120, top: 0, display: 'flex', gap: 16 }}>
+        {THEMES.map(([id, label], index) => {
+          const itemIn = progress(frame, 7 + index * 2, 10)
+          return <div key={id} style={{ width: 145, flex: '0 0 145px', textAlign: 'center', opacity: itemIn, transform: `translateX(${mix(34, 0, itemIn)}px)` }}>
+            <Img src={staticFile(`product/themes/${id}.png`)} style={{ width: 145, height: 440, display: 'block', objectFit: 'contain' }} />
+            <div style={{ display: 'inline-flex', minHeight: 34, alignItems: 'center', justifyContent: 'center', fontFamily: 'Space Mono, monospace', fontSize: 16, fontWeight: 700, letterSpacing: '.035em', color: COLORS.INK, background: index % 3 === 0 ? COLORS.BRAND_GREEN : index % 3 === 1 ? '#eadfff' : '#ffe7c8', marginTop: 18, padding: '7px 10px', whiteSpace: 'nowrap' }}>{label}</div>
+          </div>
+        })}
       </div>
     </div>
     {frame >= 99 ? <ColorWipe frame={frame} from={99} duration={12} color={COLORS.BRAND_GREEN} /> : null}
@@ -223,7 +235,7 @@ export function S09Benefit() {
       TUDO À VISTA. NADA NO CAMINHO.
     </Support>
     <div style={{ position: 'absolute', inset: 0, opacity: widgetIn * (1 - handoff), transform: `translateY(${(1 - widgetIn) * 90 + handoff * 130}px)` }}>
-      <Shot name={HORIZONTAL} camera={{ ...H_CONCEPT, atY: 715, scale: 2.85 }} />
+      <Shot name={HORIZONTAL} camera={{ ...H_CONCEPT, atX: 960, atY: 708, scale: 3.15 }} />
     </div>
     <Shot name={BALANCE} camera={{ ...B_FINAL, atY: mix(620, B_FINAL.atY, handoff) }} opacity={handoff} />
     <WidokenIcon size={68} style={{ position: 'absolute', left: SAFE, top: 70, opacity: handoff }} />
@@ -235,20 +247,27 @@ export function S10Cta() {
   const wordmark = progress(frame, 2, 10)
   const assembled = progress(frame, 22, 56)
   return <AbsoluteFill style={{ background: COLORS.WHITE }}>
+    <div style={{ position: 'absolute', left: 0, top: 0, width: 24, height: 1080, background: COLORS.BRAND_GREEN }} />
+    <div style={{ position: 'absolute', left: 1090, top: 0, width: 180, height: 16, background: COLORS.BRAND_PURPLE }} />
+    <div style={{ position: 'absolute', left: 1270, top: 0, width: 180, height: 16, background: COLORS.BRAND_ORANGE }} />
+    <div style={{ position: 'absolute', left: 1450, top: 0, width: 180, height: 16, background: COLORS.BRAND_PINK }} />
     <Shot name={BALANCE} camera={B_FINAL} />
     <WidokenIcon size={68} style={{ position: 'absolute', left: SAFE, top: 70 }} />
     <div style={{ position: 'absolute', left: 180, top: 79, fontFamily: 'Archivo, sans-serif', fontSize: 66, fontWeight: 900, fontVariationSettings: "'wght' 900", letterSpacing: '-.055em', lineHeight: .84, color: COLORS.INK, opacity: wordmark }}>WIDOKEN</div>
-    <Headline lines={['SEU USO DE IA,', 'À VISTA.']} from={10} exitAt={220} size={94} accent={{ text: 'À VISTA.', color: COLORS.BRAND_GREEN }} style={{ position: 'absolute', left: SAFE, top: 212 }} />
-    <div style={{ position: 'absolute', left: SAFE, top: 510, width: 850, height: 112, overflow: 'hidden', opacity: assembled, transform: `translateX(${(1 - assembled) * -70}px)` }}>
+    <Headline lines={['SEU USO DE IA,', 'À VISTA.']} from={10} exitAt={220} size={96} accent={{ text: 'À VISTA.', color: COLORS.BRAND_GREEN }} style={{ position: 'absolute', left: SAFE, top: 202 }} />
+    <div style={{ position: 'absolute', left: SAFE, top: 500, width: 900, height: 126, overflow: 'hidden', opacity: assembled, transform: `translateX(${(1 - assembled) * -70}px)` }}>
       <div style={{ position: 'absolute', inset: 0, background: COLORS.BRAND_GREEN }} />
-      <div style={{ position: 'absolute', left: 34, top: 25, fontFamily: 'Archivo, sans-serif', fontSize: 50, fontWeight: 900, letterSpacing: '-.025em', color: COLORS.INK }}>BAIXE O WIDOKEN →</div>
+      <div style={{ position: 'absolute', left: 38, top: 28, fontFamily: 'Archivo, sans-serif', fontSize: 54, fontWeight: 900, letterSpacing: '-.03em', color: COLORS.INK }}>BAIXE O WIDOKEN →</div>
     </div>
-    <Support from={42} exitAt={220} size={28} color={COLORS.INK} style={{ position: 'absolute', left: SUPPORT_SAFE, top: 680 }}>
+    <Support from={42} exitAt={220} size={27} color={COLORS.INK} style={{ position: 'absolute', left: SUPPORT_SAFE, top: 674 }}>
       SEUS LIMITES. SUAS FERRAMENTAS.<br />NUM SÓ LUGAR.
     </Support>
-    <div style={{ position: 'absolute', left: SUPPORT_SAFE, bottom: 98, fontFamily: 'Space Mono, monospace', fontSize: 31, fontWeight: 700, letterSpacing: '.015em', color: COLORS.INK, opacity: progress(frame, 58, 14) }}>
-      github.com/pedroborgesdev/widoken-temp
+    <div style={{ position: 'absolute', left: SUPPORT_SAFE, bottom: 108, opacity: progress(frame, 58, 14) }}>
+      <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 18, fontWeight: 700, letterSpacing: '.14em', color: COLORS.BRAND_PURPLE, marginBottom: 12 }}>DISPONÍVEL AGORA</div>
+      <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 34, fontWeight: 700, letterSpacing: '-.01em', color: COLORS.INK }}>
+        github.com/pedroborgesdev/widoken-temp
+      </div>
+      <div style={{ width: 900, height: 6, background: COLORS.INK, marginTop: 18, transformOrigin: 'left', transform: `scaleX(${progress(frame, 62, 18)})` }} />
     </div>
-    <div style={{ position: 'absolute', left: 1005, top: 955, width: 820, height: 4, background: COLORS.INK, transformOrigin: 'left', transform: `scaleX(${progress(frame, 35, 18)})` }} />
   </AbsoluteFill>
 }

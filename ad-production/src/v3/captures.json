@@ -125,6 +125,294 @@
       }
     }
   },
+  "widget-horizontal-1": {
+    "file": "product/widget-horizontal-1.png",
+    "clip": {
+      "x": 797,
+      "y": 489,
+      "width": 206,
+      "height": 122
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 52,
+        "y": 34,
+        "width": 102,
+        "height": 54
+      },
+      "cursor": {
+        "x": 58,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-horizontal-2": {
+    "file": "product/widget-horizontal-2.png",
+    "clip": {
+      "x": 773,
+      "y": 489,
+      "width": 254,
+      "height": 122
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 52,
+        "y": 34,
+        "width": 150,
+        "height": 54
+      },
+      "claude": {
+        "x": 106,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 58,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-horizontal-3": {
+    "file": "product/widget-horizontal-3.png",
+    "clip": {
+      "x": 749,
+      "y": 489,
+      "width": 302,
+      "height": 122
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 52,
+        "y": 34,
+        "width": 198,
+        "height": 54
+      },
+      "claude": {
+        "x": 106,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 154,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 58,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-horizontal-4": {
+    "file": "product/widget-horizontal-4.png",
+    "clip": {
+      "x": 725,
+      "y": 489,
+      "width": 350,
+      "height": 122
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 52,
+        "y": 34,
+        "width": 246,
+        "height": 54
+      },
+      "claude": {
+        "x": 106,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 154,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 58,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "antigravity": {
+        "x": 202,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-vertical-1": {
+    "file": "product/widget-vertical-1.png",
+    "clip": {
+      "x": 839,
+      "y": 447,
+      "width": 122,
+      "height": 206
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 34,
+        "y": 52,
+        "width": 54,
+        "height": 102
+      },
+      "cursor": {
+        "x": 40,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-vertical-2": {
+    "file": "product/widget-vertical-2.png",
+    "clip": {
+      "x": 839,
+      "y": 423,
+      "width": 122,
+      "height": 254
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 34,
+        "y": 52,
+        "width": 54,
+        "height": 150
+      },
+      "claude": {
+        "x": 40,
+        "y": 106,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 40,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-vertical-3": {
+    "file": "product/widget-vertical-3.png",
+    "clip": {
+      "x": 839,
+      "y": 399,
+      "width": 122,
+      "height": 302
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 34,
+        "y": 52,
+        "width": 54,
+        "height": 198
+      },
+      "claude": {
+        "x": 40,
+        "y": 106,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 40,
+        "y": 154,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 40,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-vertical-4": {
+    "file": "product/widget-vertical-4.png",
+    "clip": {
+      "x": 839,
+      "y": 375,
+      "width": 122,
+      "height": 350
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 34,
+        "y": 52,
+        "width": 54,
+        "height": 246
+      },
+      "claude": {
+        "x": 40,
+        "y": 106,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 40,
+        "y": 154,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 40,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "antigravity": {
+        "x": 40,
+        "y": 202,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
   "widget-vertical-hot": {
     "file": "product/widget-vertical-hot.png",
     "clip": {
@@ -254,6 +542,402 @@
         "y": 58,
         "width": 42,
         "height": 42
+      },
+      "bar-0": {
+        "x": 66,
+        "y": 175.8,
+        "width": 272,
+        "height": 7
+      },
+      "bar-1": {
+        "x": 66,
+        "y": 258.97,
+        "width": 272,
+        "height": 7
+      }
+    }
+  },
+  "widget-horizontal-popover-cursor-2": {
+    "file": "product/widget-horizontal-popover-cursor-2.png",
+    "clip": {
+      "x": 650,
+      "y": 471,
+      "width": 404,
+      "height": 372.15625
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 175,
+        "y": 52,
+        "width": 150,
+        "height": 54
+      },
+      "popover": {
+        "x": 52,
+        "y": 112,
+        "width": 300,
+        "height": 208.16
+      },
+      "claude": {
+        "x": 229,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 181,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "bar-0": {
+        "x": 66,
+        "y": 175.8,
+        "width": 272,
+        "height": 7
+      },
+      "bar-1": {
+        "x": 66,
+        "y": 258.97,
+        "width": 272,
+        "height": 7
+      }
+    }
+  },
+  "widget-horizontal-popover-cursor-3": {
+    "file": "product/widget-horizontal-popover-cursor-3.png",
+    "clip": {
+      "x": 626,
+      "y": 471,
+      "width": 443,
+      "height": 372.15625
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 175,
+        "y": 52,
+        "width": 198,
+        "height": 54
+      },
+      "popover": {
+        "x": 52,
+        "y": 112,
+        "width": 300,
+        "height": 208.16
+      },
+      "claude": {
+        "x": 229,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 277,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 181,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      },
+      "bar-0": {
+        "x": 66,
+        "y": 175.8,
+        "width": 272,
+        "height": 7
+      },
+      "bar-1": {
+        "x": 66,
+        "y": 258.97,
+        "width": 272,
+        "height": 7
+      }
+    }
+  },
+  "widget-horizontal-3-theme-monokai": {
+    "file": "product/widget-horizontal-3-theme-monokai.png",
+    "clip": {
+      "x": 749,
+      "y": 489,
+      "width": 302,
+      "height": 122
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 52,
+        "y": 34,
+        "width": 198,
+        "height": 54
+      },
+      "claude": {
+        "x": 106,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 154,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 58,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-horizontal-3-theme-catppuccin": {
+    "file": "product/widget-horizontal-3-theme-catppuccin.png",
+    "clip": {
+      "x": 749,
+      "y": 489,
+      "width": 302,
+      "height": 122
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 52,
+        "y": 34,
+        "width": 198,
+        "height": 54
+      },
+      "claude": {
+        "x": 106,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 154,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 58,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-horizontal-3-theme-dark": {
+    "file": "product/widget-horizontal-3-theme-dark.png",
+    "clip": {
+      "x": 749,
+      "y": 489,
+      "width": 302,
+      "height": 122
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 52,
+        "y": 34,
+        "width": 198,
+        "height": 54
+      },
+      "claude": {
+        "x": 106,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 154,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 58,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-horizontal-3-theme-nord": {
+    "file": "product/widget-horizontal-3-theme-nord.png",
+    "clip": {
+      "x": 749,
+      "y": 489,
+      "width": 302,
+      "height": 122
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 52,
+        "y": 34,
+        "width": 198,
+        "height": 54
+      },
+      "claude": {
+        "x": 106,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 154,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 58,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "widget-vertical-popover-cursor-3": {
+    "file": "product/widget-vertical-popover-cursor-3.png",
+    "clip": {
+      "x": 821,
+      "y": 322,
+      "width": 464,
+      "height": 397
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 52,
+        "y": 129,
+        "width": 54,
+        "height": 198
+      },
+      "popover": {
+        "x": 112,
+        "y": 52,
+        "width": 300,
+        "height": 208.16
+      },
+      "claude": {
+        "x": 58,
+        "y": 183,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 58,
+        "y": 231,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 58,
+        "y": 135,
+        "width": 42,
+        "height": 42
+      },
+      "bar-0": {
+        "x": 126,
+        "y": 115.8,
+        "width": 272,
+        "height": 7
+      },
+      "bar-1": {
+        "x": 126,
+        "y": 198.97,
+        "width": 272,
+        "height": 7
+      }
+    }
+  },
+  "widget-vertical-popover-cursor-4": {
+    "file": "product/widget-vertical-popover-cursor-4.png",
+    "clip": {
+      "x": 821,
+      "y": 298,
+      "width": 464,
+      "height": 445
+    },
+    "viewport": {
+      "width": 1800,
+      "height": 1100
+    },
+    "boxes": {
+      "pill": {
+        "x": 52,
+        "y": 129,
+        "width": 54,
+        "height": 246
+      },
+      "popover": {
+        "x": 112,
+        "y": 52,
+        "width": 300,
+        "height": 208.16
+      },
+      "claude": {
+        "x": 58,
+        "y": 183,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 58,
+        "y": 231,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 58,
+        "y": 135,
+        "width": 42,
+        "height": 42
+      },
+      "antigravity": {
+        "x": 58,
+        "y": 279,
+        "width": 42,
+        "height": 42
+      },
+      "bar-0": {
+        "x": 126,
+        "y": 115.8,
+        "width": 272,
+        "height": 7
+      },
+      "bar-1": {
+        "x": 126,
+        "y": 198.97,
+        "width": 272,
+        "height": 7
       }
     }
   },
@@ -323,6 +1007,18 @@
         "y": 414,
         "width": 42,
         "height": 42
+      },
+      "bar-0": {
+        "x": 126,
+        "y": 115.8,
+        "width": 272,
+        "height": 7
+      },
+      "bar-1": {
+        "x": 126,
+        "y": 180.78,
+        "width": 272,
+        "height": 7
       }
     }
   },
@@ -464,6 +1160,80 @@
       "huggingface": {
         "x": 40,
         "y": 346,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "activity-frames-3": {
+    "frames": 33,
+    "period": 2.2,
+    "clip": {
+      "x": 839,
+      "y": 399,
+      "width": 122,
+      "height": 302
+    },
+    "file": "product/activity-3",
+    "boxes": {
+      "pill": {
+        "x": 34,
+        "y": 52,
+        "width": 54,
+        "height": 198
+      },
+      "claude": {
+        "x": 40,
+        "y": 106,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 40,
+        "y": 154,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 40,
+        "y": 58,
+        "width": 42,
+        "height": 42
+      }
+    }
+  },
+  "activity-frames-horizontal-3": {
+    "frames": 33,
+    "period": 2.2,
+    "clip": {
+      "x": 749,
+      "y": 489,
+      "width": 302,
+      "height": 122
+    },
+    "file": "product/activity-horizontal-3",
+    "boxes": {
+      "pill": {
+        "x": 52,
+        "y": 34,
+        "width": 198,
+        "height": 54
+      },
+      "claude": {
+        "x": 106,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "openai": {
+        "x": 154,
+        "y": 40,
+        "width": 42,
+        "height": 42
+      },
+      "cursor": {
+        "x": 58,
+        "y": 40,
         "width": 42,
         "height": 42
       }
